@@ -48,6 +48,32 @@ const ROOT: PartialGraphNode = {
       children: {
         leaf1: {
           label: '叶子1',
+          children:{
+            leaf11: {
+              label: '叶子11',
+            },
+            leaf12: {
+              label: '叶子12',
+            },
+            leaf13: {
+              label: '叶子13',
+            },
+            leaf14: {
+              label: '叶子14',
+            },
+            leaf15: {
+              label: '叶子15',
+            },
+            leaf16: {
+              label: '叶子16',
+            },
+            leaf17: {
+              label: '叶子17',
+            },
+            leaf18: {
+              label: '叶子18',
+            },
+          }
         },
         leaf2: {
           label: '叶子2',

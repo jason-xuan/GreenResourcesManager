@@ -8,7 +8,10 @@ import treeTest from './scenes/treeTest?scene';
 
 import bgm from '../public/sounds/正午12点.mp3';
 
+import test from './scenes/test?scene';
+import folderTest from './scenes/folderTest?scene';
+
 export default makeProject({
-  scenes: [arrowTest,treeTest,main ],
+  scenes: [main],
   audio: bgm,
 });

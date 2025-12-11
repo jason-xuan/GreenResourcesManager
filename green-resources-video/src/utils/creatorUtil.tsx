@@ -34,7 +34,6 @@ export function createImage(
 
 	const img = (
 		<Img
-			key={`Image-${src.split('/').pop()}`}
 			ref={imgRef}
 			src={src}
 			scale={scale}
@@ -173,5 +172,97 @@ export function createTexts(
 
 	return {
 		textRefs
+	};
+}
+
+/**
+ * 创建圆形排列的图片
+ * @param view 场景视图引用
+ * @param imageSources 图片路径数组或图片路径模板（支持 ${index} 占位符）
+ * @param options 配置选项
+ * @param options.count 图片数量，默认使用 imageSources 数组长度
+ * @param options.scale 缩放比例，默认 0.3
+ * @param options.radius 圆形半径（像素），默认使用屏幕较小边的25%
+ * @param options.center 中心位置，默认 [0, 0]（屏幕中心）
+ * @returns 包含图片引用数组和圆形位置数组的对象
+ */
+export function createCircleImages(
+	view: Layout,
+	imageSources: string[] | string,
+	options: {
+		count?: number;
+		scale?: number;
+		radius?: number;
+		center?: [number, number];
+	} = {}
+): {
+	imageRefs: ReturnType<typeof createRef<Img>>[];
+	positions: [number, number][];
+} {
+	const {
+		count,
+		scale = 0.3,
+		radius,
+		center = [0, 0],
+	} = options;
+
+	// 确定图片数量
+	let imageCount: number;
+	let imagePaths: string[];
+
+	if (Array.isArray(imageSources)) {
+		imageCount = count ?? imageSources.length;
+		imagePaths = imageSources;
+	} else {
+		// 如果是字符串模板，使用 count 参数
+		imageCount = count ?? 1;
+		imagePaths = [];
+		// 检测模板中是否有 ${index} 占位符
+		const hasPlaceholder = imageSources.includes('${index}');
+		
+		if (hasPlaceholder) {
+			// 如果有占位符，需要确定有多少张不同的图片
+			// 假设图片编号从1开始，尝试找到最大编号（这里假设最多5张）
+			// 或者让用户指定，这里先假设循环使用1-5
+			for (let i = 0; i < imageCount; i++) {
+				const imageIndex = (i % 5) + 1; // 循环使用1-5的图片
+				imagePaths.push(imageSources.replace(/\$\{index\}/g, String(imageIndex)));
+			}
+		} else {
+			// 如果没有占位符，所有图片使用同一个路径
+			for (let i = 0; i < imageCount; i++) {
+				imagePaths.push(imageSources);
+			}
+		}
+	}
+
+	// 计算圆形半径
+	const calculatedRadius = radius ?? Math.min(view.width(), view.height()) * 0.25;
+
+	// 计算圆形排列的位置
+	const positions: [number, number][] = [];
+	for (let i = 0; i < imageCount; i++) {
+		// 计算每个图片的角度（360度均匀分布）
+		const angle = (i / imageCount) * Math.PI * 2; // 转换为弧度
+		// 使用三角函数计算圆形坐标
+		const x = center[0] + calculatedRadius * Math.cos(angle);
+		const y = center[1] + calculatedRadius * Math.sin(angle);
+		positions.push([x, y]);
+	}
+
+	// 创建图片引用
+	const imageRefs: ReturnType<typeof createRef<Img>>[] = [];
+	for (let i = 0; i < imageCount; i++) {
+		const imageIndex = i % imagePaths.length; // 循环使用图片
+		const imgRef = createImage(view, imagePaths[imageIndex], {
+			scale,
+			initialPosition: () => VideoPostion.bottomCenter(view),
+		});
+		imageRefs.push(imgRef);
+	}
+
+	return {
+		imageRefs,
+		positions,
 	};
 }

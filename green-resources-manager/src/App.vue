@@ -167,7 +167,11 @@ export default {
       // 全局游戏运行状态管理
       runningGames: new Map(), // 存储正在运行的游戏信息 {gameId: {id, pid, windowTitles: string[], gameName, startTime}}
       statusCheckInterval: null, // 定期检查运行状态的定时器
-      playtimeUpdateInterval: null, // 定期更新游戏时长的定时器
+      playtimeUpdateInterval: null, // 定期更新游戏时长的定时器（每1秒）
+      playtimeSaveInterval: null, // 定期保存游戏时长的定时器（每1分钟）
+      // 保存队列管理
+      saveQueue: [], // 保存任务队列
+      isProcessingSaveQueue: false, // 是否正在处理保存队列
       // 应用使用时长跟踪
       appSessionStartTime: null, // 应用会话开始时间
       appUsageTimer: null, // 应用使用时长定时器
@@ -176,6 +180,10 @@ export default {
       // 安全键相关
       safetyKeyEnabled: false,
       safetyKeyUrl: '',
+      // 自动备份相关
+      autoBackupInterval: 0, // 自动备份时间间隔（分钟），0表示禁用
+      autoBackupTimer: null, // 自动备份定时器
+      lastBackupTime: null, // 上次备份时间
       // 统一的页面配置
       viewConfig: {
         // 主导航页面
@@ -420,8 +428,8 @@ export default {
         const sessionDuration = Math.floor((Date.now() - runtimeGameData.startTime) / 1000) // 转换为秒
         console.log(`游戏 ${gameId} 本次会话时长: ${sessionDuration} 秒`, '游戏信息:', runtimeGameData)
         
-        // 通知 GameView 更新游戏时长
-        this.updateGamePlayTime(gameId, sessionDuration)
+        // 通知 GameView 更新游戏时长，游戏结束时需要保存
+        this.updateGamePlayTime(gameId, sessionDuration, true)
       }
       
       this.runningGames.delete(gameId)
@@ -430,8 +438,8 @@ export default {
     isGameRunning(gameId) {
       return this.runningGames.has(gameId)
     },
-    // 更新游戏时长
-    updateGamePlayTime(gameId, sessionDuration) {
+    // 更新游戏时长（只更新内存，不立即保存）
+    updateGamePlayTime(gameId, sessionDuration, shouldSave = false) {
       const gameView = this.$refs.gameView
       if (!gameView || !gameView.games) {
         console.log('游戏视图不可用，无法更新游戏时长')
@@ -443,13 +451,86 @@ export default {
         // 累加游戏时长
         game.playTime = (game.playTime || 0) + sessionDuration
         
-        // 保存更新后的数据
-        gameView.saveGames()
-        
-        // console.log(`游戏 ${game.name} 总时长更新为: ${game.playTime} 秒 (本次增加: ${sessionDuration} 秒)`)
+        // 只有在 shouldSave 为 true 时才保存（游戏结束时）
+        if (shouldSave) {
+          this.saveGamesSafely(gameView)
+          console.log(`游戏 ${game.name} 总时长更新为: ${game.playTime} 秒 (本次增加: ${sessionDuration} 秒)，已保存`)
+        } else {
+          // console.log(`游戏 ${game.name} 总时长更新为: ${game.playTime} 秒 (本次增加: ${sessionDuration} 秒)，暂存内存`)
+        }
       } else {
         console.warn('未找到对应的游戏:', gameId)
       }
+    },
+    // 安全保存游戏数据（使用队列机制，防止并发写入）
+    async saveGamesSafely(gameView) {
+      // 将保存任务添加到队列
+      return new Promise((resolve, reject) => {
+        const saveTask = {
+          gameView,
+          resolve,
+          reject,
+          timestamp: Date.now()
+        }
+        
+        this.saveQueue.push(saveTask)
+        console.log(`📝 保存任务已加入队列，当前队列长度: ${this.saveQueue.length}`)
+        
+        // 如果队列处理程序没有运行，启动它
+        if (!this.isProcessingSaveQueue) {
+          this.processSaveQueue()
+        }
+      })
+    },
+    // 处理保存队列（按顺序执行保存任务）
+    async processSaveQueue() {
+      if (this.isProcessingSaveQueue) {
+        return // 已经在处理中，避免重复启动
+      }
+      
+      this.isProcessingSaveQueue = true
+      console.log('🔄 开始处理保存队列')
+      
+      while (this.saveQueue.length > 0) {
+        const task = this.saveQueue.shift() // 从队列头部取出任务
+        
+        if (!task || !task.gameView) {
+          console.warn('⚠️ 无效的保存任务，跳过')
+          if (task && task.reject) {
+            task.reject(new Error('无效的保存任务'))
+          }
+          continue
+        }
+        
+        try {
+          console.log(`💾 执行保存任务 (队列剩余: ${this.saveQueue.length})`)
+          
+          if (typeof task.gameView.saveGames === 'function') {
+            await task.gameView.saveGames()
+            console.log('✅ 保存任务完成')
+            
+            if (task.resolve) {
+              task.resolve()
+            }
+          } else {
+            throw new Error('gameView.saveGames 方法不可用')
+          }
+        } catch (error) {
+          console.error('❌ 保存任务失败:', error)
+          
+          if (task.reject) {
+            task.reject(error)
+          }
+        }
+        
+        // 任务之间稍作延迟，避免过于频繁的写入
+        if (this.saveQueue.length > 0) {
+          await new Promise(resolve => setTimeout(resolve, 50))
+        }
+      }
+      
+      this.isProcessingSaveQueue = false
+      console.log('✅ 保存队列处理完成')
     },
     // 更新运行游戏的窗口标题列表
     async updateRunningGamesWindowTitles() {
@@ -545,14 +626,21 @@ export default {
     },
     // 启动定期更新游戏时长
     startPeriodicPlaytimeUpdate() {
-      // 每60秒更新一次游戏时长
+      // 每1秒更新一次游戏时长（只更新内存）
       this.playtimeUpdateInterval = setInterval(() => {
         if (this.runningGames.size > 0) {
           this.updateRunningGamesPlaytime()
         }
       }, 1000) // 1秒
+      
+      // 每1分钟保存一次游戏时长
+      this.playtimeSaveInterval = setInterval(() => {
+        if (this.runningGames.size > 0) {
+          this.saveRunningGamesPlaytime()
+        }
+      }, 60000) // 60秒 = 1分钟
     },
-    // 更新正在运行游戏的时长
+    // 更新正在运行游戏的时长（只更新内存，不保存）
     updateRunningGamesPlaytime() {
       const now = Date.now()
       
@@ -563,8 +651,35 @@ export default {
           // 更新会话开始时间（重置计时器）
           runtimeGameData.startTime = now
           
-          // 更新游戏时长
-          this.updateGamePlayTime(gameId, sessionDuration)
+          // 更新游戏时长（不保存，只更新内存）
+          this.updateGamePlayTime(gameId, sessionDuration, false)
+        }
+      }
+    },
+    // 保存正在运行游戏的时长（每1分钟执行一次）
+    async saveRunningGamesPlaytime() {
+      const gameView = this.$refs.gameView
+      if (!gameView || !gameView.games) {
+        console.log('游戏视图不可用，无法保存游戏时长')
+        return
+      }
+      
+      // 检查是否有正在运行的游戏需要保存
+      let hasRunningGames = false
+      for (const [gameId] of this.runningGames) {
+        const game = gameView.games.find(g => g.id === gameId)
+        if (game) {
+          hasRunningGames = true
+          break
+        }
+      }
+      
+      if (hasRunningGames) {
+        try {
+          await this.saveGamesSafely(gameView)
+          console.log('✅ 定期保存游戏时长完成（每1分钟）')
+        } catch (error) {
+          console.error('定期保存游戏时长失败:', error)
         }
       }
     },
@@ -582,6 +697,11 @@ export default {
         clearInterval(this.playtimeUpdateInterval)
         this.playtimeUpdateInterval = null
         console.log('已停止定期更新游戏时长')
+      }
+      if (this.playtimeSaveInterval) {
+        clearInterval(this.playtimeSaveInterval)
+        this.playtimeSaveInterval = null
+        console.log('已停止定期保存游戏时长')
       }
     },
     // 开始应用使用时长跟踪
@@ -680,6 +800,87 @@ export default {
         }
       } catch (error) {
         console.warn('加载安全键设置失败:', error)
+      }
+    },
+    
+    // 加载自动备份设置
+    async loadAutoBackupSettings() {
+      try {
+        const settings = await saveManager.loadSettings()
+        if (settings) {
+          // 如果开启了自动备份，使用设置的时间间隔，否则为0
+          if (settings.autoBackupEnabled) {
+            this.autoBackupInterval = settings.autoBackupInterval || 5
+          } else {
+            this.autoBackupInterval = 0
+          }
+          console.log('✅ 已加载自动备份设置:', settings.autoBackupEnabled ? `${this.autoBackupInterval} 分钟` : '已禁用')
+          
+          // 启动自动备份定时器
+          this.startAutoBackupTimer()
+        }
+      } catch (error) {
+        console.warn('加载自动备份设置失败:', error)
+      }
+    },
+    
+    // 执行自动备份
+    async performAutoBackup() {
+      try {
+        console.log('🔄 开始执行自动备份...')
+        // 获取保留备份数量设置
+        const settings = await saveManager.loadSettings()
+        const maxBackups = settings?.maxBackupCount || 5
+        const result = await saveManager.backupEntireSaveData(maxBackups)
+        if (result.success) {
+          this.lastBackupTime = new Date()
+          console.log('✅ 自动备份成功:', result.backupPath)
+          // 显示通知
+          if (this.$refs.toastNotification) {
+            this.$refs.toastNotification.show('success', '自动备份成功', `存档已备份到: ${result.backupPath}`)
+          }
+        } else {
+          console.error('❌ 自动备份失败:', result.error)
+          if (this.$refs.toastNotification) {
+            this.$refs.toastNotification.show('error', '自动备份失败', result.error)
+          }
+        }
+      } catch (error) {
+        console.error('执行自动备份失败:', error)
+        if (this.$refs.toastNotification) {
+          this.$refs.toastNotification.show('error', '自动备份失败', error.message)
+        }
+      }
+    },
+    
+    // 启动自动备份定时器
+    startAutoBackupTimer() {
+      // 先停止现有的定时器
+      this.stopAutoBackupTimer()
+      
+      // 如果时间间隔为0，则不启动定时器
+      if (this.autoBackupInterval <= 0) {
+        console.log('自动备份已禁用')
+        return
+      }
+      
+      // 转换为毫秒
+      const intervalMs = this.autoBackupInterval * 60 * 1000
+      
+      console.log(`启动自动备份定时器，间隔: ${this.autoBackupInterval} 分钟 (${intervalMs} 毫秒)`)
+      
+      // 启动定时器
+      this.autoBackupTimer = setInterval(() => {
+        this.performAutoBackup()
+      }, intervalMs)
+    },
+    
+    // 停止自动备份定时器
+    stopAutoBackupTimer() {
+      if (this.autoBackupTimer) {
+        clearInterval(this.autoBackupTimer)
+        this.autoBackupTimer = null
+        console.log('已停止自动备份定时器')
       }
     },
     
@@ -784,6 +985,9 @@ export default {
     // 加载安全键设置
     await this.loadSafetyKeySettings()
     
+    // 加载自动备份设置
+    await this.loadAutoBackupSettings()
+    
     // 监听安全键设置变化事件
     window.addEventListener('safety-key-changed', async (event: CustomEvent) => {
       const { enabled, url } = event.detail
@@ -792,6 +996,14 @@ export default {
         this.safetyKeyUrl = url
       }
       await this.setupSafetyKeyListener()
+    })
+    
+    // 监听自动备份时间间隔变化事件
+    window.addEventListener('auto-backup-interval-changed', async (event: CustomEvent) => {
+      const { interval } = event.detail
+      this.autoBackupInterval = interval || 0
+      console.log('自动备份时间间隔已更新:', this.autoBackupInterval, '分钟')
+      this.startAutoBackupTimer()
     })
     
     // 监听安全键触发事件（来自主进程）
@@ -815,6 +1027,9 @@ export default {
     
     // 停止应用使用时长跟踪
     this.stopAppUsageTracking()
+    
+    // 停止自动备份定时器
+    this.stopAutoBackupTimer()
     
     // 禁用安全键（清理全局快捷键）
     if (window.electronAPI && window.electronAPI.setSafetyKey) {

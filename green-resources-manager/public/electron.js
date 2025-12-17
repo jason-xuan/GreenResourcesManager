@@ -2682,9 +2682,25 @@ ipcMain.handle('write-json-file', async (event, filePath, data) => {
       return { success: false, error: `数据序列化失败: ${serializeError.message}` }
     }
     
-    // 第一步：先写入临时文件
-    fs.writeFileSync(tempFilePath, jsonString, 'utf8')
-    // console.log('临时文件写入成功:', tempFilePath)
+    // 第一步：先写入临时文件，并使用 fsync 确保数据真正写入磁盘
+    const tempFileHandle = fs.openSync(tempFilePath, 'w')
+    try {
+      // 使用 writeSync 写入数据
+      const buffer = Buffer.from(jsonString, 'utf8')
+      fs.writeSync(tempFileHandle, buffer, 0, buffer.length)
+      // 关键：强制同步到磁盘，确保数据真正写入磁盘而不是只在缓存中
+      // 这可以防止死机时数据丢失
+      fs.fsyncSync(tempFileHandle)
+      fs.closeSync(tempFileHandle)
+      // console.log('临时文件写入成功:', tempFilePath)
+    } catch (writeError) {
+      try {
+        fs.closeSync(tempFileHandle)
+      } catch (closeError) {
+        // 忽略关闭错误
+      }
+      throw writeError
+    }
     
     // 第二步：验证临时文件写入成功
     if (!fs.existsSync(tempFilePath)) {
@@ -2721,10 +2737,110 @@ ipcMain.handle('write-json-file', async (event, filePath, data) => {
       return { success: false, error: `临时文件 JSON 格式验证失败: ${parseError.message}` }
     }
     
-    // 第三步：原子性替换 - 使用 renameSync 将临时文件重命名为目标文件
-    // 这是原子操作，要么成功要么失败，不会出现中间状态
-    fs.renameSync(tempFilePath, filePath)
-    tempFilePath = null // 标记已成功，不需要清理
+    // 第三步：创建备份文件（.backup.时间戳）
+    // 如果目标文件存在，先复制一份作为备份
+    if (fs.existsSync(filePath)) {
+      try {
+        // 生成备份文件路径（添加 .backup 后缀和时间戳）
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+        const backupPath = `${filePath}.backup.${timestamp}`
+        
+        // 复制文件作为备份
+        fs.copyFileSync(filePath, backupPath)
+        console.log('✅ 已创建备份文件:', backupPath)
+        
+        // 清理旧备份（只保留最近的3个）
+        try {
+          const dir = path.dirname(filePath)
+          const fileName = path.basename(filePath)
+          const backupPattern = `${fileName}.backup.`
+          
+          // 读取目录中的所有文件
+          const files = fs.readdirSync(dir)
+          
+          // 筛选出所有备份文件
+          const backups = files
+            .filter(file => file.startsWith(backupPattern))
+            .map(file => {
+              const filePath = path.join(dir, file)
+              const stats = fs.statSync(filePath)
+              return {
+                name: file,
+                path: filePath,
+                mtime: stats.mtime.getTime()
+              }
+            })
+            .sort((a, b) => b.mtime - a.mtime) // 按修改时间降序排列（最新的在前）
+          
+          // 删除超出数量的旧备份（保留最近的3个）
+          if (backups.length > 3) {
+            const toDelete = backups.slice(3)
+            for (const backup of toDelete) {
+              try {
+                fs.unlinkSync(backup.path)
+                console.log('🗑️ 已删除旧备份:', backup.name)
+              } catch (deleteError) {
+                console.warn('删除旧备份失败:', backup.name, deleteError.message)
+              }
+            }
+          }
+        } catch (cleanupError) {
+          console.warn('清理旧备份失败（不影响使用）:', cleanupError.message)
+        }
+      } catch (backupError) {
+        console.warn('创建备份文件失败，继续执行:', backupError.message)
+        // 备份失败不影响主流程，继续执行
+      }
+    }
+    
+    // 第四步：创建 .old 文件（用于写入失败时的快速恢复）
+    let oldBackupPath = null
+    if (fs.existsSync(filePath)) {
+      // 创建旧文件备份（用于恢复）
+      oldBackupPath = filePath + '.old'
+      try {
+        // 如果 .old 文件已存在，先删除它
+        if (fs.existsSync(oldBackupPath)) {
+          fs.unlinkSync(oldBackupPath)
+        }
+        // 将原文件重命名为 .old 备份
+        fs.renameSync(filePath, oldBackupPath)
+      } catch (backupError) {
+        console.warn('创建旧文件备份失败，继续执行:', backupError.message)
+        // 备份失败不影响主流程，继续执行
+      }
+    }
+    
+    // 第四步：原子性替换 - 使用 renameSync 将临时文件重命名为目标文件
+    // 在大多数文件系统上，这是原子操作
+    try {
+      fs.renameSync(tempFilePath, filePath)
+      tempFilePath = null // 标记已成功，不需要清理
+      
+      // 写入成功后，删除 .old 备份文件
+      // .old 文件只用于写入失败时的恢复，成功后不再需要
+      // 历史版本备份由 .backup.时间戳 文件提供
+      if (oldBackupPath && fs.existsSync(oldBackupPath)) {
+        try {
+          fs.unlinkSync(oldBackupPath)
+          // console.log('✅ 写入成功，已删除 .old 备份文件:', oldBackupPath)
+        } catch (deleteError) {
+          console.warn('删除 .old 备份文件失败（不影响使用）:', deleteError.message)
+        }
+      }
+      
+    } catch (renameError) {
+      // 如果重命名失败，尝试恢复原文件
+      if (oldBackupPath && fs.existsSync(oldBackupPath)) {
+        try {
+          fs.renameSync(oldBackupPath, filePath)
+          console.log('重命名失败，已恢复原文件')
+        } catch (restoreError) {
+          console.error('恢复原文件失败:', restoreError)
+        }
+      }
+      throw renameError
+    }
     
     // console.log('JSON 文件写入成功:', filePath)
     
@@ -2789,6 +2905,157 @@ ipcMain.handle('delete-file', async (event, filePath) => {
     return { success: true }
   } catch (error) {
     console.error('删除文件失败:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+// 备份整个存档目录
+ipcMain.handle('backup-save-data-directory', async (event, saveDataDir, maxBackups = 5) => {
+  try {
+    const fs = require('fs')
+    const path = require('path')
+    
+    console.log('=== 开始备份整个存档目录 ===')
+    console.log('存档目录:', saveDataDir)
+    
+    // 检查存档目录是否存在
+    if (!fs.existsSync(saveDataDir)) {
+      return { success: false, error: '存档目录不存在' }
+    }
+    
+    // 获取存档目录的父目录
+    const parentDir = path.dirname(saveDataDir)
+    const saveDataName = path.basename(saveDataDir)
+    
+    // 查找下一个可用的备份编号
+    let backupNumber = 1
+    let backupPath = path.join(parentDir, `${saveDataName}_${backupNumber}`)
+    
+    // 查找最大的备份编号
+    if (fs.existsSync(parentDir)) {
+      const items = fs.readdirSync(parentDir)
+      const backupPattern = new RegExp(`^${saveDataName}_(\\d+)$`)
+      let maxNumber = 0
+      
+      for (const item of items) {
+        const match = item.match(backupPattern)
+        if (match) {
+          const num = parseInt(match[1])
+          if (num > maxNumber) {
+            maxNumber = num
+          }
+        }
+      }
+      
+      backupNumber = maxNumber + 1
+      backupPath = path.join(parentDir, `${saveDataName}_${backupNumber}`)
+    }
+    
+    console.log('备份路径:', backupPath)
+    
+    // 复制整个存档目录
+    let copiedFiles = 0
+    let copiedFolders = 0
+    
+    const copyRecursive = (src, dest) => {
+      const stats = fs.statSync(src)
+      
+      if (stats.isDirectory()) {
+        // 如果是目录，递归复制
+        if (!fs.existsSync(dest)) {
+          fs.mkdirSync(dest, { recursive: true })
+          copiedFolders++
+        }
+        
+        const items = fs.readdirSync(src)
+        for (const item of items) {
+          const srcPath = path.join(src, item)
+          const destPath = path.join(dest, item)
+          copyRecursive(srcPath, destPath)
+        }
+      } else {
+        // 如果是文件，直接复制
+        fs.copyFileSync(src, dest)
+        copiedFiles++
+      }
+    }
+    
+    // 开始复制
+    copyRecursive(saveDataDir, backupPath)
+    
+    console.log('✅ 备份完成:', backupPath)
+    console.log('  - 复制文件数:', copiedFiles)
+    console.log('  - 复制文件夹数:', copiedFolders)
+    
+    // 清理旧备份（只保留最近的 maxBackups 个备份）
+    try {
+      const items = fs.readdirSync(parentDir)
+      const backupPattern = new RegExp(`^${saveDataName}_(\\d+)$`)
+      const backups = []
+      
+      // 收集所有备份目录
+      for (const item of items) {
+        const match = item.match(backupPattern)
+        if (match) {
+          const backupItemPath = path.join(parentDir, item)
+          const stats = fs.statSync(backupItemPath)
+          if (stats.isDirectory()) {
+            backups.push({
+              name: item,
+              path: backupItemPath,
+              number: parseInt(match[1]),
+              mtime: stats.mtime.getTime()
+            })
+          }
+        }
+      }
+      
+      // 按编号排序（从大到小）
+      backups.sort((a, b) => b.number - a.number)
+      
+      // 删除超出数量的旧备份
+      if (backups.length > maxBackups) {
+        const toDelete = backups.slice(maxBackups)
+        for (const backup of toDelete) {
+          try {
+            // 递归删除目录
+            const deleteRecursive = (dirPath) => {
+              if (fs.existsSync(dirPath)) {
+                const items = fs.readdirSync(dirPath)
+                for (const item of items) {
+                  const itemPath = path.join(dirPath, item)
+                  const itemStats = fs.statSync(itemPath)
+                  if (itemStats.isDirectory()) {
+                    deleteRecursive(itemPath)
+                  } else {
+                    fs.unlinkSync(itemPath)
+                  }
+                }
+                fs.rmdirSync(dirPath)
+              }
+            }
+            
+            deleteRecursive(backup.path)
+            console.log('🗑️ 已删除旧备份:', backup.name)
+          } catch (deleteError) {
+            console.warn('删除旧备份失败:', backup.name, deleteError.message)
+          }
+        }
+        console.log(`✅ 已清理 ${toDelete.length} 个旧备份，保留最近的 ${maxBackups} 个备份`)
+      }
+    } catch (cleanupError) {
+      console.warn('清理旧备份失败（不影响备份）:', cleanupError.message)
+    }
+    
+    return { 
+      success: true, 
+      backupPath: backupPath,
+      backupNumber: backupNumber,
+      copiedFiles: copiedFiles,
+      copiedFolders: copiedFolders
+    }
+  } catch (error) {
+    console.error('备份存档目录失败:', error)
     return { success: false, error: error.message }
   }
 })

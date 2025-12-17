@@ -152,6 +152,61 @@
               
               <div class="setting-item">
                 <label class="setting-label">
+                  <span class="setting-title">开启自动备份</span>
+                  <span class="setting-desc">开启后，系统会按设定的时间间隔自动备份整个存档目录</span>
+                </label>
+                <div class="setting-control">
+                  <label class="toggle-switch">
+                    <input type="checkbox" v-model="settings.autoBackupEnabled" @change="onAutoBackupEnabledChange">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="setting-item" v-if="settings.autoBackupEnabled">
+                <label class="setting-label">
+                  <span class="setting-title">自动备份时间间隔</span>
+                  <span class="setting-desc">设置自动备份整个存档的时间间隔</span>
+                </label>
+                <div class="setting-control">
+                  <input 
+                    type="range" 
+                    v-model.number="settings.autoBackupInterval" 
+                    min="5" 
+                    max="60"
+                    step="5"
+                    class="setting-slider"
+                    @input="onAutoBackupIntervalChange"
+                  >
+                  <span class="setting-value">
+                    {{ settings.autoBackupInterval }} 分钟
+                  </span>
+                </div>
+              </div>
+              
+              <div class="setting-item" v-if="settings.autoBackupEnabled">
+                <label class="setting-label">
+                  <span class="setting-title">保留备份数量</span>
+                  <span class="setting-desc">设置自动备份时保留的备份数量，超出数量的旧备份会被自动删除</span>
+                </label>
+                <div class="setting-control">
+                  <input 
+                    type="range" 
+                    v-model.number="settings.maxBackupCount" 
+                    min="3" 
+                    max="10"
+                    step="1"
+                    class="setting-slider"
+                    @input="onMaxBackupCountChange"
+                  >
+                  <span class="setting-value">
+                    {{ settings.maxBackupCount }} 个
+                  </span>
+                </div>
+              </div>
+              
+              <div class="setting-item">
+                <label class="setting-label">
                   <span class="setting-title">打开存档文件夹</span>
                   <span class="setting-desc">在文件管理器中打开应用存档文件夹</span>
                 </label>
@@ -866,6 +921,9 @@ export default {
         // 存档设置
         saveDataLocation: 'default',
         saveDataPath: '',
+        autoBackupEnabled: false, // 是否开启自动备份
+        autoBackupInterval: 5, // 自动备份时间间隔（分钟）
+        maxBackupCount: 5, // 保留的备份数量
         // 截图设置
         screenshotKey: 'Ctrl+F12',
         screenshotLocation: 'default',
@@ -1319,6 +1377,66 @@ export default {
         this.showToastNotification('存档位置已更新', '已切换到默认存档目录 (根目录/SaveData)')
       }
     },
+    
+    onAutoBackupEnabledChange() {
+      // 自动备份开关变化时的处理
+      console.log('自动备份开关已更新:', this.settings.autoBackupEnabled)
+      
+      // 如果关闭，将时间间隔设置为0
+      if (!this.settings.autoBackupEnabled) {
+        this.settings.autoBackupInterval = 0
+      } else {
+        // 如果开启，确保时间间隔至少为5分钟
+        if (this.settings.autoBackupInterval < 5) {
+          this.settings.autoBackupInterval = 5
+        }
+      }
+      
+      // 触发自定义事件，通知 App.vue 更新自动备份定时器
+      try {
+        const event = new CustomEvent('auto-backup-interval-changed', {
+          detail: { 
+            interval: this.settings.autoBackupEnabled ? this.settings.autoBackupInterval : 0
+          }
+        })
+        window.dispatchEvent(event)
+        console.log('已触发 auto-backup-interval-changed 事件')
+      } catch (error) {
+        console.error('触发自动备份时间间隔变化事件失败:', error)
+      }
+      
+      if (this.settings.autoBackupEnabled) {
+        this.showToastNotification('自动备份已开启', `自动备份时间间隔已设置为 ${this.settings.autoBackupInterval} 分钟`)
+      } else {
+        this.showToastNotification('自动备份已禁用', '已禁用自动备份功能')
+      }
+    },
+    
+    onAutoBackupIntervalChange() {
+      // 自动备份时间间隔变化时，通知 App.vue 更新定时器
+      console.log('自动备份时间间隔已更新:', this.settings.autoBackupInterval, '分钟')
+      
+      // 触发自定义事件，通知 App.vue 更新自动备份定时器
+      try {
+        const event = new CustomEvent('auto-backup-interval-changed', {
+          detail: { 
+            interval: this.settings.autoBackupEnabled ? this.settings.autoBackupInterval : 0
+          }
+        })
+        window.dispatchEvent(event)
+        console.log('已触发 auto-backup-interval-changed 事件')
+      } catch (error) {
+        console.error('触发自动备份时间间隔变化事件失败:', error)
+      }
+      
+      this.showToastNotification('自动备份设置已更新', `自动备份时间间隔已设置为 ${this.settings.autoBackupInterval} 分钟`)
+    },
+    
+    onMaxBackupCountChange() {
+      // 保留备份数量变化时的处理
+      console.log('保留备份数量已更新:', this.settings.maxBackupCount, '个')
+      this.showToastNotification('备份设置已更新', `将保留最近的 ${this.settings.maxBackupCount} 个备份`)
+    },
     applyTheme(theme) {
       // 处理跟随系统主题
       let actualTheme = theme
@@ -1348,6 +1466,9 @@ export default {
             // 存档设置
             saveDataLocation: 'default',
             saveDataPath: '',
+            autoBackupEnabled: false,
+            autoBackupInterval: 5,
+            maxBackupCount: 5,
             // 截图设置
             screenshotKey: 'Ctrl+F12',
             screenshotLocation: 'default',

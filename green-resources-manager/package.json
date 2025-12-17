@@ -38,8 +38,8 @@
     "vue": "^3.3.8"
   },
   "build": {
-    "appId": "com.example.butter-resources-manager",
-    "productName": "ButterResourcesManager",
+    "appId": "com.example.green-resources-manager",
+    "productName": "GreenResourcesManager",
     "directories": {
       "output": "dist-electron/v${version}"
     },
@@ -66,7 +66,7 @@
     "publish": {
       "provider": "github",
       "owner": "klsdf",
-      "repo": "ButterResourcesManager"
+      "repo": "GreenResourcesManager"
     },
     "nsis": {
       "oneClick": false,

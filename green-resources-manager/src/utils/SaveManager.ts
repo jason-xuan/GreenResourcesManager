@@ -458,6 +458,145 @@ class SaveManager {
     return data
   }
 
+  /**
+   * 创建文件备份
+   * @param {string} filePath - 文件路径
+   * @returns {Promise<string|null>} 备份文件路径，失败返回null
+   */
+  async createBackup(filePath) {
+    try {
+      if (!window.electronAPI || !window.electronAPI.readJsonFile || !window.electronAPI.writeJsonFile) {
+        return null
+      }
+      
+      // 检查原文件是否存在
+      const fileExists = await this.fileExists(filePath)
+      if (!fileExists) {
+        return null // 文件不存在，无需备份
+      }
+      
+      // 生成备份文件路径（添加 .backup 后缀和时间戳）
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const backupPath = `${filePath}.backup.${timestamp}`
+      
+      // 读取原文件内容
+      const originalData = await this.readJsonFile(filePath)
+      if (!originalData) {
+        return null // 无法读取原文件，跳过备份
+      }
+      
+      // 写入备份文件
+      const backupSuccess = await this.writeJsonFileWithoutBackup(backupPath, originalData)
+      if (backupSuccess) {
+        console.log('✅ 已创建备份文件:', backupPath)
+        
+        // 清理旧备份（只保留最近的3个备份）
+        await this.cleanupOldBackups(filePath, 3)
+        
+        return backupPath
+      }
+      
+      return null
+    } catch (error) {
+      console.warn('创建备份失败:', error)
+      return null
+    }
+  }
+
+  /**
+   * 清理旧的备份文件
+   * @param {string} filePath - 原文件路径
+   * @param {number} keepCount - 保留的备份数量
+   */
+  async cleanupOldBackups(filePath, keepCount = 5) {
+    try {
+      if (!window.electronAPI || !window.electronAPI.listFiles) {
+        return
+      }
+      
+      const dir = filePath.substring(0, filePath.lastIndexOf('/') || filePath.lastIndexOf('\\'))
+      const fileName = filePath.substring(filePath.lastIndexOf('/') + 1 || filePath.lastIndexOf('\\') + 1)
+      const backupPattern = `${fileName}.backup.`
+      
+      const result = await window.electronAPI.listFiles(dir)
+      if (!result.success || !result.files) {
+        return
+      }
+      
+      // 筛选出所有备份文件
+      const backups = (result.files as any[])
+        .filter((file: any) => file && (typeof file === 'string' ? file.startsWith(backupPattern) : file.name && file.name.startsWith(backupPattern)))
+        .map((file: any) => {
+          if (typeof file === 'string') {
+            return {
+              name: file,
+              path: `${dir}/${file}`,
+              mtime: 0
+            }
+          }
+          return {
+            name: file.name,
+            path: file.path || `${dir}/${file.name}`,
+            mtime: file.mtime || 0
+          }
+        })
+        .sort((a, b) => b.mtime - a.mtime) // 按修改时间降序排列
+      
+      // 删除多余的备份（保留最近的 keepCount 个）
+      if (backups.length > keepCount) {
+        const toDelete = backups.slice(keepCount)
+        for (const backup of toDelete) {
+          try {
+            if (window.electronAPI.deleteFile) {
+              await window.electronAPI.deleteFile(backup.path)
+              console.log('🗑️ 已删除旧备份:', backup.name)
+            }
+          } catch (error) {
+            console.warn('删除旧备份失败:', backup.name, error)
+          }
+        }
+      }
+    } catch (error) {
+      // 清理失败不影响主流程，静默处理
+      console.warn('清理旧备份失败（不影响使用）:', error)
+    }
+  }
+
+  /**
+   * 不创建备份的写入方法（用于备份文件本身）
+   * @param {string} filePath - 文件路径
+   * @param {Object} data - 要写入的数据
+   * @returns {Promise<boolean>} 写入是否成功
+   */
+  async writeJsonFileWithoutBackup(filePath, data) {
+    try {
+      if (!filePath) {
+        throw new Error('文件路径不能为空')
+      }
+      
+      if (window.electronAPI && window.electronAPI.writeJsonFile) {
+        const cleanedData = this.cleanDataForSerialization(data)
+        let serializedData
+        try {
+          serializedData = JSON.parse(JSON.stringify(cleanedData))
+        } catch (serializeError) {
+          console.error('数据序列化失败:', serializeError)
+          throw new Error(`数据序列化失败: ${serializeError.message}`)
+        }
+        
+        const result = await window.electronAPI.writeJsonFile(filePath, serializedData)
+        return result.success
+      } else {
+        const cleanedData = this.cleanDataForSerialization(data)
+        localStorage.setItem(filePath, JSON.stringify(cleanedData))
+        return true
+      }
+    } catch (error) {
+      console.error('写入文件失败:', error)
+      return false
+    }
+  }
+
   async writeJsonFile(filePath, data) {
     try {
       // 添加调试信息
@@ -466,6 +605,8 @@ class SaveManager {
         console.error('当前 filePaths:', this.filePaths)
         throw new Error('文件路径不能为空')
       }
+      
+      // 备份逻辑已移到 electron.js 中统一处理，这里不再需要
       
       if (window.electronAPI && window.electronAPI.writeJsonFile) {
         // 清理数据，移除不可序列化的内容
@@ -952,31 +1093,157 @@ class SaveManager {
   }
 
   /**
+   * 从备份恢复文件
+   * @param {string} filePath - 文件路径
+   * @returns {Promise<boolean>} 恢复是否成功
+   */
+  async restoreFromBackupFile(filePath) {
+    try {
+      if (!window.electronAPI || !window.electronAPI.readJsonFile) {
+        return false
+      }
+      
+      // 尝试查找备份文件（最多尝试10个最近的备份）
+      const maxAttempts = 10
+      for (let i = 0; i < maxAttempts; i++) {
+        // 生成可能的备份文件路径（基于时间戳）
+        const now = new Date()
+        const timestamp = new Date(now.getTime() - i * 60000).toISOString().replace(/[:.]/g, '-') // 每分钟一个备份
+        const backupPath = `${filePath}.backup.${timestamp}`
+        
+        try {
+          const backupData = await this.readJsonFile(backupPath)
+          if (backupData) {
+            // 验证备份数据是否有效
+            if (this.filePaths.games === filePath && (!backupData.games || !Array.isArray(backupData.games))) {
+              continue // 数据无效，尝试下一个
+            }
+            
+            // 恢复文件
+            const restoreSuccess = await this.writeJsonFileWithoutBackup(filePath, backupData)
+            if (restoreSuccess) {
+              console.log('✅ 已从备份恢复文件:', filePath, '备份文件:', backupPath)
+              return true
+            }
+          }
+        } catch (error) {
+          // 文件不存在或读取失败，继续尝试下一个
+          continue
+        }
+      }
+      
+      // 如果时间戳方法失败，尝试使用 listFiles（如果可用）
+      if (window.electronAPI.listFiles) {
+        try {
+          const dir = filePath.substring(0, filePath.lastIndexOf('/') || filePath.lastIndexOf('\\'))
+          const fileName = filePath.substring(filePath.lastIndexOf('/') + 1 || filePath.lastIndexOf('\\') + 1)
+          const backupPattern = `${fileName}.backup.`
+          
+          const result = await window.electronAPI.listFiles(dir)
+          if (result.success && result.files) {
+            const backups = (result.files as any[])
+              .filter((file: any) => file && (typeof file === 'string' ? file.startsWith(backupPattern) : file.name && file.name.startsWith(backupPattern)))
+              .map((file: any) => {
+                if (typeof file === 'string') {
+                  return {
+                    name: file,
+                    path: `${dir}/${file}`,
+                    mtime: 0
+                  }
+                }
+                return {
+                  name: file.name,
+                  path: file.path || `${dir}/${file.name}`,
+                  mtime: file.mtime || 0
+                }
+              })
+              .sort((a, b) => b.mtime - a.mtime)
+            
+            for (const backup of backups) {
+              try {
+                const backupData = await this.readJsonFile(backup.path)
+                if (backupData) {
+                  if (this.filePaths.games === filePath && (!backupData.games || !Array.isArray(backupData.games))) {
+                    continue
+                  }
+                  
+                  const restoreSuccess = await this.writeJsonFileWithoutBackup(filePath, backupData)
+                  if (restoreSuccess) {
+                    console.log('✅ 已从备份恢复文件:', filePath, '备份文件:', backup.name)
+                    return true
+                  }
+                }
+              } catch (error) {
+                continue
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('使用 listFiles 查找备份失败:', error)
+        }
+      }
+      
+      console.warn('未找到有效的备份文件:', filePath)
+      return false
+    } catch (error) {
+      console.error('恢复备份失败:', error)
+      return false
+    }
+  }
+
+  /**
    * 从本地 JSON 文件加载游戏数据
    * @returns {Promise<Array>} 游戏数据数组
    */
   async loadGames() {
     try {
-      const data = await this.readJsonFile(this.filePaths.games)
-      if (data && data.games) {
-        // console.log('加载游戏数据:', data.games.length, '个游戏')
+      let data = await this.readJsonFile(this.filePaths.games)
+      
+      // 检查数据完整性
+      if (!data || !data.games || !Array.isArray(data.games)) {
+        console.warn('⚠️ 游戏数据文件损坏或为空，尝试从备份恢复...')
         
-        // // 检查每个游戏的统计信息
-        // if (Array.isArray(data.games)) {
-        //   data.games.forEach((game, index) => {
-            
-        //     console.log('  lastPlayed:', game.lastPlayed)
-        //     console.log('  firstPlayed:', game.firstPlayed)
-        //     console.log('  playCount:', game.playCount)
-        //     console.log('  playTime:', game.playTime)
-        //   })
-        // }
+        // 尝试从备份恢复
+        const restored = await this.restoreFromBackupFile(this.filePaths.games)
+        if (restored) {
+          // 重新读取恢复后的数据
+          data = await this.readJsonFile(this.filePaths.games)
+          if (data && data.games && Array.isArray(data.games)) {
+            console.log('✅ 已从备份恢复游戏数据:', data.games.length, '个游戏')
+            return data.games
+          }
+        }
         
-        return data.games
+        console.error('❌ 无法恢复游戏数据，返回空数组')
+        return []
       }
-      return []
+      
+      // 验证数据有效性
+      if (data.games.length === 0 && data.timestamp) {
+        // 如果数据为空但有时间戳，可能是正常情况（用户删除了所有游戏）
+        console.log('游戏数据为空（可能是正常情况）')
+        return []
+      }
+      
+      return data.games
     } catch (error) {
       console.error('加载游戏数据失败:', error)
+      
+      // 尝试从备份恢复
+      console.warn('尝试从备份恢复游戏数据...')
+      const restored = await this.restoreFromBackupFile(this.filePaths.games)
+      if (restored) {
+        try {
+          const data = await this.readJsonFile(this.filePaths.games)
+          if (data && data.games && Array.isArray(data.games)) {
+            console.log('✅ 已从备份恢复游戏数据:', data.games.length, '个游戏')
+            return data.games
+          }
+        } catch (recoveryError) {
+          console.error('恢复后读取数据失败:', recoveryError)
+        }
+      }
+      
       return []
     }
   }
@@ -1802,6 +2069,31 @@ class SaveManager {
       const days = Math.floor(seconds / 86400)
       const hours = Math.floor((seconds % 86400) / 3600)
       return hours > 0 ? `${days}天${hours}小时` : `${days}天`
+    }
+  }
+
+  /**
+   * 备份整个存档目录
+   * @param {number} maxBackups - 保留的备份数量，默认5个
+   * @returns {Promise<{success: boolean, backupPath?: string, error?: string}>} 备份结果
+   */
+  async backupEntireSaveData(maxBackups = 5) {
+    try {
+      if (!window.electronAPI || !window.electronAPI.backupSaveDataDirectory) {
+        return { success: false, error: 'Electron API 不可用' }
+      }
+
+      const result = await window.electronAPI.backupSaveDataDirectory(this.dataDirectory, maxBackups)
+      if (result.success) {
+        console.log('✅ 整个存档备份成功:', result.backupPath)
+        return { success: true, backupPath: result.backupPath }
+      } else {
+        console.error('备份整个存档失败:', result.error)
+        return { success: false, error: result.error }
+      }
+    } catch (error) {
+      console.error('备份整个存档失败:', error)
+      return { success: false, error: error.message }
     }
   }
 }

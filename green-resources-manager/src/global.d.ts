@@ -46,6 +46,8 @@ declare global {
       // JSON 文件操作
       writeJsonFile: (filePath: string, data: any) => Promise<{ success: boolean; error?: string }>
       readJsonFile: (filePath: string) => Promise<{ success: boolean; data?: any; error?: string }>
+      // 备份整个存档目录
+      backupSaveDataDirectory: (saveDataDir: string, maxBackups?: number) => Promise<{ success: boolean; backupPath?: string; backupNumber?: number; copiedFiles?: number; copiedFolders?: number; error?: string }>
       deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
       
       // 文件读写

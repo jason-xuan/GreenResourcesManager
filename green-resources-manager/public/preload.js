@@ -125,7 +125,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // 安全键功能
   setSafetyKey: (enabled, url) => ipcRenderer.invoke('set-safety-key', enabled, url),
-  onSafetyKeyTriggered: (callback) => ipcRenderer.on('safety-key-triggered', callback)
+  onSafetyKeyTriggered: (callback) => ipcRenderer.on('safety-key-triggered', callback),
+  
+  // 备份整个存档目录
+  backupSaveDataDirectory: (saveDataDir, maxBackups) => ipcRenderer.invoke('backup-save-data-directory', saveDataDir, maxBackups)
 })
 
 // 监听来自主进程的消息

@@ -1383,15 +1383,16 @@ export default {
       if (game) {
         console.log(`游戏 ${game.name} 进程结束，时长:`, data.playTime, '秒')
 
-        // 从全局运行列表中移除（这会自动更新游戏时长）
-        this.$parent.removeRunningGame(game.id)
-
-        // 更新上一次游玩时间（游戏结束时的时间，这样 lastPlayed 会记录最后一次活动）
+        // 先更新上一次游玩时间（游戏结束时的时间，这样 lastPlayed 会记录最后一次活动）
         game.lastPlayed = new Date().toISOString()
         console.log(`游戏 ${game.name} 上一次游玩时间已更新为:`, game.lastPlayed)
 
-        // 保存更新后的数据
-        await this.saveGames()
+        // 从全局运行列表中移除（这会自动更新游戏时长并保存）
+        // removeRunningGame 会调用 updateGamePlayTime(..., true) 并保存整个 games 数组
+        // 由于我们已经在上面更新了 lastPlayed，所以 removeRunningGame 保存时会包含 lastPlayed
+        // 因此不需要再次保存
+        this.$parent.removeRunningGame(game.id)
+
         await this.checkGameTimeAchievements()
 
         // 显示通知

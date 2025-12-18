@@ -13,7 +13,7 @@ export function isDisguiseModeEnabled(): boolean {
     if (settings) {
       const parsedSettings = JSON.parse(settings)
       const isEnabled = parsedSettings.disguiseMode === true
-      console.log('伪装模式检查:', isEnabled, '设置数据:', parsedSettings.disguiseMode)
+      // console.log('伪装模式检查:', isEnabled, '设置数据:', parsedSettings.disguiseMode)
       return isEnabled
     }
     console.log('没有找到设置数据，伪装模式默认关闭')

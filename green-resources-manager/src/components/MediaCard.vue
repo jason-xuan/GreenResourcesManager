@@ -222,7 +222,10 @@ export default {
   },
   computed: {
     actionIcon() {
-      if (this.type === 'game') return '▶️'
+      if (this.type === 'game') {
+        // 如果游戏正在运行，显示停止图标
+        return this.isRunning ? '⏹️' : '▶️'
+      }
       if (this.type === 'novel') return '📖'
       if (this.type === 'video') return '▶️'
       if (this.type === 'audio') return '▶️'

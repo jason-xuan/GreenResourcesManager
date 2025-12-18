@@ -125,7 +125,9 @@
       </div>
 
       <!-- 游戏详情页面 -->
-      <DetailPanel :visible="showDetailModal" :item="currentGame" type="game" @close="closeGameDetail"
+      <DetailPanel :visible="showDetailModal" :item="currentGame" type="game" 
+        :is-running="currentGame ? isGameRunning(currentGame) : false"
+        @close="closeGameDetail"
         @action="handleDetailAction" />
 
 
@@ -135,6 +137,26 @@
         :old-path="pathUpdateInfo.existingGame?.executablePath || ''" :new-path="pathUpdateInfo.newPath || ''"
         missing-label="文件丢失" found-label="文件存在" question="是否要更新游戏路径？" @confirm="confirmPathUpdate"
         @cancel="closePathUpdateDialog" />
+
+      <!-- 强制结束游戏确认对话框 -->
+      <div v-if="showTerminateConfirmDialog" class="modal-overlay" @click="closeTerminateConfirmDialog">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h3>强制结束游戏</h3>
+            <button class="modal-close" @click="closeTerminateConfirmDialog">✕</button>
+          </div>
+          <div class="modal-body">
+            <p>确定要强制结束游戏 <strong>{{ gameToTerminate?.name }}</strong> 吗？</p>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 10px;">
+              此操作将立即终止游戏进程，未保存的数据可能会丢失。
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" @click="closeTerminateConfirmDialog">取消</button>
+            <button class="btn-confirm" @click="confirmTerminateGame" style="background: #ef4444;">确认结束</button>
+          </div>
+        </div>
+      </div>
     </div>
   </BaseView>
 </template>
@@ -250,6 +272,9 @@ export default {
         newPath: '',
         newFileName: ''
       },
+      // 强制结束游戏确认对话框
+      showTerminateConfirmDialog: false,
+      gameToTerminate: null,
       // 游戏列表分页相关
       currentGamePage: 1,
       gamePageSize: 20, // 默认每页显示20个游戏
@@ -547,6 +572,14 @@ export default {
     },
     async launchGame(game) {
       try {
+        // 检查游戏是否正在运行
+        if (this.isGameRunning(game)) {
+          // 如果游戏正在运行，显示确认对话框
+          this.showTerminateConfirmDialog = true
+          this.gameToTerminate = game
+          return
+        }
+
         console.log('启动游戏:', game.name, game.executablePath)
         console.log('更新前 - lastPlayed:', game.lastPlayed)
         console.log('更新前 - playCount:', game.playCount)
@@ -632,6 +665,11 @@ export default {
       switch (actionKey) {
         case 'launch':
           this.launchGame(game)
+          break
+        case 'terminate':
+          // 显示确认对话框
+          this.showTerminateConfirmDialog = true
+          this.gameToTerminate = game
           break
         case 'folder':
           this.openGameFolder(game)
@@ -1378,19 +1416,21 @@ export default {
       console.log('GameView updateFilterData END')
     },
     async updateGamePlayTime(data) {
+      console.log(`[DEBUG] 🎮 updateGamePlayTime 被调用，数据:`, data)
       // 根据可执行文件路径找到对应的游戏
       const game = this.games.find(g => g.executablePath === data.executablePath)
       if (game) {
-        console.log(`游戏 ${game.name} 进程结束，时长:`, data.playTime, '秒')
+        console.log(`[DEBUG] ✅ 找到游戏 ${game.name}，进程结束，时长:`, data.playTime, '秒')
 
         // 先更新上一次游玩时间（游戏结束时的时间，这样 lastPlayed 会记录最后一次活动）
         game.lastPlayed = new Date().toISOString()
-        console.log(`游戏 ${game.name} 上一次游玩时间已更新为:`, game.lastPlayed)
+        console.log(`[DEBUG] 📅 游戏 ${game.name} 上一次游玩时间已更新为:`, game.lastPlayed)
 
         // 从全局运行列表中移除（这会自动更新游戏时长并保存）
         // removeRunningGame 会调用 updateGamePlayTime(..., true) 并保存整个 games 数组
         // 由于我们已经在上面更新了 lastPlayed，所以 removeRunningGame 保存时会包含 lastPlayed
         // 因此不需要再次保存
+        console.log(`[DEBUG] 🔄 调用 $parent.removeRunningGame(${game.id})`)
         this.$parent.removeRunningGame(game.id)
 
         await this.checkGameTimeAchievements()
@@ -1401,13 +1441,46 @@ export default {
           `${game.name} 本次游玩 ${this.formatPlayTime(data.playTime)}，总时长 ${this.formatPlayTime(game.playTime)}`
         )
 
-        console.log(`游戏 ${game.name} 进程结束`)
+        console.log(`[DEBUG] ✅ 游戏 ${game.name} 进程结束处理完成`)
       } else {
-        console.warn('未找到对应的游戏:', data.executablePath)
+        console.warn(`[DEBUG] ⚠️ 未找到对应的游戏，executablePath: ${data.executablePath}`)
       }
     },
     isGameRunning(game) {
       return this.$parent.isGameRunning(game.id)
+    },
+    async terminateGame(game) {
+      try {
+        console.log('[DEBUG] 🛑 开始强制结束游戏:', game.name, game.executablePath)
+        
+        if (!this.isElectronEnvironment || !window.electronAPI || !window.electronAPI.terminateGame) {
+          notify.toast('error', '操作失败', '当前环境不支持强制结束游戏功能')
+          return
+        }
+
+        const result = await window.electronAPI.terminateGame(game.executablePath)
+        
+        if (result.success) {
+          console.log('[DEBUG] ✅ 游戏已强制结束，PID:', result.pid, '运行时长:', result.playTime, '秒')
+          notify.toast('success', '游戏已结束', `${game.name} 已强制结束`)
+        } else {
+          console.error('[DEBUG] ❌ 强制结束游戏失败:', result.error)
+          notify.toast('error', '操作失败', `强制结束游戏失败: ${result.error}`)
+        }
+      } catch (error) {
+        console.error('[DEBUG] ❌ 强制结束游戏异常:', error)
+        notify.toast('error', '操作失败', `强制结束游戏失败: ${error.message}`)
+      }
+    },
+    closeTerminateConfirmDialog() {
+      this.showTerminateConfirmDialog = false
+      this.gameToTerminate = null
+    },
+    async confirmTerminateGame() {
+      if (this.gameToTerminate) {
+        await this.terminateGame(this.gameToTerminate)
+        this.closeTerminateConfirmDialog()
+      }
     },
 
 
@@ -1983,10 +2056,6 @@ export default {
 
     // 检查是否在 Electron 环境中
     checkElectronEnvironment() {
-      console.log('检查 Electron 环境...')
-      console.log('window.electronAPI:', window.electronAPI)
-      console.log('typeof window.electronAPI:', typeof window.electronAPI)
-
       this.isElectronEnvironment = !!(window.electronAPI && typeof window.electronAPI === 'object')
 
       if (this.isElectronEnvironment) {
@@ -2196,10 +2265,13 @@ export default {
 
     // 监听游戏进程结束事件
     if (this.isElectronEnvironment && window.electronAPI && window.electronAPI.onGameProcessEnded) {
+      console.log('[DEBUG] 🎧 注册 game-process-ended 事件监听器')
       window.electronAPI.onGameProcessEnded((event, data) => {
-        console.log('游戏进程结束，数据:', data)
+        console.log('[DEBUG] 📥 收到 game-process-ended 事件，数据:', data)
         this.updateGamePlayTime(data)
       })
+    } else {
+      console.log('[DEBUG] ⚠️ 无法注册 game-process-ended 事件监听器')
     }
 
     // 监听全局截图触发事件（只使用全局快捷键）

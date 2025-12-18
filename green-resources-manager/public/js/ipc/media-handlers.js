@@ -1,0 +1,168 @@
+/**
+ * @module MediaHandlers
+ * @description 管理应用程序的媒体文件相关特殊操作的 IPC 处理器。
+ *
+ * 主要功能:
+ * 1. 打开文件夹（使用系统文件管理器）。
+ * 2. 读取伪装图片和文本。
+ * 3. 注册与媒体相关的 IPC 处理器。
+ *
+ * 导出的函数:
+ * - `registerIpcHandlers(ipcMain, shell, pathUtils)`: 注册 IPC 处理器。
+ *
+ * IPC 处理器:
+ * - `open-folder`: 打开文件夹。
+ * - `read-disguise-images`: 读取伪装图片和文本。
+ */
+
+const fs = require('fs')
+const path = require('path')
+const { spawn } = require('child_process')
+const { shell } = require('electron')
+
+/**
+ * 注册与媒体相关的 IPC 处理器。
+ * @param {Object} ipcMain - Electron 的 ipcMain 对象。
+ * @param {Object} shell - Electron 的 shell 对象（可选，如果未提供则使用 require）。
+ * @param {Object} pathUtils - path-utils 模块（可选）。
+ */
+function registerIpcHandlers(ipcMain, shell, pathUtils) {
+  // 打开文件夹
+  ipcMain.handle('open-folder', async (event, folderPath) => {
+    try {
+      console.log('尝试打开文件夹:', folderPath)
+
+      // 处理空路径或无效路径
+      if (!folderPath || folderPath.trim() === '' || folderPath === '.') {
+        return { success: false, error: '无效的文件夹路径' }
+      }
+
+      // 规范化路径
+      let normalizedPath = folderPath.replace(/\\/g, '/')
+
+      // 判断是否为绝对路径
+      const isAbsolute = /^[A-Za-z]:/.test(normalizedPath) || path.isAbsolute(normalizedPath)
+
+      // 转换为绝对路径并规范化
+      let absolutePath
+      if (!isAbsolute) {
+        absolutePath = path.resolve(process.cwd(), normalizedPath)
+      } else {
+        absolutePath = path.normalize(normalizedPath)
+      }
+
+      // 在 Windows 上，确保路径格式正确
+      if (process.platform === 'win32') {
+        absolutePath = absolutePath.replace(/\//g, '\\')
+      }
+
+      console.log('解析后的绝对路径:', absolutePath)
+
+      // 确保文件夹存在
+      if (!fs.existsSync(absolutePath)) {
+        console.error('文件夹不存在:', absolutePath)
+        return { success: false, error: `文件夹不存在: ${absolutePath}` }
+      }
+
+      // 检查是否为文件夹
+      const stats = fs.statSync(absolutePath)
+      if (!stats.isDirectory()) {
+        return { success: false, error: '指定路径不是文件夹' }
+      }
+
+      // 打开文件夹
+      console.log('正在打开文件夹:', absolutePath)
+
+      // 在 Windows 上，使用 explorer 命令确保正确定位文件夹
+      if (process.platform === 'win32') {
+        spawn('explorer', [absolutePath], { detached: true, stdio: 'ignore' })
+        console.log('使用 explorer 打开文件夹:', absolutePath)
+      } else {
+        // 在其他平台上使用 shell.openPath
+        await shell.openPath(absolutePath)
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('打开文件夹失败:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  // 专门用于读取伪装图片的 API
+  ipcMain.handle('read-disguise-images', async () => {
+    try {
+      console.log('=== 读取伪装图片 ===')
+
+      // 使用根目录下的 disguise 文件夹
+      const disguiseDir = path.join(process.cwd(), 'disguise')
+      console.log('伪装图片目录:', disguiseDir)
+
+      // 检查目录是否存在，如果不存在则创建
+      if (!fs.existsSync(disguiseDir)) {
+        console.log('disguise 目录不存在，正在创建...')
+        try {
+          fs.mkdirSync(disguiseDir, { recursive: true })
+          console.log('✅ disguise 目录创建成功')
+        } catch (error) {
+          console.error('❌ 创建 disguise 目录失败:', error)
+          return { success: false, error: '创建 disguise 目录失败: ' + error.message, images: [] }
+        }
+      }
+
+      // 读取目录内容
+      const files = fs.readdirSync(disguiseDir)
+      console.log('disguise 目录中的文件数量:', files.length)
+      console.log('文件列表:', files)
+
+      // 过滤出图片文件
+      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
+      const imageFiles = files.filter(file => {
+        const ext = path.extname(file).toLowerCase()
+        const isImage = imageExtensions.includes(ext)
+        console.log(`文件 ${file} 扩展名: ${ext}, 是否为图片: ${isImage}`)
+        return isImage
+      })
+
+      console.log(`✅ 找到 ${imageFiles.length} 张伪装图片:`, imageFiles)
+
+      // 尝试读取 disguise.txt 文件
+      let disguiseTexts = []
+      const disguiseTextPath = path.join(disguiseDir, 'disguise.txt')
+      try {
+        if (fs.existsSync(disguiseTextPath)) {
+          console.log('发现 disguise.txt 文件，正在读取...')
+          const textContent = fs.readFileSync(disguiseTextPath, 'utf8')
+          // 按行分割，过滤空行和空白字符
+          disguiseTexts = textContent
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+          console.log(`✅ 从 disguise.txt 读取了 ${disguiseTexts.length} 条伪装文字`)
+        } else {
+          console.log('disguise.txt 文件不存在，将使用默认伪装文字')
+        }
+      } catch (textError) {
+        console.warn('读取 disguise.txt 失败:', textError.message)
+        console.log('将使用默认伪装文字')
+      }
+
+      return {
+        success: true,
+        images: imageFiles,
+        texts: disguiseTexts,
+        directory: disguiseDir,
+        hasImages: imageFiles.length > 0,
+        hasTexts: disguiseTexts.length > 0
+      }
+    } catch (error) {
+      console.error('❌ 读取伪装图片失败:', error)
+      return { success: false, error: error.message, images: [], texts: [] }
+    }
+  })
+}
+
+module.exports = {
+  registerIpcHandlers
+}
+

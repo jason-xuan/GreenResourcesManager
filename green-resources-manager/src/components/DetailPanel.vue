@@ -100,6 +100,10 @@ export default {
       required: true,
       validator: value => ['game', 'image', 'album'].includes(value)
     },
+    isRunning: {
+      type: Boolean,
+      default: false
+    },
     stats: {
       type: Array,
       default: () => []
@@ -163,12 +167,22 @@ export default {
       const defaultActions = []
       
       if (this.type === 'game') {
-        defaultActions.push(
-          { key: 'launch', icon: '▶️', label: '开始游戏', class: 'btn-play-game' },
-          { key: 'folder', icon: '📁', label: '打开文件夹', class: 'btn-open-folder' },
-          { key: 'edit', icon: '✏️', label: '编辑信息', class: 'btn-edit-game' },
-          { key: 'remove', icon: '🗑️', label: '删除游戏', class: 'btn-remove-game' }
-        )
+        // 如果游戏正在运行，显示"结束游戏"按钮，否则显示"开始游戏"按钮
+        if (this.isRunning) {
+          defaultActions.push(
+            { key: 'terminate', icon: '⏹️', label: '结束游戏', class: 'btn-stop-game' },
+            { key: 'folder', icon: '📁', label: '打开文件夹', class: 'btn-open-folder' },
+            { key: 'edit', icon: '✏️', label: '编辑信息', class: 'btn-edit-game' },
+            { key: 'remove', icon: '🗑️', label: '删除游戏', class: 'btn-remove-game' }
+          )
+        } else {
+          defaultActions.push(
+            { key: 'launch', icon: '▶️', label: '开始游戏', class: 'btn-play-game' },
+            { key: 'folder', icon: '📁', label: '打开文件夹', class: 'btn-open-folder' },
+            { key: 'edit', icon: '✏️', label: '编辑信息', class: 'btn-edit-game' },
+            { key: 'remove', icon: '🗑️', label: '删除游戏', class: 'btn-remove-game' }
+          )
+        }
       } else if (this.type === 'image' || this.type === 'album') {
         defaultActions.push(
           { key: 'open', icon: '📖', label: '开始阅读', class: 'btn-start-reading' },
@@ -528,6 +542,26 @@ export default {
 .btn-play-game:hover,
 .btn-start-reading:hover {
   background: var(--accent-hover);
+}
+
+.btn-stop-game {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.3s ease;
+  flex: 1;
+  justify-content: center;
+}
+
+.btn-stop-game:hover {
+  background: #dc2626;
 }
 
 .btn-edit-game,

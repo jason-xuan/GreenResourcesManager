@@ -422,18 +422,22 @@ export default {
       console.log('全局添加运行游戏:', runtimeGameData, '当前运行游戏:', Array.from(this.runningGames.keys()))
     },
     removeRunningGame(gameId) {
+      console.log(`[DEBUG] 🗑️ removeRunningGame 被调用，gameId: ${gameId}`)
       const runtimeGameData = this.runningGames.get(gameId)
       if (runtimeGameData) {
         // 计算本次会话的游戏时长
         const sessionDuration = Math.floor((Date.now() - runtimeGameData.startTime) / 1000) // 转换为秒
-        console.log(`游戏 ${gameId} 本次会话时长: ${sessionDuration} 秒`, '游戏信息:', runtimeGameData)
+        console.log(`[DEBUG] ⏱️ 游戏 ${gameId} 本次会话时长: ${sessionDuration} 秒`, '游戏信息:', runtimeGameData)
         
         // 通知 GameView 更新游戏时长，游戏结束时需要保存
+        console.log(`[DEBUG] 💾 调用 updateGamePlayTime，gameId: ${gameId}, sessionDuration: ${sessionDuration}, shouldSave: true`)
         this.updateGamePlayTime(gameId, sessionDuration, true)
+      } else {
+        console.log(`[DEBUG] ⚠️ removeRunningGame: 未找到 gameId ${gameId} 的运行数据`)
       }
       
       this.runningGames.delete(gameId)
-      console.log('全局移除运行游戏:', gameId, '当前运行游戏:', Array.from(this.runningGames.keys()))
+      console.log(`[DEBUG] ✅ 已从 runningGames 中移除 gameId: ${gameId}，当前运行游戏:`, Array.from(this.runningGames.keys()))
     },
     isGameRunning(gameId) {
       return this.runningGames.has(gameId)
@@ -580,8 +584,9 @@ export default {
         return
       }
       
-      console.log('开始检查所有游戏的运行状态...')
+      console.log(`[DEBUG] 🔍 开始检查所有游戏的运行状态，当前运行游戏数量: ${this.runningGames.size}`)
       const runningGamesToCheck: Array<[string, any]> = Array.from(this.runningGames.entries())
+      console.log(`[DEBUG] 📋 待检查的游戏列表:`, runningGamesToCheck.map(([id, data]) => ({ id, pid: data.pid, gameName: data.gameName })))
       
       for (const [gameId, runtimeGameData] of runningGamesToCheck) {
         const game = gameView.games.find(g => g.id === gameId)
@@ -594,18 +599,26 @@ export default {
         
         try {
           // 通过 PID 检查游戏进程是否还在运行（尝试获取窗口标题，如果失败说明进程已结束）
+          console.log(`[DEBUG] 🔍 检查游戏 ${game.name} (ID: ${gameId}, PID: ${runtimeGameData.pid}) 的运行状态...`)
           const result = await window.electronAPI.getAllWindowTitlesByPID(runtimeGameData.pid)
+          console.log(`[DEBUG] 📋 getAllWindowTitlesByPID 结果:`, { success: result.success, windowTitles: result.windowTitles, error: result.error })
+          
           if (!result.success) {
             // 无法获取窗口标题，可能是进程已结束
             // 如果之前有窗口标题但现在获取不到，可能是进程结束了
+            console.log(`[DEBUG] ⚠️ 无法获取窗口标题，之前记录的窗口标题:`, runtimeGameData.windowTitles)
             if (runtimeGameData.windowTitles && runtimeGameData.windowTitles.length > 0) {
               // 之前有窗口，现在获取不到，可能是进程结束了
-              this.runningGames.delete(gameId)
-              console.log(`游戏 ${game.name} 进程已结束（无法获取窗口标题），从运行列表中移除`)
+              console.log(`[DEBUG] 🔴 游戏 ${game.name} 进程已结束（之前有窗口但现在获取不到），从运行列表中移除`)
+              this.removeRunningGame(gameId)
+            } else {
+              console.log(`[DEBUG] ⚠️ 游戏 ${game.name} 之前没有窗口标题，无法判断进程是否结束，保留运行状态`)
             }
+          } else {
+            console.log(`[DEBUG] ✅ 游戏 ${game.name} 进程仍在运行，窗口标题:`, result.windowTitles)
           }
         } catch (error) {
-          console.error(`检查游戏 ${game.name} 运行状态失败:`, error)
+          console.error(`[DEBUG] ❌ 检查游戏 ${game.name} 运行状态失败:`, error)
           // 出错时保守处理，保留运行状态
         }
       }

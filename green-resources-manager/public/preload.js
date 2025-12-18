@@ -46,6 +46,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // 游戏启动
   launchGame: (executablePath, gameName) => ipcRenderer.invoke('launch-game', executablePath, gameName),
+  // 强制结束游戏
+  terminateGame: (executablePath) => ipcRenderer.invoke('terminate-game', executablePath),
   // 通过 PID 获取所有窗口标题
   getAllWindowTitlesByPID: (pid) => ipcRenderer.invoke('get-all-window-titles-by-pid', pid),
   

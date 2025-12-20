@@ -258,6 +258,9 @@ import MediaCard from '../components/MediaCard.vue'
 import DetailPanel from '../components/DetailPanel.vue'
 import PathUpdateDialog from '../components/PathUpdateDialog.vue'
 import saveManager from '../utils/SaveManager.ts'
+import { useNovelManagement } from '../composables/novel/useNovelManagement'
+import { useNovelFilter } from '../composables/novel/useNovelFilter'
+import { ref } from 'vue'
 
 import notify from '../utils/NotificationService.ts'
 
@@ -272,20 +275,69 @@ export default {
     PathUpdateDialog
   },
   emits: ['filter-data-updated'],
+  setup() {
+    // 初始化小说管理 composable
+    const novelManagement = useNovelManagement()
+    
+    // 初始化小说筛选 composable
+    const novelFilter = useNovelFilter({
+      novels: novelManagement.novels,
+      onFilterDataUpdated: (data) => {
+        // 这个回调将在 mounted 中重新设置
+      }
+    })
+    
+    // 路径更新对话框状态（需要在 setup 中定义，以便传递给 composable）
+    const showPathUpdateDialog = ref(false)
+    const pathUpdateInfo = ref({
+      existingNovel: null,
+      newPath: '',
+      newFileName: ''
+    })
+    
+    return {
+      // 小说管理相关（重命名避免冲突）
+      novels: novelManagement.novels,
+      isLoading: novelManagement.isLoading,
+      loadNovelsFromComposable: novelManagement.loadNovels,
+      saveNovels: novelManagement.saveNovels,
+      addNovelToManager: novelManagement.addNovel,
+      updateNovelInManager: novelManagement.updateNovel,
+      deleteNovelFromManager: novelManagement.deleteNovel,
+      checkFileExistence: novelManagement.checkFileExistence,
+      updateNovelsWordCount: novelManagement.updateNovelsWordCount,
+      updateReadingStats: novelManagement.updateReadingStats,
+      analyzeNovelFile: novelManagement.analyzeNovelFile,
+      getNovelManager: novelManagement.getNovelManager,
+      // 小说筛选相关
+      searchQuery: novelFilter.searchQuery,
+      sortBy: novelFilter.sortBy,
+      selectedTags: novelFilter.selectedTags,
+      excludedTags: novelFilter.excludedTags,
+      selectedAuthors: novelFilter.selectedAuthors,
+      excludedAuthors: novelFilter.excludedAuthors,
+      allTags: novelFilter.allTags,
+      allAuthors: novelFilter.allAuthors,
+      filteredNovels: novelFilter.filteredNovels,
+      filterByTag: novelFilter.filterByTag,
+      excludeByTag: novelFilter.excludeByTag,
+      clearTagFilter: novelFilter.clearTagFilter,
+      filterByAuthor: novelFilter.filterByAuthor,
+      excludeByAuthor: novelFilter.excludeByAuthor,
+      clearAuthorFilter: novelFilter.clearAuthorFilter,
+      handleFilterEvent: novelFilter.handleFilterEvent,
+      updateFilterData: novelFilter.updateFilterData,
+      setFilterDataUpdatedCallback: novelFilter.setFilterDataUpdatedCallback,
+      // 路径更新对话框
+      showPathUpdateDialog,
+      pathUpdateInfo
+    }
+  },
   data() {
     return {
-      novels: [],
-      searchQuery: '',
-      sortBy: 'name',
+      // novels, searchQuery, sortBy, selectedTags, excludedTags, selectedAuthors, excludedAuthors, allTags, allAuthors, showPathUpdateDialog, pathUpdateInfo 已移至 composables
       showAddDialog: false,
       isDragOver: false,
-      // 路径更新确认对话框
-      showPathUpdateDialog: false,
-      pathUpdateInfo: {
-        existingNovel: null,
-        newPath: '',
-        newFileName: ''
-      },
       selectedNovel: null,
       showDetailModal: false,
       currentNovel: null,
@@ -299,14 +351,6 @@ export default {
         coverImage: ''
       },
       tagInput: '',
-      // 标签筛选相关
-      allTags: [],
-      selectedTags: [],
-      excludedTags: [],
-      // 作者筛选相关
-      allAuthors: [],
-      selectedAuthors: [],
-      excludedAuthors: [],
       // 编辑相关状态
       showEditDialog: false,
       editNovelForm: {
@@ -388,56 +432,7 @@ export default {
     }
   },
   computed: {
-    filteredNovels() {
-      let filtered = this.novels.filter(novel => {
-        
-        // 标签筛选 - 必须包含所有选中的标签（AND逻辑）
-        if (this.selectedTags.length > 0 && (!novel.tags || !this.selectedTags.every(tag => novel.tags.includes(tag)))) {
-          return false
-        }
-        if (this.excludedTags.length > 0 && novel.tags && this.excludedTags.some(tag => novel.tags.includes(tag))) {
-          return false
-        }
-        
-        // 作者筛选 - 作者是"或"逻辑（一个小说只能有一个作者）
-        if (this.selectedAuthors.length > 0 && !this.selectedAuthors.includes(novel.author)) {
-          return false
-        }
-        if (this.excludedAuthors.length > 0 && this.excludedAuthors.includes(novel.author)) {
-          return false
-        }
-        
-        // 搜索过滤
-        if (this.searchQuery) {
-          const query = this.searchQuery.toLowerCase()
-          return novel.name.toLowerCase().includes(query) ||
-                 novel.author.toLowerCase().includes(query) ||
-                 novel.genre.toLowerCase().includes(query) ||
-                 novel.description.toLowerCase().includes(query) ||
-                 novel.tags.some(tag => tag.toLowerCase().includes(query))
-        }
-        
-        return true
-      })
-      
-      // 排序
-      filtered.sort((a, b) => {
-        switch (this.sortBy) {
-          case 'name':
-            return a.name.localeCompare(b.name)
-          case 'author':
-            return a.author.localeCompare(b.author)
-          case 'readProgress':
-            return (b.readProgress || 0) - (a.readProgress || 0)
-          case 'added':
-            return new Date(b.addedDate).getTime() - new Date(a.addedDate).getTime()
-          default:
-            return 0
-        }
-      })
-      
-      return filtered
-    },
+    // filteredNovels 已移至 useNovelFilter composable
     // 分页显示的小说列表
     paginatedNovels() {
       if (!this.filteredNovels || this.filteredNovels.length === 0) return []
@@ -666,10 +661,9 @@ export default {
           addedDate: new Date().toISOString()
         }
         
-        const novel = await novelManager.addNovel(novelData)
-        this.novels.push(novel)
+        const novel = await this.addNovelToManager(novelData)
         this.closeAddNovelDialog()
-        notify.native('添加成功', `小说 "${novel.name}" 已添加`)
+        notify.native('添加成功', `小说 "${novel?.name || '未知'}" 已添加`)
       } catch (error) {
         console.error('添加小说失败:', error)
         alert(`添加小说失败: ${error.message}`)
@@ -775,12 +769,6 @@ export default {
     },
     async saveEditedNovel() {
       try {
-        const index = this.novels.findIndex(n => n.id === this.editNovelForm.id)
-        if (index === -1) {
-          alert('未找到要编辑的小说')
-          return
-        }
-        
         const updateData = {
           name: this.editNovelForm.name.trim(),
           author: this.editNovelForm.author.trim(),
@@ -790,11 +778,10 @@ export default {
           readProgress: Math.max(0, Math.min(100, this.editNovelForm.readProgress))
         }
         
-        await novelManager.updateNovel(this.editNovelForm.id, updateData)
-        this.novels[index] = { ...this.novels[index], ...updateData }
+        await this.updateNovelInManager(this.editNovelForm.id, updateData)
         notify.native('保存成功', '小说信息已更新')
         this.closeEditNovelDialog()
-      } catch (error) {
+      } catch (error: any) {
         console.error('保存编辑失败:', error)
         alert('保存编辑失败: ' + error.message)
       }
@@ -803,17 +790,7 @@ export default {
       if (!confirm(`确定要删除小说 "${novel.name}" 吗？`)) return
       
       try {
-        // 确保novelManager的novels数组是最新的
-        await novelManager.loadNovels()
-        
-        // 先调用novelManager删除，成功后再从前端数组中移除
-        await novelManager.deleteNovel(novel.id)
-        
-        // 删除成功后，从前端数组中移除
-        const index = this.novels.findIndex(n => n.id === novel.id)
-        if (index > -1) {
-          this.novels.splice(index, 1)
-        }
+        await this.deleteNovelFromManager(novel.id)
         
         // 显示删除成功通知
         notify.toast('success', '删除成功', `已成功删除小说 "${novel.name}"`)
@@ -1016,268 +993,33 @@ export default {
     },
     
     async loadNovels() {
-      this.novels = await novelManager.loadNovels()
-      // 为没有字数信息的小说重新计算字数
-      await this.updateNovelsWordCount()
-      // 提取标签和作者
-      this.extractAllTagsAndAuthors()
-      
-      // 检测文件存在性（仅在应用启动时检测一次）
-      if (this.$parent.shouldCheckFileLoss && this.$parent.shouldCheckFileLoss()) {
-        await this.checkFileExistence()
-        this.$parent.markFileLossChecked()
-      }
-      
-      // 计算小说列表总页数
-      this.updateNovelPagination()
-    },
-    
-    async checkFileExistence() {
-      console.log('🔍 开始检测小说文件存在性...')
-      
-      if (!window.electronAPI || !window.electronAPI.checkFileExists) {
-        console.log('⚠️ Electron API 不可用，跳过文件存在性检测')
-        // 如果API不可用，默认设置为存在
-        this.novels.forEach(novel => {
-          novel.fileExists = true
-        })
-        return
-      }
-      
-      let checkedCount = 0
-      let missingCount = 0
-      
-      for (const novel of this.novels) {
-        if (!novel.filePath) {
-          novel.fileExists = false
-          missingCount++
-          continue
-        }
-        
-        try {
-          const result = await window.electronAPI.checkFileExists(novel.filePath)
-          novel.fileExists = result.exists
-          console.log(`🔍 检测结果: ${novel.name} - fileExists=${novel.fileExists}`)
-          
-          if (!result.exists) {
-            missingCount++
-            console.log(`❌ 小说文件不存在: ${novel.name} - ${novel.filePath}`)
-          } else {
-            console.log(`✅ 小说文件存在: ${novel.name}`)
-          }
-        } catch (error) {
-          console.error(`❌ 检测小说文件存在性失败: ${novel.name}`, error)
-          novel.fileExists = false
-          missingCount++
-        }
-        
-        checkedCount++
-      }
-      
-      console.log(`📊 文件存在性检测完成: 检查了 ${checkedCount} 个小说，${missingCount} 个文件不存在`)
-      
-      // 强制更新视图
-      this.$forceUpdate()
-    },
-    
-    // 提取所有标签和作者
-    extractAllTagsAndAuthors() {
-      const tagCount = {}
-      const authorCount = {}
-      
-      this.novels.forEach(novel => {
-        // 提取标签
-        if (novel.tags && Array.isArray(novel.tags)) {
-          novel.tags.forEach(tag => {
-            tagCount[tag] = (tagCount[tag] || 0) + 1
-          })
-        }
-        
-        // 提取作者
-        if (novel.author) {
-          authorCount[novel.author] = (authorCount[novel.author] || 0) + 1
-        }
-      })
-      
-      // 转换为数组并按名称排序
-      this.allTags = Object.entries(tagCount)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => a.name.localeCompare(b.name))
-        
-      this.allAuthors = Object.entries(authorCount)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => a.name.localeCompare(b.name))
-      
-      // 提取完标签后更新筛选器数据
-      this.updateFilterData()
-    },
-    
-    // 筛选方法
-    filterByTag(tagName) {
-      if (this.selectedTags.indexOf(tagName) !== -1) {
-        // 如果当前是选中状态，则取消选择
-        this.selectedTags = this.selectedTags.filter(tag => tag !== tagName)
-      } else if (this.excludedTags.indexOf(tagName) !== -1) {
-        // 如果当前是排除状态，则切换为选中状态
-        this.excludedTags = this.excludedTags.filter(tag => tag !== tagName)
-        this.selectedTags = [...this.selectedTags, tagName]
-      } else {
-        // 否则直接设置为选中状态
-        this.selectedTags = [...this.selectedTags, tagName]
-      }
-      this.updateFilterData()
-    },
-    
-    clearTagFilter() {
-      this.selectedTags = []
-      this.excludedTags = []
-      this.updateFilterData()
-    },
-    
-    filterByAuthor(authorName) {
-      if (this.selectedAuthors.indexOf(authorName) !== -1) {
-        // 如果当前是选中状态，则取消选择
-        this.selectedAuthors = this.selectedAuthors.filter(author => author !== authorName)
-      } else if (this.excludedAuthors.indexOf(authorName) !== -1) {
-        // 如果当前是排除状态，则切换为选中状态
-        this.excludedAuthors = this.excludedAuthors.filter(author => author !== authorName)
-        this.selectedAuthors = [...this.selectedAuthors, authorName]
-      } else {
-        // 否则直接设置为选中状态
-        this.selectedAuthors = [...this.selectedAuthors, authorName]
-      }
-      this.updateFilterData()
-    },
-    
-    clearAuthorFilter() {
-      this.selectedAuthors = []
-      this.excludedAuthors = []
-      this.updateFilterData()
-    },
-    
-    // 排除方法
-    excludeByTag(tagName) {
-      if (this.excludedTags.indexOf(tagName) !== -1) {
-        // 如果已经是排除状态，则取消排除
-        this.excludedTags = this.excludedTags.filter(tag => tag !== tagName)
-      } else if (this.selectedTags.indexOf(tagName) !== -1) {
-        // 如果当前是选中状态，则切换为排除状态
-        this.selectedTags = this.selectedTags.filter(tag => tag !== tagName)
-        this.excludedTags = [...this.excludedTags, tagName]
-      } else {
-        // 否则直接设置为排除状态
-        this.excludedTags = [...this.excludedTags, tagName]
-      }
-      this.updateFilterData()
-    },
-    
-    excludeByAuthor(authorName) {
-      if (this.excludedAuthors.indexOf(authorName) !== -1) {
-        // 如果已经是排除状态，则取消排除
-        this.excludedAuthors = this.excludedAuthors.filter(author => author !== authorName)
-      } else if (this.selectedAuthors.indexOf(authorName) !== -1) {
-        // 如果当前是选中状态，则切换为排除状态
-        this.selectedAuthors = this.selectedAuthors.filter(author => author !== authorName)
-        this.excludedAuthors = [...this.excludedAuthors, authorName]
-      } else {
-        // 否则直接设置为排除状态
-        this.excludedAuthors = [...this.excludedAuthors, authorName]
-      }
-      this.updateFilterData()
-    },
-    
-    // 处理来自 App.vue 的筛选器事件
-    handleFilterEvent(event, data) {
-      switch (event) {
-        case 'filter-select':
-          if (data.filterKey === 'tags') {
-            this.filterByTag(data.itemName)
-          } else if (data.filterKey === 'authors') {
-            this.filterByAuthor(data.itemName)
-          }
-          break
-        case 'filter-exclude':
-          if (data.filterKey === 'tags') {
-            this.excludeByTag(data.itemName)
-          } else if (data.filterKey === 'authors') {
-            this.excludeByAuthor(data.itemName)
-          }
-          break
-        case 'filter-clear':
-          if (data === 'tags') {
-            this.clearTagFilter()
-          } else if (data === 'authors') {
-            this.clearAuthorFilter()
-          }
-          break
-      }
-    },
-    
-    // 更新筛选器数据到 App.vue
-    updateFilterData() {
-      this.$emit('filter-data-updated', {
-        filters: [
-          {
-            key: 'tags',
-            title: '标签筛选',
-            items: this.allTags,
-            selected: this.selectedTags,
-            excluded: this.excludedTags
-          },
-          {
-            key: 'authors',
-            title: '作者筛选',
-            items: this.allAuthors,
-            selected: this.selectedAuthors,
-            excluded: this.excludedAuthors
-          }
-        ]
-      })
-    },
-    async updateNovelsWordCount() {
-      for (let novel of this.novels) {
-        if (novel.totalWords === 0 && novel.filePath) {
-          try {
-            console.log('重新计算小说字数:', novel.name)
-            const result = await window.electronAPI.readTextFile(novel.filePath)
-            if (result.success && result.wordCount > 0) {
-              novel.totalWords = result.wordCount
-              novel.fileSize = result.fileSize || novel.fileSize
-              // 保存更新
-              await novelManager.updateNovel(novel.id, {
-                totalWords: novel.totalWords,
-                fileSize: novel.fileSize
-              })
-              console.log('字数更新成功:', novel.name, '字数:', novel.totalWords)
-            }
-          } catch (error) {
-            console.error('更新小说字数失败:', novel.name, error)
-          }
-        }
-      }
-    },
-    async updateReadingStats(novel) {
       try {
-        // 更新最后阅读时间
-        novel.lastRead = new Date().toISOString()
+        // 调用 composable 的 loadNovels 方法
+        await this.loadNovelsFromComposable()
         
-        // 如果是第一次阅读，记录第一次阅读时间
-        if (!novel.firstRead) {
-          novel.firstRead = new Date().toISOString()
+        // 为没有字数信息的小说重新计算字数
+        await this.updateNovelsWordCount()
+        
+        // 更新筛选器数据（allTags 和 allAuthors 会自动计算）
+        this.updateFilterData()
+        
+        // 检测文件存在性（仅在应用启动时检测一次）
+        if (this.$parent.shouldCheckFileLoss && this.$parent.shouldCheckFileLoss()) {
+          await this.checkFileExistence()
+          this.$parent.markFileLossChecked()
         }
         
-        
-        // 保存更新后的数据
-        await novelManager.updateNovel(novel.id, {
-          lastRead: novel.lastRead,
-          firstRead: novel.firstRead
-        })
-        
-        console.log('阅读统计已更新:', novel.name)
-      } catch (error) {
-        console.error('更新阅读统计失败:', error)
+        // 计算小说列表总页数
+        this.updateNovelPagination()
+      } catch (error: any) {
+        console.error('加载小说数据失败:', error)
+        notify.toast('error', '加载失败', '加载小说数据失败: ' + error.message)
       }
     },
+    
+    // checkFileExistence, extractAllTagsAndAuthors, filterByTag, excludeByTag, clearTagFilter,
+    // filterByAuthor, excludeByAuthor, clearAuthorFilter, handleFilterEvent, updateFilterData,
+    // updateNovelsWordCount, updateReadingStats 已移至 composables
     // 处理小说点击事件
     async handleNovelClick(novel) {
       try {
@@ -1370,7 +1112,7 @@ export default {
       this.currentReadingNovel.readProgress = progress
       
       // 保存进度
-      novelManager.updateNovel(this.currentReadingNovel.id, {
+      this.updateNovelInManager(this.currentReadingNovel.id, {
         readProgress: progress
       })
     },
@@ -1538,8 +1280,7 @@ export default {
             console.log('创建小说对象:', novelData)
             
             // 添加到小说管理器
-            const novel = await novelManager.addNovel(novelData)
-            this.novels.push(novel)
+            await this.addNovelToManager(novelData)
             addedCount++
             
           } catch (error) {
@@ -1601,7 +1342,7 @@ export default {
         await this.analyzeNovelFile(newPath)
         
         // 保存更新后的数据
-        await novelManager.updateNovel(existingNovel.id, {
+        await this.updateNovelInManager(existingNovel.id, {
           filePath: newPath,
           fileExists: true,
           totalWords: this.newNovel.totalWords,
@@ -1711,6 +1452,11 @@ export default {
     }
   },
   async mounted() {
+    // 设置筛选器数据更新回调
+    this.setFilterDataUpdatedCallback((data) => {
+      this.$emit('filter-data-updated', data)
+    })
+    
     // 等待父组件（App.vue）的存档系统初始化完成
     const maxWaitTime = 5000
     const startTime = Date.now()

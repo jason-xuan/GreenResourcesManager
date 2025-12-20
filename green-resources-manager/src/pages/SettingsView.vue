@@ -29,862 +29,64 @@
         
         <div class="settings-container">
           <!-- 通用设置 -->
-          <div v-if="currentCategory === 'general'" class="settings-section">
-            <div class="settings-grid">
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">主题模式</span>
-                  <span class="setting-desc">选择应用的主题外观</span>
-                </label>
-                <div class="setting-control">
-                  <select v-model="settings.theme" @change="onThemeChange" class="setting-select">
-                    <option value="light">亮色模式</option>
-                    <option value="dark">暗色模式</option>
-                    <option value="ukiyoe">浮世绘主题</option>
-                    <option value="chinese">中国古风</option>
-                    <option value="forest">森林主题</option>
-                    <option value="ocean">海洋主题</option>
-                    <option value="auto">跟随系统</option>
-                  </select>
-                </div>
-              </div>
-              
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">开机自启</span>
-                  <span class="setting-desc">应用启动时自动运行</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.autoStart" @change="onAutoStartChange">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">关闭窗口时最小化到系统托盘</span>
-                  <span class="setting-desc">点击关闭按钮时最小化到系统托盘，普通最小化仍会显示在任务栏</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.minimizeToTray" @change="onMinimizeToTrayChange">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">伪装模式</span>
-                  <span class="setting-desc">开启后，图片封面会随机替换为disguise文件夹中的图片，提供隐私保护</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.disguiseMode" @change="onDisguiseModeChange">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">安全键</span>
-                  <span class="setting-desc">按下ESC键时快速最小化并打开安全网页</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.safetyKeyEnabled" @change="onSafetyKeyChange">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item" v-if="settings.safetyKeyEnabled">
-                <label class="setting-label">
-                  <span class="setting-title">安全网页URL</span>
-                  <span class="setting-desc">按下ESC键时打开的网页地址</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="text" 
-                    v-model="settings.safetyKeyUrl" 
-                    placeholder="输入网页URL"
-                    class="setting-input"
-                    style="min-width: 400px;"
-                  >
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">存档文件夹位置</span>
-                  <span class="setting-desc">选择存档文件夹的保存位置</span>
-                </label>
-                <div class="setting-control">
-                  <select v-model="settings.saveDataLocation" @change="onSaveDataLocationChange" class="setting-select">
-                    <option value="default">默认目录 (根目录/SaveData)</option>
-                    <option value="custom">自定义目录</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="setting-item" v-if="settings.saveDataLocation === 'custom'">
-                <label class="setting-label">
-                  <span class="setting-title">自定义存档目录</span>
-                  <span class="setting-desc">选择自定义的存档保存目录</span>
-                </label>
-                <div class="setting-control">
-                  <div class="file-input-group">
-                    <input 
-                      type="text" 
-                      v-model="settings.saveDataPath" 
-                      placeholder="选择存档保存目录"
-                      class="setting-input"
-                      readonly
-                    >
-                    <button class="btn-browse" @click="selectSaveDataDirectory">浏览</button>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">开启自动备份</span>
-                  <span class="setting-desc">开启后，系统会按设定的时间间隔自动备份整个存档目录</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.autoBackupEnabled" @change="onAutoBackupEnabledChange">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item" v-if="settings.autoBackupEnabled">
-                <label class="setting-label">
-                  <span class="setting-title">自动备份时间间隔</span>
-                  <span class="setting-desc">设置自动备份整个存档的时间间隔</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model.number="settings.autoBackupInterval" 
-                    min="5" 
-                    max="60"
-                    step="5"
-                    class="setting-slider"
-                    @input="onAutoBackupIntervalChange"
-                  >
-                  <span class="setting-value">
-                    {{ settings.autoBackupInterval }} 分钟
-                  </span>
-                </div>
-              </div>
-              
-              <div class="setting-item" v-if="settings.autoBackupEnabled">
-                <label class="setting-label">
-                  <span class="setting-title">保留备份数量</span>
-                  <span class="setting-desc">设置自动备份时保留的备份数量，超出数量的旧备份会被自动删除</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model.number="settings.maxBackupCount" 
-                    min="3" 
-                    max="10"
-                    step="1"
-                    class="setting-slider"
-                    @input="onMaxBackupCountChange"
-                  >
-                  <span class="setting-value">
-                    {{ settings.maxBackupCount }} 个
-                  </span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">打开存档文件夹</span>
-                  <span class="setting-desc">在文件管理器中打开应用存档文件夹</span>
-                </label>
-                <div class="setting-control">
-                  <button class="btn-open-save-data-folder" @click="openSaveDataFolder">
-                    <span class="btn-icon">📁</span>
-                    打开文件夹
-                  </button>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">重置所有设置</span>
-                  <span class="setting-desc">将所有设置恢复为默认值，此操作不可撤销</span>
-                </label>
-                <div class="setting-control">
-                  <button class="btn-reset-settings" @click="resetSettings">
-                    <span class="btn-icon">🔄</span>
-                    重置设置
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <GeneralSettings 
+            v-if="currentCategory === 'general'"
+            :settings="settings"
+            @update:settings="handleSettingUpdate"
+            @theme-changed="onThemeChanged"
+            @action="handleGeneralAction"
+          />
 
           <!-- 游戏设置 -->
-          <div v-if="currentCategory === 'games'" class="settings-section">
-            <div class="settings-grid">
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">游戏列表每页显示数量</span>
-                  <span class="setting-desc">设置游戏列表中每页显示的游戏数量</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.game.listPageSize" 
-                    min="5" 
-                    max="50" 
-                    step="1"
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.game.listPageSize }} 个</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">截图快捷键</span>
-                  <span class="setting-desc">设置截图功能的快捷键</span>
-                </label>
-                <div class="setting-control">
-                  <select v-model="settings.screenshotKey" @change="onScreenshotKeyChange" class="setting-select">
-                    <option value="F12">F12</option>
-                    <option value="F9">F9</option>
-                    <option value="F10">F10</option>
-                    <option value="F11">F11</option>
-                    <option value="Ctrl+F12">Ctrl+F12</option>
-                    <option value="Ctrl+F9">Ctrl+F9</option>
-                    <option value="Ctrl+F10">Ctrl+F10</option>
-                    <option value="Ctrl+F11">Ctrl+F11</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">截图保存位置</span>
-                  <span class="setting-desc">选择截图的保存位置</span>
-                </label>
-                <div class="setting-control">
-                  <select v-model="settings.screenshotLocation" @change="onScreenshotLocationChange" class="setting-select">
-                    <option value="default">默认目录 (SaveData/Game/Screenshots)</option>
-                    <option value="custom">自定义目录</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="setting-item" v-if="settings.screenshotLocation === 'custom'">
-                <label class="setting-label">
-                  <span class="setting-title">自定义截图目录</span>
-                  <span class="setting-desc">选择自定义的截图保存目录</span>
-                </label>
-                <div class="setting-control">
-                  <div class="file-input-group">
-                    <input 
-                      type="text" 
-                      v-model="settings.screenshotsPath" 
-                      placeholder="选择截图保存目录"
-                      class="setting-input"
-                      readonly
-                    >
-                    <button class="btn-browse" @click="selectScreenshotsDirectory">浏览</button>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">截图格式</span>
-                  <span class="setting-desc">选择截图的保存格式</span>
-                </label>
-                <div class="setting-control">
-                  <select v-model="settings.screenshotFormat" class="setting-select">
-                    <option value="png">PNG</option>
-                    <option value="jpg">JPG</option>
-                    <option value="webp">WebP</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">截图质量</span>
-                  <span class="setting-desc">设置截图的压缩质量 (1-100)</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.screenshotQuality" 
-                    min="1" 
-                    max="100" 
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.screenshotQuality }}%</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">显示截图通知</span>
-                  <span class="setting-desc">截图完成后显示系统通知</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.screenshotNotification">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">自动打开截图文件夹</span>
-                  <span class="setting-desc">截图完成后自动打开保存文件夹</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.autoOpenScreenshotFolder">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">智能窗口检测</span>
-                  <span class="setting-desc">自动检测游戏窗口进行截图</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.smartWindowDetection">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">打开截图文件夹</span>
-                  <span class="setting-desc">在文件管理器中打开截图保存文件夹</span>
-                </label>
-                <div class="setting-control">
-                  <button class="btn-open-screenshot-folder" @click="openScreenshotFolder">
-                    <span class="btn-icon">📸</span>
-                    打开文件夹
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <GameSettings 
+            v-if="currentCategory === 'games'"
+            :settings="settings"
+            @update:settings="handleSettingUpdate"
+            @action="handleGameAction"
+          />
 
           <!-- 图片设置 -->
-          <div v-if="currentCategory === 'images'" class="settings-section">
-            <div class="settings-grid">
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">图片列表每页显示数量</span>
-                  <span class="setting-desc">设置图片列表中每页显示的图片数量</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.image.listPageSize" 
-                    min="5" 
-                    max="50" 
-                    step="1"
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.image.listPageSize }} 张</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">JPEG压缩质量</span>
-                  <span class="setting-desc">设置缩略图生成的JPEG压缩质量 (1-100)</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.image.jpegQuality" 
-                    min="10" 
-                    max="100" 
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.image.jpegQuality }}%</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">缩略图尺寸</span>
-                  <span class="setting-desc">设置缩略图的最大宽度和高度 (像素)</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.image.thumbnailSize" 
-                    min="100" 
-                    max="500" 
-                    step="10"
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.image.thumbnailSize }}px</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">图片缓存大小</span>
-                  <span class="setting-desc">设置图片缓存的最大内存占用 (MB)</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.image.cacheSize" 
-                    min="10" 
-                    max="200" 
-                    step="10"
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.image.cacheSize }}MB</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">启用缩略图模式</span>
-                  <span class="setting-desc">在预览网格中使用缩略图以节省内存</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.image.enableThumbnails">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">图片预加载数量</span>
-                  <span class="setting-desc">在阅读器中预加载的图片数量</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.image.preloadCount" 
-                    min="1" 
-                    max="10" 
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.image.preloadCount }} 张</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">启用硬件加速</span>
-                  <span class="setting-desc">使用GPU硬件加速渲染图片</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.image.hardwareAcceleration">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">图片渲染质量</span>
-                  <span class="setting-desc">设置图片的渲染质量级别</span>
-                </label>
-                <div class="setting-control">
-                  <select v-model="settings.image.renderQuality" class="setting-select">
-                    <option value="high">高质量</option>
-                    <option value="medium">中等质量</option>
-                    <option value="low">低质量</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">详情页显示图片数量</span>
-                  <span class="setting-desc">设置详情页中每页显示的图片数量</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.image.detailPageSize" 
-                    min="10" 
-                    max="100" 
-                    step="5"
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.image.detailPageSize }} 张</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">测试图片设置</span>
-                  <span class="setting-desc">测试当前图片设置是否正确保存</span>
-                </label>
-                <div class="setting-control">
-                  <button class="btn-test-image-settings" @click="testImageSettings">
-                    测试设置
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ImageSettings 
+            v-if="currentCategory === 'images'"
+            :settings="settings"
+            @update:settings="handleSettingUpdate"
+          />
 
           <!-- 视频设置 -->
-          <div v-if="currentCategory === 'videos'" class="settings-section">
-            <div class="settings-grid">
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">视频列表每页显示数量</span>
-                  <span class="setting-desc">设置视频列表中每页显示的视频数量</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.video.listPageSize" 
-                    min="5" 
-                    max="50" 
-                    step="1"
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.video.listPageSize }} 个</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">视频播放方式</span>
-                  <span class="setting-desc">选择视频的播放方式</span>
-                </label>
-                <div class="setting-control">
-                  <select v-model="settings.videoPlayMode" class="setting-select">
-                    <option value="external">使用外部默认播放器</option>
-                    <option value="internal">在本应用新窗口中播放</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
+          <VideoSettings 
+            v-if="currentCategory === 'videos'"
+            :settings="settings"
+            @update:settings="handleSettingUpdate"
+          />
 
           <!-- 音频设置 -->
-          <div v-if="currentCategory === 'audios'" class="settings-section">
-            <div class="settings-grid">
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">音频列表每页显示数量</span>
-                  <span class="setting-desc">设置音频列表中每页显示的音频数量</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.audio.listPageSize" 
-                    min="5" 
-                    max="50" 
-                    step="1"
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.audio.listPageSize }} 个</span>
-                </div>
-              </div>
-              
-              <!-- 音频相关设置可以在这里添加 -->
-              <div class="empty-state">
-                <div class="empty-icon">🎵</div>
-                <h4>更多音频设置</h4>
-                <p>更多音频相关的设置选项将在这里显示</p>
-              </div>
-            </div>
-          </div>
+          <AudioSettings 
+            v-if="currentCategory === 'audios'"
+            :settings="settings"
+            @update:settings="handleSettingUpdate"
+          />
 
           <!-- 小说设置 -->
-          <div v-if="currentCategory === 'novels'" class="settings-section">
-            <div class="settings-grid">
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">小说列表每页显示数量</span>
-                  <span class="setting-desc">设置小说列表中每页显示的小说数量</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.novel.listPageSize" 
-                    min="5" 
-                    max="50" 
-                    step="1"
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.novel.listPageSize }} 本</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">默认打开方式</span>
-                  <span class="setting-desc">选择小说的默认打开方式</span>
-                </label>
-                <div class="setting-control">
-                  <select v-model="settings.novelDefaultOpenMode" class="setting-select">
-                    <option value="internal">应用内阅读器</option>
-                    <option value="external">外部应用</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">字体大小</span>
-                  <span class="setting-desc">设置阅读器的默认字体大小</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.novelFontSize" 
-                    min="12" 
-                    max="24" 
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.novelFontSize }}px</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">行高</span>
-                  <span class="setting-desc">设置阅读器的行高</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.novelLineHeight" 
-                    min="1.2" 
-                    max="2.5" 
-                    step="0.1"
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.novelLineHeight }}</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">字体</span>
-                  <span class="setting-desc">选择阅读器的默认字体</span>
-                </label>
-                <div class="setting-control">
-                  <select v-model="settings.novelFontFamily" class="setting-select">
-                    <option value="Microsoft YaHei, sans-serif">微软雅黑</option>
-                    <option value="SimSun, serif">宋体</option>
-                    <option value="SimHei, sans-serif">黑体</option>
-                    <option value="KaiTi, serif">楷体</option>
-                    <option value="Arial, sans-serif">Arial</option>
-                    <option value="Times New Roman, serif">Times New Roman</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">背景色</span>
-                  <span class="setting-desc">设置阅读器的背景颜色</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="color" 
-                    v-model="settings.novelBackgroundColor" 
-                    class="color-input"
-                  >
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">文字颜色</span>
-                  <span class="setting-desc">设置阅读器的文字颜色</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="color" 
-                    v-model="settings.novelTextColor" 
-                    class="color-input"
-                  >
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">每页字数</span>
-                  <span class="setting-desc">设置每页显示的字数</span>
-                </label>
-                <div class="setting-control">
-                  <input 
-                    type="range" 
-                    v-model="settings.novelWordsPerPage" 
-                    min="500" 
-                    max="2000" 
-                    class="setting-slider"
-                  >
-                  <span class="setting-value">{{ settings.novelWordsPerPage }} 字</span>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">显示阅读进度</span>
-                  <span class="setting-desc">在阅读器中显示阅读进度</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.novelShowProgress">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">测试设置</span>
-                  <span class="setting-desc">测试当前设置是否正确保存</span>
-                </label>
-                <div class="setting-control">
-                  <button class="btn-test-settings" @click="testNovelSettings">
-                    测试设置
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <NovelSettings 
+            v-if="currentCategory === 'novels'"
+            :settings="settings"
+            @update:settings="handleSettingUpdate"
+          />
 
           <!-- 网站设置 -->
-          <div v-if="currentCategory === 'websites'" class="settings-section">
-            <div class="settings-grid">
-              <!-- 网站相关设置可以在这里添加 -->
-              <div class="empty-state">
-                <div class="empty-icon">🌐</div>
-                <h4>网站设置</h4>
-                <p>网站相关的设置选项将在这里显示</p>
-              </div>
-            </div>
-          </div>
+          <WebsiteSettings 
+            v-if="currentCategory === 'websites'"
+            :settings="settings"
+            @update:settings="handleSettingUpdate"
+          />
 
           <!-- 更新设置 -->
-          <div v-if="currentCategory === 'updates'" class="settings-section">
-            <div class="settings-grid">
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">当前版本</span>
-                  <span class="setting-desc">应用当前安装的版本号</span>
-                </label>
-                <div class="setting-control">
-                  <span class="version-info">{{ currentVersion }}</span>
-                </div>
-              </div>
-
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">自动检查更新</span>
-                  <span class="setting-desc">应用启动时自动检查是否有新版本</span>
-                </label>
-                <div class="setting-control">
-                  <label class="toggle-switch">
-                    <input type="checkbox" v-model="settings.autoCheckUpdates" @change="onAutoCheckUpdatesChange">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-
-
-              <div class="setting-item">
-                <label class="setting-label">
-                  <span class="setting-title">更新检查</span>
-                  <span class="setting-desc">手动检查是否有新版本可用</span>
-                </label>
-                <div class="setting-control">
-                  <button 
-                    class="btn btn-primary" 
-                    @click="checkForUpdates"
-                    :disabled="isCheckingUpdates"
-                  >
-                    <span v-if="isCheckingUpdates">检查中...</span>
-                    <span v-else>检查更新</span>
-                  </button>
-                </div>
-              </div>
-
-
-
-              <!-- 更新状态显示 -->
-              <div v-if="updateStatus" class="update-status">
-                <div class="status-item" v-if="updateStatus.checking">
-                  <div class="status-icon">🔄</div>
-                  <div class="status-text">正在检查更新...</div>
-                </div>
-                
-                <div class="status-item" v-if="updateStatus.notAvailable">
-                  <div class="status-icon">✅</div>
-                  <div class="status-content">
-                    <div class="status-text">当前已是最新版本</div>
-                    <div class="status-actions">
-                      <button class="btn btn-info" @click="openGitHubPage">
-                        <span class="btn-icon">🌐</span>
-                        查看GitHub发布页
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="status-item" v-if="updateStatus.available">
-                  <div class="status-icon">✨</div>
-                  <div class="status-content">
-                    <div class="status-text">发现新版本 {{ updateStatus.version }}</div>
-                    <div class="status-actions">
-                      <button class="btn btn-info" @click="openGitHubPage">
-                        <span class="btn-icon">🌐</span>
-                        手动下载
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                
-                
-                <div class="status-item" v-if="updateStatus.error && !updateStatus.checksumError">
-                  <div class="status-icon">❌</div>
-                  <div class="status-content">
-                    <div class="status-text">更新检查失败: {{ updateStatus.error }}</div>
-                    <div class="status-actions">
-                      <button class="btn btn-info" @click="openGitHubPage">
-                        <span class="btn-icon">🌐</span>
-                        手动下载
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
+          <UpdateSettings 
+            v-if="currentCategory === 'updates'"
+            :settings="settings"
+            :current-version="currentVersion"
+            @update:settings="handleSettingUpdate"
+          />
         </div>
         
       </div>
@@ -895,9 +97,27 @@
 <script lang="ts">
 import saveManager from '../utils/SaveManager.ts'
 import notify from '../utils/NotificationService.ts'
+import GeneralSettings from '../components/settings/GeneralSettings.vue'
+import GameSettings from '../components/settings/GameSettings.vue'
+import ImageSettings from '../components/settings/ImageSettings.vue'
+import VideoSettings from '../components/settings/VideoSettings.vue'
+import AudioSettings from '../components/settings/AudioSettings.vue'
+import NovelSettings from '../components/settings/NovelSettings.vue'
+import WebsiteSettings from '../components/settings/WebsiteSettings.vue'
+import UpdateSettings from '../components/settings/UpdateSettings.vue'
 
 export default {
   name: 'SettingsView',
+  components: {
+    GeneralSettings,
+    GameSettings,
+    ImageSettings,
+    VideoSettings,
+    AudioSettings,
+    NovelSettings,
+    WebsiteSettings,
+    UpdateSettings
+  },
   data() {
     return {
       currentCategory: 'general',
@@ -1022,40 +242,8 @@ export default {
       this.onScreenshotLocationChange()
     },
     
-    'settings.saveDataLocation'(newLocation) {
-      this.onSaveDataLocationChange()
-    },
-    
-    async 'settings.safetyKeyUrl'(newUrl) {
-      // 当安全键URL变化时，更新全局快捷键设置
-      if (this.settings.safetyKeyEnabled && window.electronAPI && window.electronAPI.setSafetyKey) {
-        try {
-          const result = await window.electronAPI.setSafetyKey(true, newUrl)
-          if (result.success) {
-            console.log('✅ 安全键URL已更新')
-          } else {
-            console.warn('更新安全键URL失败:', result.error)
-          }
-        } catch (error) {
-          console.error('更新安全键URL失败:', error)
-        }
-      }
-      
-      // 触发自定义事件，通知 App.vue
-      if (this.settings.safetyKeyEnabled) {
-        try {
-          const event = new CustomEvent('safety-key-changed', {
-            detail: { 
-              enabled: this.settings.safetyKeyEnabled,
-              url: newUrl
-            }
-          })
-          window.dispatchEvent(event)
-        } catch (error) {
-          console.error('触发安全键URL变化事件失败:', error)
-        }
-      }
-    }
+    // 'settings.saveDataLocation' watcher 已移至对应的子组件
+    // 'settings.safetyKeyUrl' watcher 已移至 GeneralSettings 组件
   },
   methods: {
     selectCategory(categoryId) {
@@ -1070,6 +258,42 @@ export default {
     getCurrentCategoryDescription() {
       const category = this.settingsCategories.find(cat => cat.id === this.currentCategory)
       return category ? category.description : ''
+    },
+    
+    // 处理设置更新事件（来自子组件）
+    handleSettingUpdate({ key, value }: { key: string; value: any }) {
+      // 处理嵌套键（如 'game.listPageSize'）
+      const keys = key.split('.')
+      if (keys.length === 1) {
+        // 简单键
+        this.settings[key] = value
+      } else if (keys.length === 2) {
+        // 嵌套键（如 game.listPageSize）
+        if (!this.settings[keys[0]]) {
+          this.settings[keys[0]] = {}
+        }
+        this.settings[keys[0]][keys[1]] = value
+      }
+    },
+    
+    // 处理主题变化事件
+    onThemeChanged(actualTheme: string) {
+      this.$emit('theme-changed', actualTheme)
+    },
+    
+    // 处理通用设置的特殊操作
+    async handleGeneralAction(action: { type: string }) {
+      if (action.type === 'reset-settings') {
+        await this.resetSettings()
+      }
+    },
+    
+    // 处理游戏设置的特殊操作
+    handleGameAction(action: { type: string }) {
+      if (action.type === 'save-settings') {
+        // 触发自动保存
+        this.scheduleAutoSave()
+      }
     },
     
     // 自动保存相关方法
@@ -1195,248 +419,9 @@ export default {
       }
     },
     
-    onThemeChange() {
-      // 实时应用主题变化
-      this.applyTheme(this.settings.theme)
-    },
-    
-    async onAutoStartChange() {
-      // 实时更新开机自启设置
-      try {
-        if (window.electronAPI && window.electronAPI.setAutoStart) {
-          const result = await window.electronAPI.setAutoStart(this.settings.autoStart)
-          if (result.success) {
-            console.log('开机自启设置更新成功:', result.enabled)
-            this.showNotification(
-              '开机自启设置已更新', 
-              result.enabled ? '应用将在系统启动时自动运行' : '应用已取消开机自启'
-            )
-          } else {
-            console.error('开机自启设置更新失败:', result.error)
-            alert(`开机自启设置失败: ${result.error}`)
-            // 恢复开关状态
-            this.settings.autoStart = !this.settings.autoStart
-          }
-        } else {
-          console.warn('当前环境不支持开机自启功能')
-          alert('当前环境不支持开机自启功能')
-          // 恢复开关状态
-          this.settings.autoStart = !this.settings.autoStart
-        }
-      } catch (error) {
-        console.error('更新开机自启设置失败:', error)
-        alert('更新开机自启设置失败: ' + error.message)
-        // 恢复开关状态
-        this.settings.autoStart = !this.settings.autoStart
-      }
-    },
-    
-    async onMinimizeToTrayChange() {
-      // 实时更新最小化到托盘设置
-      try {
-        if (window.electronAPI && window.electronAPI.setMinimizeToTray) {
-          const result = await window.electronAPI.setMinimizeToTray(this.settings.minimizeToTray)
-          if (result.success) {
-            console.log('最小化到托盘设置更新成功:', result.enabled)
-            this.showNotification(
-              '关闭窗口行为设置已更新', 
-              result.enabled ? '关闭窗口时将最小化到系统托盘，普通最小化仍显示在任务栏' : '关闭窗口时将直接退出应用'
-            )
-          } else {
-            console.error('最小化到托盘设置更新失败:', result.error)
-            this.showToastNotification(`最小化到托盘设置失败: ${result.error}`)
-            // 恢复开关状态
-            this.settings.minimizeToTray = !this.settings.minimizeToTray
-          }
-        } else {
-          console.warn('当前环境不支持最小化到托盘功能')
-          this.showToastNotification('当前环境不支持最小化到托盘功能')
-          // 恢复开关状态
-          this.settings.minimizeToTray = !this.settings.minimizeToTray
-        }
-      } catch (error) {
-        console.error('更新最小化到托盘设置失败:', error)
-        this.showToastNotification('更新最小化到托盘设置失败', error.message)
-        // 恢复开关状态
-        this.settings.minimizeToTray = !this.settings.minimizeToTray
-      }
-    },
-    
-    async onDisguiseModeChange() {
-      // 伪装模式设置变化时的处理
-      console.log('伪装模式设置已更新:', this.settings.disguiseMode)
-      
-      // 清除伪装图片缓存
-      try {
-        const disguiseManager = await import('../utils/DisguiseManager.js')
-        disguiseManager.default.clearCache()
-        console.log('伪装图片缓存已清除')
-      } catch (error) {
-        console.error('清除伪装图片缓存失败:', error)
-      }
-      
-      // 触发自定义事件，通知所有 MediaCard 组件更新状态
-      try {
-        const event = new CustomEvent('disguise-mode-changed', {
-          detail: { enabled: this.settings.disguiseMode }
-        })
-        window.dispatchEvent(event)
-        console.log('已触发 disguise-mode-changed 事件')
-      } catch (error) {
-        console.error('触发伪装模式变化事件失败:', error)
-      }
-      
-      this.showToastNotification(
-        '伪装模式设置已更新', 
-        this.settings.disguiseMode ? '已开启伪装模式，图片封面和标签将随机替换' : '已关闭伪装模式，显示原始封面和标签'
-      )
-    },
-    
-    async onSafetyKeyChange() {
-      // 安全键设置变化时的处理
-      console.log('安全键设置已更新:', this.settings.safetyKeyEnabled)
-      
-      // 直接更新全局快捷键
-      if (window.electronAPI && window.electronAPI.setSafetyKey) {
-        try {
-          const result = await window.electronAPI.setSafetyKey(
-            this.settings.safetyKeyEnabled, 
-            this.settings.safetyKeyUrl
-          )
-          if (result.success) {
-            console.log('✅ 安全键全局快捷键已', this.settings.safetyKeyEnabled ? '启用' : '禁用')
-          } else {
-            console.warn('设置安全键失败:', result.error)
-            this.showToastNotification(
-              '安全键设置失败', 
-              result.error || '无法注册ESC全局快捷键，可能被其他应用占用'
-            )
-            // 恢复开关状态
-            this.settings.safetyKeyEnabled = !this.settings.safetyKeyEnabled
-            return
-          }
-        } catch (error) {
-          console.error('设置安全键失败:', error)
-          this.showToastNotification('安全键设置失败', error.message)
-          // 恢复开关状态
-          this.settings.safetyKeyEnabled = !this.settings.safetyKeyEnabled
-          return
-        }
-      }
-      
-      // 触发自定义事件，通知 App.vue 更新安全键设置
-      try {
-        const event = new CustomEvent('safety-key-changed', {
-          detail: { 
-            enabled: this.settings.safetyKeyEnabled,
-            url: this.settings.safetyKeyUrl
-          }
-        })
-        window.dispatchEvent(event)
-        console.log('已触发 safety-key-changed 事件')
-      } catch (error) {
-        console.error('触发安全键变化事件失败:', error)
-      }
-      
-      this.showToastNotification(
-        '安全键设置已更新', 
-        this.settings.safetyKeyEnabled ? '已开启安全键功能，按下ESC键将快速最小化应用和游戏窗口并打开安全网页' : '已关闭安全键功能'
-      )
-    },
-    async onScreenshotKeyChange() {
-      // 实时更新全局快捷键
-      try {
-        if (window.electronAPI && window.electronAPI.updateGlobalShortcut) {
-          const result = await window.electronAPI.updateGlobalShortcut(this.settings.screenshotKey)
-          if (result.success) {
-            console.log('全局快捷键更新成功:', result.key)
-          } else {
-            console.error('全局快捷键更新失败:', result.error)
-            alert(`快捷键设置失败: ${result.error}\n将使用应用内快捷键。`)
-          }
-        }
-      } catch (error) {
-        console.error('更新全局快捷键失败:', error)
-        alert('更新快捷键失败: ' + error.message)
-      }
-    },
-    
-    onScreenshotLocationChange() {
-      // 当选择默认目录时，清空自定义路径
-      if (this.settings.screenshotLocation === 'default') {
-        this.settings.screenshotsPath = ''
-        console.log('已切换到默认截图目录')
-        this.showToastNotification('截图位置已更新', '已切换到默认截图目录 (SaveData/Game/Screenshots)')
-      }
-    },
-    
-    onSaveDataLocationChange() {
-      // 当选择默认目录时，不清空自定义路径，保留用户之前的设置
-      if (this.settings.saveDataLocation === 'default') {
-        console.log('已切换到默认存档目录')
-        this.showToastNotification('存档位置已更新', '已切换到默认存档目录 (根目录/SaveData)')
-      }
-    },
-    
-    onAutoBackupEnabledChange() {
-      // 自动备份开关变化时的处理
-      console.log('自动备份开关已更新:', this.settings.autoBackupEnabled)
-      
-      // 如果关闭，将时间间隔设置为0
-      if (!this.settings.autoBackupEnabled) {
-        this.settings.autoBackupInterval = 0
-      } else {
-        // 如果开启，确保时间间隔至少为5分钟
-        if (this.settings.autoBackupInterval < 5) {
-          this.settings.autoBackupInterval = 5
-        }
-      }
-      
-      // 触发自定义事件，通知 App.vue 更新自动备份定时器
-      try {
-        const event = new CustomEvent('auto-backup-interval-changed', {
-          detail: { 
-            interval: this.settings.autoBackupEnabled ? this.settings.autoBackupInterval : 0
-          }
-        })
-        window.dispatchEvent(event)
-        console.log('已触发 auto-backup-interval-changed 事件')
-      } catch (error) {
-        console.error('触发自动备份时间间隔变化事件失败:', error)
-      }
-      
-      if (this.settings.autoBackupEnabled) {
-        this.showToastNotification('自动备份已开启', `自动备份时间间隔已设置为 ${this.settings.autoBackupInterval} 分钟`)
-      } else {
-        this.showToastNotification('自动备份已禁用', '已禁用自动备份功能')
-      }
-    },
-    
-    onAutoBackupIntervalChange() {
-      // 自动备份时间间隔变化时，通知 App.vue 更新定时器
-      console.log('自动备份时间间隔已更新:', this.settings.autoBackupInterval, '分钟')
-      
-      // 触发自定义事件，通知 App.vue 更新自动备份定时器
-      try {
-        const event = new CustomEvent('auto-backup-interval-changed', {
-          detail: { 
-            interval: this.settings.autoBackupEnabled ? this.settings.autoBackupInterval : 0
-          }
-        })
-        window.dispatchEvent(event)
-        console.log('已触发 auto-backup-interval-changed 事件')
-      } catch (error) {
-        console.error('触发自动备份时间间隔变化事件失败:', error)
-      }
-      
-      this.showToastNotification('自动备份设置已更新', `自动备份时间间隔已设置为 ${this.settings.autoBackupInterval} 分钟`)
-    },
-    
-    onMaxBackupCountChange() {
-      // 保留备份数量变化时的处理
-      console.log('保留备份数量已更新:', this.settings.maxBackupCount, '个')
-      this.showToastNotification('备份设置已更新', `将保留最近的 ${this.settings.maxBackupCount} 个备份`)
-    },
+    // onThemeChange, onAutoStartChange, onMinimizeToTrayChange, onDisguiseModeChange,
+    // onSafetyKeyChange, onScreenshotKeyChange, onScreenshotLocationChange, onSaveDataLocationChange,
+    // onAutoBackupEnabledChange, onAutoBackupIntervalChange, onMaxBackupCountChange 已移至 GeneralSettings 和 GameSettings 组件
     applyTheme(theme) {
       // 处理跟随系统主题
       let actualTheme = theme

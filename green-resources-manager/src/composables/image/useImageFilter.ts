@@ -22,6 +22,8 @@ export function useImageFilter(albums: Ref<Album[]>) {
   const excludedTags = ref<string[]>([])
   const selectedAuthors = ref<string[]>([])
   const excludedAuthors = ref<string[]>([])
+  const selectedOthers = ref<string[]>([])
+  const excludedOthers = ref<string[]>([])
 
   /**
    * 提取所有标签（带统计）
@@ -60,6 +62,30 @@ export function useImageFilter(albums: Ref<Album[]>) {
   })
 
   /**
+   * 提取其他筛选选项（带统计）
+   */
+  const allOthers = computed<FilterItem[]>(() => {
+    let missingResourcesCount = 0
+    
+    albums.value.forEach(album => {
+      // 统计丢失的资源
+      if (album.fileExists === false) {
+        missingResourcesCount++
+      }
+    })
+    
+    const result: FilterItem[] = []
+    if (missingResourcesCount > 0) {
+      result.push({
+        name: '丢失的资源',
+        count: missingResourcesCount
+      })
+    }
+    
+    return result
+  })
+
+  /**
    * 筛选后的专辑列表
    */
   const filteredAlbums = computed<Album[]>(() => {
@@ -86,7 +112,25 @@ export function useImageFilter(albums: Ref<Album[]>) {
       const notExcludedAuthor = excludedAuthors.value.length === 0 || 
         !excludedAuthors.value.includes(album.author)
       
-      return matchesSearch && matchesTag && notExcludedTag && matchesAuthor && notExcludedAuthor
+      // 其他筛选
+      let matchesOther = true
+      if (selectedOthers.value.length > 0) {
+        matchesOther = selectedOthers.value.some(other => {
+          if (other === '丢失的资源') {
+            return album.fileExists === false
+          }
+          return false
+        })
+      }
+      const notExcludedOther = excludedOthers.value.length === 0 || 
+        !excludedOthers.value.some(other => {
+          if (other === '丢失的资源') {
+            return album.fileExists === false
+          }
+          return false
+        })
+      
+      return matchesSearch && matchesTag && notExcludedTag && matchesAuthor && notExcludedAuthor && matchesOther && notExcludedOther
     })
     
     // 排序
@@ -201,6 +245,48 @@ export function useImageFilter(albums: Ref<Album[]>) {
   }
 
   /**
+   * 其他筛选方法
+   */
+  function filterByOther(otherName: string) {
+    if (selectedOthers.value.includes(otherName)) {
+      // 如果当前是选中状态，则取消选择
+      selectedOthers.value = selectedOthers.value.filter(other => other !== otherName)
+    } else if (excludedOthers.value.includes(otherName)) {
+      // 如果当前是排除状态，则切换为选中状态
+      excludedOthers.value = excludedOthers.value.filter(other => other !== otherName)
+      selectedOthers.value = [...selectedOthers.value, otherName]
+    } else {
+      // 否则直接设置为选中状态
+      selectedOthers.value = [...selectedOthers.value, otherName]
+    }
+  }
+
+  /**
+   * 排除其他筛选
+   */
+  function excludeByOther(otherName: string) {
+    if (excludedOthers.value.includes(otherName)) {
+      // 如果已经是排除状态，则取消排除
+      excludedOthers.value = excludedOthers.value.filter(other => other !== otherName)
+    } else if (selectedOthers.value.includes(otherName)) {
+      // 如果当前是选中状态，则切换为排除状态
+      selectedOthers.value = selectedOthers.value.filter(other => other !== otherName)
+      excludedOthers.value = [...excludedOthers.value, otherName]
+    } else {
+      // 否则直接设置为排除状态
+      excludedOthers.value = [...excludedOthers.value, otherName]
+    }
+  }
+
+  /**
+   * 清除其他筛选
+   */
+  function clearOtherFilter() {
+    selectedOthers.value = []
+    excludedOthers.value = []
+  }
+
+  /**
    * 处理来自 App.vue 的筛选器事件
    * @param event - 事件类型：'filter-select' | 'filter-exclude' | 'filter-clear'
    * @param data - 事件数据
@@ -216,6 +302,8 @@ export function useImageFilter(albums: Ref<Album[]>) {
             filterByTag(data.itemName)
           } else if (data.filterKey === 'authors' && data.itemName) {
             filterByAuthor(data.itemName)
+          } else if (data.filterKey === 'others' && data.itemName) {
+            filterByOther(data.itemName)
           }
         }
         break
@@ -225,6 +313,8 @@ export function useImageFilter(albums: Ref<Album[]>) {
             excludeByTag(data.itemName)
           } else if (data.filterKey === 'authors' && data.itemName) {
             excludeByAuthor(data.itemName)
+          } else if (data.filterKey === 'others' && data.itemName) {
+            excludeByOther(data.itemName)
           }
         }
         break
@@ -233,6 +323,8 @@ export function useImageFilter(albums: Ref<Album[]>) {
           clearTagFilter()
         } else if (data === 'authors') {
           clearAuthorFilter()
+        } else if (data === 'others') {
+          clearOtherFilter()
         }
         break
     }
@@ -257,6 +349,13 @@ export function useImageFilter(albums: Ref<Album[]>) {
           items: allAuthors.value,
           selected: selectedAuthors.value,
           excluded: excludedAuthors.value
+        },
+        {
+          key: 'others',
+          title: '其他筛选',
+          items: allOthers.value,
+          selected: selectedOthers.value,
+          excluded: excludedOthers.value
         }
       ]
     }
@@ -270,10 +369,13 @@ export function useImageFilter(albums: Ref<Album[]>) {
     excludedTags,
     selectedAuthors,
     excludedAuthors,
+    selectedOthers,
+    excludedOthers,
 
     // 计算属性
     allTags,
     allAuthors,
+    allOthers,
     filteredAlbums,
 
     // 方法
@@ -283,6 +385,9 @@ export function useImageFilter(albums: Ref<Album[]>) {
     filterByAuthor,
     excludeByAuthor,
     clearAuthorFilter,
+    filterByOther,
+    excludeByOther,
+    clearOtherFilter,
     handleFilterEvent,
     getFilterData
   }

@@ -93,7 +93,8 @@ function readFileAsDataUrl(filePath) {
     const ext = path.extname(filePath).toLowerCase()
     const mime = ext === '.png' ? 'image/png' : 
                  ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 
-                 ext === '.gif' ? 'image/gif' : 
+                 ext === '.gif' ? 'image/gif' :
+                 ext === '.pdf' ? 'application/pdf' :
                  'application/octet-stream'
     
     const buf = fs.readFileSync(filePath)

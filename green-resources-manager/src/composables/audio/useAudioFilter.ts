@@ -41,6 +41,8 @@ export function useAudioFilter(options: AudioFilterOptions) {
   const excludedTags = ref<string[]>([])
   const selectedArtists = ref<string[]>([])
   const excludedArtists = ref<string[]>([])
+  const selectedOthers = ref<string[]>([])
+  const excludedOthers = ref<string[]>([])
 
   /**
    * 提取所有标签（带统计）
@@ -79,6 +81,30 @@ export function useAudioFilter(options: AudioFilterOptions) {
   })
 
   /**
+   * 提取其他筛选选项（带统计）
+   */
+  const allOthers = computed<FilterItem[]>(() => {
+    let missingResourcesCount = 0
+    
+    audios.value.forEach(audio => {
+      // 统计丢失的资源
+      if (audio.fileExists === false) {
+        missingResourcesCount++
+      }
+    })
+    
+    const result: FilterItem[] = []
+    if (missingResourcesCount > 0) {
+      result.push({
+        name: '丢失的资源',
+        count: missingResourcesCount
+      })
+    }
+    
+    return result
+  })
+
+  /**
    * 筛选后的音频列表
    */
   const filteredAudios = computed<Audio[]>(() => {
@@ -109,6 +135,28 @@ export function useAudioFilter(options: AudioFilterOptions) {
     if (excludedArtists.value.length > 0) {
       filtered = filtered.filter(audio => 
         !excludedArtists.value.includes(audio.artist || '')
+      )
+    }
+    
+    // 其他筛选
+    if (selectedOthers.value.length > 0) {
+      filtered = filtered.filter(audio => 
+        selectedOthers.value.some(other => {
+          if (other === '丢失的资源') {
+            return audio.fileExists === false
+          }
+          return false
+        })
+      )
+    }
+    if (excludedOthers.value.length > 0) {
+      filtered = filtered.filter(audio => 
+        !excludedOthers.value.some(other => {
+          if (other === '丢失的资源') {
+            return audio.fileExists === false
+          }
+          return false
+        })
       )
     }
     
@@ -237,6 +285,51 @@ export function useAudioFilter(options: AudioFilterOptions) {
   }
 
   /**
+   * 其他筛选方法
+   */
+  function filterByOther(otherName: string) {
+    if (selectedOthers.value.includes(otherName)) {
+      // 如果当前是选中状态，则取消选择
+      selectedOthers.value = selectedOthers.value.filter(other => other !== otherName)
+    } else if (excludedOthers.value.includes(otherName)) {
+      // 如果当前是排除状态，则切换为选中状态
+      excludedOthers.value = excludedOthers.value.filter(other => other !== otherName)
+      selectedOthers.value = [...selectedOthers.value, otherName]
+    } else {
+      // 否则直接设置为选中状态
+      selectedOthers.value = [...selectedOthers.value, otherName]
+    }
+    updateFilterData()
+  }
+
+  /**
+   * 排除其他筛选
+   */
+  function excludeByOther(otherName: string) {
+    if (excludedOthers.value.includes(otherName)) {
+      // 如果已经是排除状态，则取消排除
+      excludedOthers.value = excludedOthers.value.filter(other => other !== otherName)
+    } else if (selectedOthers.value.includes(otherName)) {
+      // 如果当前是选中状态，则切换为排除状态
+      selectedOthers.value = selectedOthers.value.filter(other => other !== otherName)
+      excludedOthers.value = [...excludedOthers.value, otherName]
+    } else {
+      // 否则直接设置为排除状态
+      excludedOthers.value = [...excludedOthers.value, otherName]
+    }
+    updateFilterData()
+  }
+
+  /**
+   * 清除其他筛选
+   */
+  function clearOtherFilter() {
+    selectedOthers.value = []
+    excludedOthers.value = []
+    updateFilterData()
+  }
+
+  /**
    * 处理来自 App.vue 的筛选器事件
    * @param event - 事件类型：'filter-select' | 'filter-exclude' | 'filter-clear'
    * @param data - 事件数据
@@ -252,6 +345,8 @@ export function useAudioFilter(options: AudioFilterOptions) {
             filterByTag(data.itemName)
           } else if (data.filterKey === 'artists' && data.itemName) {
             filterByArtist(data.itemName)
+          } else if (data.filterKey === 'others' && data.itemName) {
+            filterByOther(data.itemName)
           }
         }
         break
@@ -261,6 +356,8 @@ export function useAudioFilter(options: AudioFilterOptions) {
             excludeByTag(data.itemName)
           } else if (data.filterKey === 'artists' && data.itemName) {
             excludeByArtist(data.itemName)
+          } else if (data.filterKey === 'others' && data.itemName) {
+            excludeByOther(data.itemName)
           }
         }
         break
@@ -269,6 +366,8 @@ export function useAudioFilter(options: AudioFilterOptions) {
           clearTagFilter()
         } else if (data === 'artists') {
           clearArtistFilter()
+        } else if (data === 'others') {
+          clearOtherFilter()
         }
         break
     }
@@ -294,6 +393,13 @@ export function useAudioFilter(options: AudioFilterOptions) {
             items: allArtists.value,
             selected: selectedArtists.value,
             excluded: excludedArtists.value
+          },
+          {
+            key: 'others',
+            title: '其他筛选',
+            items: allOthers.value,
+            selected: selectedOthers.value,
+            excluded: excludedOthers.value
           }
         ]
       })
@@ -323,10 +429,13 @@ export function useAudioFilter(options: AudioFilterOptions) {
     excludedTags,
     selectedArtists,
     excludedArtists,
+    selectedOthers,
+    excludedOthers,
 
     // 计算属性
     allTags,
     allArtists,
+    allOthers,
     filteredAudios,
 
     // 方法
@@ -336,6 +445,9 @@ export function useAudioFilter(options: AudioFilterOptions) {
     filterByArtist,
     excludeByArtist,
     clearArtistFilter,
+    filterByOther,
+    excludeByOther,
+    clearOtherFilter,
     handleFilterEvent,
     updateFilterData,
     setFilterDataUpdatedCallback

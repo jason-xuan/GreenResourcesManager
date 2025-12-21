@@ -2023,6 +2023,8 @@ export default {
             this.filterByActor(data.itemName)
           } else if (data.filterKey === 'series') {
             this.filterBySeries(data.itemName)
+          } else if (data.filterKey === 'others') {
+            this.filterByOther(data.itemName)
           }
           break
         case 'filter-exclude':
@@ -2032,6 +2034,8 @@ export default {
             this.excludeByActor(data.itemName)
           } else if (data.filterKey === 'series') {
             this.excludeBySeries(data.itemName)
+          } else if (data.filterKey === 'others') {
+            this.excludeByOther(data.itemName)
           }
           break
         case 'filter-clear':
@@ -2041,6 +2045,8 @@ export default {
             this.clearActorFilter()
           } else if (data === 'series') {
             this.clearSeriesFilter()
+          } else if (data === 'others') {
+            this.clearOtherFilter()
           }
           break
       }

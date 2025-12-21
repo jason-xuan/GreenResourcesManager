@@ -73,24 +73,34 @@
           </div>
 
           <div class="reader-content" ref="readerContent" :style="readerContentStyle">
-            <!-- EPUB 章节导航（仅 EPUB 文件显示） -->
-            <div v-if="currentReadingNovel?.fileType === 'epub' && epubChapters && epubChapters.length > 0" class="epub-chapter-nav">
-              <select v-model="currentChapterIndex" @change="loadEpubChapter" class="chapter-select">
-                <option v-for="(chapter, index) in epubChapters" :key="chapter.id" :value="index">
-                  {{ chapter.label }}
-                </option>
-              </select>
-            </div>
-            
-            <div v-if="novelContent" class="novel-text" :style="novelTextStyle" v-html="formattedContent"></div>
-            <div v-else-if="loadingContent" class="loading-content">
-              <div class="loading-spinner"></div>
-              <p>正在加载小说内容...</p>
-            </div>
-            <div v-else class="no-content">
-              <p>无法加载小说内容</p>
-              <button class="btn-retry" @click="loadNovelContent">重试</button>
-            </div>
+            <!-- PDF 文件使用 PDF 阅读器 -->
+            <PdfReader
+              v-if="currentReadingNovel?.fileType === 'pdf'"
+              :file-path="currentReadingNovel.filePath"
+              :initial-page="currentReadingNovel.currentPage || 1"
+              @page-changed="handlePdfPageChanged"
+            />
+            <!-- EPUB 和 TXT 文件使用文本阅读器 -->
+            <template v-else>
+              <!-- EPUB 章节导航（仅 EPUB 文件显示） -->
+              <div v-if="currentReadingNovel?.fileType === 'epub' && epubChapters && epubChapters.length > 0" class="epub-chapter-nav">
+                <select v-model="currentChapterIndex" @change="loadEpubChapter" class="chapter-select">
+                  <option v-for="(chapter, index) in epubChapters" :key="chapter.id" :value="index">
+                    {{ chapter.label }}
+                  </option>
+                </select>
+              </div>
+              
+              <div v-if="novelContent" class="novel-text" :style="novelTextStyle" v-html="formattedContent"></div>
+              <div v-else-if="loadingContent" class="loading-content">
+                <div class="loading-spinner"></div>
+                <p>正在加载小说内容...</p>
+              </div>
+              <div v-else class="no-content">
+                <p>无法加载小说内容</p>
+                <button class="btn-retry" @click="loadNovelContent">重试</button>
+              </div>
+            </template>
           </div>
 
           <div class="reader-footer">
@@ -107,8 +117,8 @@
                   <span class="btn-icon">→</span>
                 </button>
               </template>
-              <!-- TXT 文件显示分页导航 -->
-              <template v-else>
+              <!-- TXT 文件显示分页导航（PDF 文件在 PdfReader 组件内部处理导航） -->
+              <template v-else-if="currentReadingNovel?.fileType !== 'pdf'">
               <button class="btn-prev" @click="previousPage" :disabled="!canGoPrevious">
                 <span class="btn-icon">←</span>
                 上一页
@@ -173,7 +183,7 @@
             placeholder="选择小说文本文件"
             @browse="browseForNovelFile"
           />
-          <div class="file-hint">支持 .txt, .epub, .mobi 等格式</div>
+          <div class="file-hint">支持 .txt, .epub, .mobi, .pdf 等格式</div>
           <FormField
             label="封面图片 (可选)"
             type="file"
@@ -281,6 +291,7 @@ import FormField from '../components/FormField.vue'
 import MediaCard from '../components/MediaCard.vue'
 import DetailPanel from '../components/DetailPanel.vue'
 import PathUpdateDialog from '../components/PathUpdateDialog.vue'
+import PdfReader from '../components/PdfReader.vue'
 import saveManager from '../utils/SaveManager.ts'
 import { useNovelManagement } from '../composables/novel/useNovelManagement'
 import { useNovelFilter } from '../composables/novel/useNovelFilter'
@@ -297,7 +308,8 @@ export default {
     FormField,
     MediaCard,
     DetailPanel,
-    PathUpdateDialog
+    PathUpdateDialog,
+    PdfReader
   },
   emits: ['filter-data-updated'],
   setup() {
@@ -618,7 +630,7 @@ export default {
     showFileInput(type) {
       const input = document.createElement('input')
       input.type = 'file'
-      input.accept = type === 'novel' ? '.txt,.epub,.mobi' : 'image/*'
+      input.accept = type === 'novel' ? '.txt,.epub,.mobi,.pdf' : 'image/*'
       input.onchange = (e) => {
         const file = (e.target as HTMLInputElement).files[0]
         if (file) {
@@ -651,11 +663,12 @@ export default {
     /**
      * 检测文件类型
      */
-    getFileType(filePath: string): 'txt' | 'epub' | 'mobi' {
+    getFileType(filePath: string): 'txt' | 'epub' | 'mobi' | 'pdf' {
       if (!filePath) return 'txt'
       const ext = filePath.toLowerCase().substring(filePath.lastIndexOf('.'))
       if (ext === '.epub') return 'epub'
       if (ext === '.mobi') return 'mobi'
+      if (ext === '.pdf') return 'pdf'
       return 'txt'
     },
     async analyzeNovelFile(filePath) {
@@ -1173,9 +1186,27 @@ export default {
         this.loadingContent = true
         console.log('正在加载小说内容:', this.currentReadingNovel.filePath)
         
-        const fileType = this.currentReadingNovel.fileType || this.getFileType(this.currentReadingNovel.filePath)
+        // 检测文件类型（根据文件扩展名，而不是已保存的 fileType）
+        const detectedType = this.getFileType(this.currentReadingNovel.filePath)
         
-        if (fileType === 'epub') {
+        // 如果检测到的类型与保存的类型不一致，更新文件类型
+        if (this.currentReadingNovel.fileType !== detectedType) {
+          console.log(`文件类型不匹配，更新: ${this.currentReadingNovel.fileType} -> ${detectedType}`)
+          this.currentReadingNovel.fileType = detectedType
+          // 保存文件类型到数据库
+          await this.updateNovelInManager(this.currentReadingNovel.id, {
+            fileType: detectedType
+          })
+        }
+        
+        const fileType = detectedType
+        console.log('使用的文件类型:', fileType, '文件路径:', this.currentReadingNovel.filePath)
+        
+        if (fileType === 'pdf') {
+          // PDF 文件由 PdfReader 组件自己处理，这里只需要标记加载完成
+          console.log('PDF 文件，交由 PdfReader 组件处理')
+          this.loadingContent = false
+        } else if (fileType === 'epub') {
           // 加载 EPUB 文件
           try {
             // 确保 epubChapters 已初始化
@@ -1342,6 +1373,24 @@ export default {
         readProgress: progress
       })
     },
+    /**
+     * 处理 PDF 页面变化
+     */
+    async handlePdfPageChanged(pageNum: number) {
+      if (!this.currentReadingNovel) return
+      
+      // 更新当前页面（用于保存阅读进度）
+      this.currentReadingNovel.currentPage = pageNum
+      
+      // 保存进度
+      try {
+        await this.updateNovelInManager(this.currentReadingNovel.id, {
+          currentPage: pageNum
+        })
+      } catch (error) {
+        console.error('保存 PDF 阅读进度失败:', error)
+      }
+    },
     async getGlobalSettings() {
       try {
         // 从 SaveManager 获取全局设置
@@ -1429,14 +1478,14 @@ export default {
         }
         
         // 过滤出支持的小说文件
-        const supportedExtensions = ['.txt', '.epub', '.mobi']
+        const supportedExtensions = ['.txt', '.epub', '.mobi', '.pdf']
         const novelFiles = files.filter(file => {
           const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
           return supportedExtensions.includes(ext)
         })
         
         if (novelFiles.length === 0) {
-          notify.toast('error', '文件类型不支持', '请拖拽 .txt、.epub 或 .mobi 文件')
+          notify.toast('error', '文件类型不支持', '请拖拽 .txt、.epub、.mobi 或 .pdf 文件')
           return
         }
         

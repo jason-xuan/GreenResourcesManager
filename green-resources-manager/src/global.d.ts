@@ -25,10 +25,13 @@ declare global {
       checkWinRARInstalled: () => Promise<{ success: boolean; installed: boolean; path?: string | null; executable?: string | null; error?: string }>
       
       // 解压压缩包文件
-      extractArchive: (archivePath: string, outputDir: string) => Promise<{ success: boolean; outputDir?: string; message?: string; error?: string }>
+      extractArchive: (archivePath: string, outputDir: string, password?: string) => Promise<{ success: boolean; outputDir?: string; message?: string; error?: string; requiresPassword?: boolean }>
+      testArchivePassword: (archivePath: string, password: string) => Promise<{ success: boolean; passwordCorrect?: boolean; message?: string; error?: string; exitCode?: number }>
       
       // 压缩文件或文件夹
       compressFile: (sourcePath: string, archivePath: string) => Promise<{ success: boolean; archivePath?: string; message?: string; error?: string }>
+      readArchivePasswords: () => Promise<{ success: boolean; passwords?: string[]; filePath?: string; fileCreated?: boolean; error?: string }>
+      writeArchivePasswords: (passwords: string[] | string) => Promise<{ success: boolean; filePath?: string; error?: string }>
       
       // 窗口控制
       minimizeWindow: () => Promise<any>

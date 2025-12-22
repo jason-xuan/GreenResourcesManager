@@ -62,10 +62,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkWinRARInstalled: () => ipcRenderer.invoke('check-winrar-installed'),
   
   // 解压压缩包文件
-  extractArchive: (archivePath, outputDir) => ipcRenderer.invoke('extract-archive', archivePath, outputDir),
+  extractArchive: (archivePath, outputDir, password) => ipcRenderer.invoke('extract-archive', archivePath, outputDir, password),
+  
+  // 测试压缩包密码（不实际解压，只验证密码）
+  testArchivePassword: (archivePath, password) => ipcRenderer.invoke('test-archive-password', archivePath, password),
   
   // 压缩文件或文件夹
   compressFile: (sourcePath, archivePath) => ipcRenderer.invoke('compress-file', sourcePath, archivePath),
+  
+  // 读取常用密码列表
+  readArchivePasswords: () => ipcRenderer.invoke('read-archive-passwords'),
+  
+  // 写入密码列表到文件
+  writeArchivePasswords: (passwords) => ipcRenderer.invoke('write-archive-passwords', passwords),
   
   // 通知
   showNotification: (title, body) => ipcRenderer.invoke('show-notification', title, body),

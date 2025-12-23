@@ -22,12 +22,21 @@
                 :page-size="paginationConfig.pageSize" :total-items="paginationConfig.totalItems"
                 :item-type="paginationConfig.itemType" @page-change="handlePageChange" />
 
+            <!-- 内容区域包装器，确保空状态始终在内容区域内 -->
+            <div class="content-wrapper">
             <slot></slot>
 
             <!-- 空状态组件 -->
-            <EmptyState v-if="currentEmptyState" :icon="currentEmptyState.icon" :title="currentEmptyState.title"
-                :description="currentEmptyState.description" :show-button="currentEmptyState.showButton"
-                :button-text="currentEmptyState.buttonText" @action="handleEmptyStateAction" />
+                <EmptyState 
+                    v-if="currentEmptyState" 
+                    :icon="currentEmptyState.icon" 
+                    :title="currentEmptyState.title"
+                    :description="currentEmptyState.description" 
+                    :show-button="currentEmptyState.showButton"
+                    :button-text="currentEmptyState.buttonText" 
+                    @action="handleEmptyStateAction" 
+                />
+            </div>
         </div>
 
         <!-- 右键菜单 -->
@@ -232,13 +241,43 @@ export default {
     flex-direction: column;
     overflow: hidden;
     position: relative;
+    min-height: 0; /* 确保 flex 子元素可以缩小 */
 }
 
-.base-view-content .empty-state {
+/* 内容区域包装器：占据剩余空间，使用 flexbox 布局 */
+.content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    min-height: 0; /* 确保可以缩小 */
+    overflow: hidden;
+}
+
+/* slot 内容（第一个子元素，通常是 game-content、audio-content 等）正常显示 */
+.content-wrapper > *:first-child {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    position: relative;
+}
+
+/* 空状态：使用绝对定位覆盖在内容区域上，始终居中显示 */
+.content-wrapper .empty-state {
     position: absolute;
-    top: 30%;
-    left: 50%;
-    transform: translate(-50%, -60%);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     z-index: 10;
+    pointer-events: none; /* 允许点击穿透到下层内容 */
+}
+
+/* 空状态内容可以接收点击事件 */
+.content-wrapper .empty-state > * {
+    pointer-events: auto;
 }
 </style>

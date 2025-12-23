@@ -1,7 +1,7 @@
 <template>
         <BaseView
           ref="baseView"
-          :items="videos"
+          :items="allItemsForEmptyState"
           :filtered-items="filteredVideos"
           :empty-state-config="videoEmptyStateConfig"
           :toolbar-config="videoToolbarConfig"
@@ -383,6 +383,14 @@ export default {
     }
   },
   computed: {
+    // 合并视频和文件夹，用于空状态判断
+    // allItems 从 useVideoFilter composable 中获取（通过 setup 暴露），已经合并了 videos 和 folders
+    // 这样 BaseView 在判断空状态时会同时考虑视频和文件夹
+    allItemsForEmptyState() {
+      // 使用 composable 返回的 allItems（从 setup 中通过 ...videoFilterComposable 暴露）
+      // allItems 已经合并了 videos 和 folders，所以空状态判断会正确工作
+      return (this as any).allItems || []
+    },
     // allItems, filteredVideos 已移至 useVideoFilter composable
     // 使用 composable 的 filteredVideos
     filteredVideos() {

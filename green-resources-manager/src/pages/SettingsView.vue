@@ -87,6 +87,13 @@
             :current-version="currentVersion"
             @update:settings="handleSettingUpdate"
           />
+
+          <!-- 解压/压缩设置 -->
+          <ArchiveSettings 
+            v-if="currentCategory === 'archive'"
+            :settings="settings"
+            @update:settings="handleSettingUpdate"
+          />
         </div>
         
       </div>
@@ -105,6 +112,7 @@ import AudioSettings from '../components/settings/AudioSettings.vue'
 import NovelSettings from '../components/settings/NovelSettings.vue'
 import WebsiteSettings from '../components/settings/WebsiteSettings.vue'
 import UpdateSettings from '../components/settings/UpdateSettings.vue'
+import ArchiveSettings from '../components/settings/ArchiveSettings.vue'
 
 export default {
   name: 'SettingsView',
@@ -116,7 +124,8 @@ export default {
     AudioSettings,
     NovelSettings,
     WebsiteSettings,
-    UpdateSettings
+    UpdateSettings,
+    ArchiveSettings
   },
   data() {
     return {
@@ -129,6 +138,7 @@ export default {
         { id: 'audios', name: '音频', icon: '🎵', description: '音频播放和管理设置' },
         { id: 'novels', name: '小说', icon: '📚', description: '小说阅读和管理设置' },
         { id: 'websites', name: '网站', icon: '🌐', description: '网站收藏和管理设置' },
+        { id: 'archive', name: '解压/压缩', icon: '📦', description: '压缩包解压和压缩相关设置' },
         { id: 'updates', name: '更新', icon: '🔄', description: '应用更新和版本管理' }
       ],
       settings: {
@@ -138,6 +148,8 @@ export default {
         disguiseMode: false,
         safetyKeyEnabled: false,
         safetyKeyUrl: 'https://www.bilibili.com/video/BV1jR4y1M78W/?p=17&share_source=copy_web&vd_source=7de8c277f16e8e03b48a5328dddfe2ce&t=466',
+        // 背景图片设置
+        backgroundImagePath: '',
         // 存档设置
         saveDataLocation: 'default',
         saveDataPath: '',
@@ -483,11 +495,25 @@ export default {
             },
             // 更新设置
             autoCheckUpdates: true,
-            autoDownloadUpdates: false
+            autoDownloadUpdates: false,
+            // 背景图片设置
+            backgroundImagePath: ''
           }
           
           // 应用主题
           this.applyTheme(this.settings.theme)
+          
+          // 清除背景图片
+          if (this.settings.backgroundImagePath) {
+            try {
+              const event = new CustomEvent('background-image-changed', {
+                detail: { path: '' }
+              })
+              window.dispatchEvent(event)
+            } catch (error) {
+              console.error('触发背景图片清除事件失败:', error)
+            }
+          }
           
           // 使用NotificationService显示重置成功通知
 

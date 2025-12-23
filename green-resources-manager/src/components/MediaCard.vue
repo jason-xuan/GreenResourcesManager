@@ -687,15 +687,42 @@ export default {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+// 卡片背景透明度变量
+$card-bg-opacity: 0.3;
+$card-bg-light: rgba(255, 255, 255, $card-bg-opacity);
+$card-bg-dark: rgba(30, 30, 30, $card-bg-opacity);
+
+// 毛玻璃效果变量
+$backdrop-blur: 5px;
+$backdrop-blur-small: 4px;
+
+// 其他透明度变量
+$overlay-opacity: 0.5;
+$badge-bg-opacity: 0.8;
+$indicator-bg-opacity: 0.9;
+$shadow-opacity: 0.2;
+
+// 颜色变量
+$error-color: rgba(239, 68, 68, $indicator-bg-opacity);
+$info-color: rgba(59, 130, 246, $indicator-bg-opacity);
+$running-color-light: #059669;
+$running-color-dark: #10b981;
+
 .media-card {
-  background: var(--bg-secondary);
+  background-color: $card-bg-light;
+  backdrop-filter: blur($backdrop-blur);
+  -webkit-backdrop-filter: blur($backdrop-blur);
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s ease;
   border: 1px solid var(--border-color);
   position: relative;
+}
+
+[data-theme="dark"] .media-card {
+  background-color: $card-bg-dark;
 }
 
 .media-card:hover {
@@ -722,7 +749,7 @@ export default {
   position: absolute;
   bottom: 8px;
   right: 8px;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, $badge-bg-opacity);
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
@@ -730,7 +757,7 @@ export default {
   font-weight: 500;
   font-family: 'Courier New', monospace;
   z-index: 10;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur($backdrop-blur-small);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -744,7 +771,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, $overlay-opacity);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -901,7 +928,7 @@ export default {
 
 /* 游戏运行状态指示器 */
 .running-status {
-  color: #059669 !important;
+  color: $running-color-light !important;
   font-weight: 600;
 }
 
@@ -918,7 +945,7 @@ export default {
 
 /* 文件错误图标样式 */
 .file-error-icon {
-  background: rgba(239, 68, 68, 0.9);
+  background: $error-color;
   color: white;
   border-radius: 50%;
   width: 24px;
@@ -928,14 +955,14 @@ export default {
   justify-content: center;
   font-size: 12px;
   font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, $shadow-opacity);
   animation: pulse 2s infinite;
   flex-shrink: 0;
 }
 
 /* 压缩包图标样式 */
 .archive-icon {
-  background: rgba(59, 130, 246, 0.9);
+  background: $info-color;
   color: white;
   border-radius: 50%;
   width: 24px;
@@ -945,7 +972,7 @@ export default {
   justify-content: center;
   font-size: 12px;
   font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, $shadow-opacity);
   flex-shrink: 0;
 }
 
@@ -953,7 +980,7 @@ export default {
   position: absolute;
   bottom: 8px;
   left: 8px;
-  background: rgba(59, 130, 246, 0.9);
+  background: $info-color;
   color: white;
   border-radius: 6px;
   padding: 4px 8px;
@@ -963,9 +990,9 @@ export default {
   font-size: 14px;
   font-weight: bold;
   z-index: 10;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur($backdrop-blur-small);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, $shadow-opacity);
 }
 
 @keyframes pulse {
@@ -981,7 +1008,7 @@ export default {
 }
 
 [data-theme="dark"] .running-status {
-  color: #10b981 !important;
+  color: $running-color-dark !important;
 }
 
 .running-indicator {

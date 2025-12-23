@@ -38,6 +38,20 @@ declare global {
       maximizeWindow: () => Promise<any>
       closeWindow: () => Promise<any>
       
+      // 窗口内容控制
+      reloadWindow: () => Promise<void>
+      forceReloadWindow: () => Promise<void>
+      toggleDevTools: () => Promise<void>
+      setFullscreen: (fullscreen: boolean) => Promise<void>
+      toggleFullscreen: () => Promise<void>
+      
+      // 缩放控制
+      setZoomLevel: (zoomLevel: number) => Promise<void>
+      getZoomLevel: () => Promise<number>
+      zoomIn: () => Promise<void>
+      zoomOut: () => Promise<void>
+      resetZoom: () => Promise<void>
+      
       // 文件操作
       selectExecutableFile: () => Promise<string | null>
       selectImageFile: (defaultPath?: string) => Promise<string | null>

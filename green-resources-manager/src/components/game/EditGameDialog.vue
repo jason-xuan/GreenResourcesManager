@@ -1,6 +1,6 @@
 <template>
-  <div v-if="visible" class="modal-overlay" @click="handleClose">
-    <div class="modal-content" @click.stop>
+  <div v-if="visible" class="modal-overlay" @mousedown="handleOverlayMouseDown">
+    <div class="modal-content" @mousedown.stop>
       <div class="modal-header">
         <h3>编辑游戏</h3>
         <button class="modal-close" @click="handleClose">✕</button>
@@ -159,6 +159,18 @@ export default {
     handleClose() {
       this.$emit('close')
     },
+    /**
+     * 处理 overlay 区域的 mousedown 事件
+     * 使用 mousedown 而不是 click，避免在复制文字时（鼠标在外部区域释放）误关闭
+     * 这样只有在外部区域按下鼠标时才会关闭，符合常见软件的交互习惯
+     */
+    handleOverlayMouseDown(event) {
+      // 只在 overlay 背景上按下鼠标时才关闭（不是 content 区域）
+      // event.target 是 overlay 本身，而不是 content
+      if (event.target === event.currentTarget) {
+        this.handleClose()
+      }
+    },
     handleAddTag() {
       const tag = this.tagInput.trim()
       if (tag && !this.formData.tags.includes(tag)) {
@@ -204,7 +216,6 @@ export default {
 
       let cleanName = nameWithoutExt
         .replace(/\.exe$/i, '')
-        .replace(/\.app$/i, '')
         .replace(/^game[-_\s]*/i, '')
         .replace(/[-_\s]+/g, ' ')
         .trim()

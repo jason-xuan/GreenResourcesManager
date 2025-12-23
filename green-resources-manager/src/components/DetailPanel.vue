@@ -1,6 +1,6 @@
 <template>
-  <div v-if="visible" class="detail-overlay" @click="handleOverlayClick">
-    <div class="detail-content" @click.stop>
+  <div v-if="visible" class="detail-overlay" @mousedown="handleOverlayMouseDown">
+    <div class="detail-content" @mousedown.stop>
       <div class="detail-header">
         <button class="detail-close" @click="close">✕</button>
       </div>
@@ -229,8 +229,17 @@ export default {
     close() {
       this.$emit('close')
     },
-    handleOverlayClick() {
-      this.close()
+    /**
+     * 处理 overlay 区域的 mousedown 事件
+     * 使用 mousedown 而不是 click，避免在复制文字时（鼠标在外部区域释放）误关闭
+     * 这样只有在外部区域按下鼠标时才会关闭，符合常见软件的交互习惯
+     */
+    handleOverlayMouseDown(event) {
+      // 只在 overlay 背景上按下鼠标时才关闭（不是 content 区域）
+      // event.target 是 overlay 本身，而不是 content
+      if (event.target === event.currentTarget) {
+        this.close()
+      }
     },
     handleAction(actionKey) {
       console.log('📋 [DetailPanel] handleAction 被调用:', {

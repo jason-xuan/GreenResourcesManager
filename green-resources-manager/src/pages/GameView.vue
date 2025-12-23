@@ -309,7 +309,7 @@ export default {
       gameEmptyStateConfig: {
         emptyIcon: '🎮',
         emptyTitle: '你的游戏库是空的',
-        emptyDescription: '点击"添加游戏"按钮来添加你的第一个游戏，或直接拖拽游戏文件（.exe、.app、.swf）或压缩包（.zip、.rar、.7z 等）到此处',
+        emptyDescription: '点击"添加游戏"按钮来添加你的第一个游戏，或直接拖拽游戏文件（.exe、.swf、.bat）或压缩包（.zip、.rar、.7z 等）到此处',
         emptyButtonText: '添加第一个游戏',
         emptyButtonAction: 'showAddGameDialog',
         noResultsIcon: '🔍',
@@ -1096,7 +1096,7 @@ export default {
         // 如果 getFileStats 失败，通过文件扩展名判断（后备方案）
         if (!isFile) {
           const filePath = game.executablePath
-          const commonExtensions = ['.exe', '.swf', '.bat', '.cmd', '.com', '.scr', '.msi', '.app', '.dmg', '.zip', '.rar', '.7z']
+          const commonExtensions = ['.exe', '.swf', '.bat', '.cmd', '.com', '.scr', '.msi', '.zip', '.rar', '.7z']
           const lowerPath = filePath.toLowerCase()
           const hasExtension = commonExtensions.some(ext => lowerPath.endsWith(ext))
           
@@ -1182,7 +1182,7 @@ export default {
         // 如果 getFileStats 失败，通过文件扩展名判断（后备方案）
         if (!isFile) {
           const filePath = game.executablePath
-          const commonExtensions = ['.exe', '.swf', '.bat', '.cmd', '.com', '.scr', '.msi', '.app', '.dmg', '.zip', '.rar', '.7z']
+          const commonExtensions = ['.exe', '.swf', '.bat', '.cmd', '.com', '.scr', '.msi', '.zip', '.rar', '.7z']
           const lowerPath = filePath.toLowerCase()
           const hasExtension = commonExtensions.some(ext => lowerPath.endsWith(ext))
           
@@ -1745,7 +1745,7 @@ export default {
     border-radius: var(--radius-xl);
 
     &::before {
-      content: '拖拽游戏文件到这里添加游戏 (.exe / .app / .swf / .zip / .rar / .7z 等)';
+      content: '拖拽游戏文件到这里添加游戏 (.exe / .swf / .bat / .zip / .rar / .7z 等)';
       position: absolute;
       top: 50%;
       left: 50%;

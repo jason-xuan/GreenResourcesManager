@@ -10,6 +10,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
   closeWindow: () => ipcRenderer.invoke('close-window'),
   
+  // 窗口内容控制
+  reloadWindow: () => ipcRenderer.invoke('reload-window'),
+  forceReloadWindow: () => ipcRenderer.invoke('force-reload-window'),
+  toggleDevTools: () => ipcRenderer.invoke('toggle-dev-tools'),
+  setFullscreen: (fullscreen) => ipcRenderer.invoke('set-fullscreen', fullscreen),
+  toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
+  
+  // 缩放控制
+  setZoomLevel: (zoomLevel) => ipcRenderer.invoke('set-zoom-level', zoomLevel),
+  getZoomLevel: () => ipcRenderer.invoke('get-zoom-level'),
+  zoomIn: () => ipcRenderer.invoke('zoom-in'),
+  zoomOut: () => ipcRenderer.invoke('zoom-out'),
+  resetZoom: () => ipcRenderer.invoke('reset-zoom'),
+  
   // 文件操作（已移除 openFile 和 saveFile，因为 electron.js 中没有对应的 IPC 处理程序）
   
   // JSON 文件操作

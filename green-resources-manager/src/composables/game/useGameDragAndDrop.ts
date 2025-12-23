@@ -29,8 +29,8 @@ function extractGameNameFromPath(filePath: string): string {
 
   let cleanName = nameWithoutExt
     .replace(/\.exe$/i, '')
-    .replace(/\.app$/i, '')
     .replace(/\.swf$/i, '')
+    .replace(/\.bat$/i, '')
     .replace(/\.zip$/i, '')
     .replace(/\.rar$/i, '')
     .replace(/\.7z$/i, '')
@@ -69,7 +69,7 @@ export function useGameDragAndDrop(options: GameDragDropOptions) {
 
   // 使用通用拖拽 composable
   const dragDrop = useDragAndDrop({
-    acceptedExtensions: ['.exe', '.app', '.swf', '.zip', '.rar', '.7z', '.tar', '.gz', '.tar.gz', '.bz2', '.tar.bz2', '.xz', '.tar.xz'],
+    acceptedExtensions: ['.exe', '.swf', '.bat', '.zip', '.rar', '.7z', '.tar', '.gz', '.tar.gz', '.bz2', '.tar.bz2', '.xz', '.tar.xz'],
     enabled: true,
     onDrop: handleGameDrop
   })
@@ -217,7 +217,7 @@ export function useGameDragAndDrop(options: GameDragDropOptions) {
         notify.toast(
           'error',
           '添加失败',
-          `没有成功添加任何游戏文件\n原因：${failureReason}\n\n提示：\n• 请确保拖拽的是 .exe、.app、.swf 或压缩包文件（.zip、.rar、.7z 等）\n• 检查文件是否已存在于游戏库中\n• 尝试重新拖拽文件`
+          `没有成功添加任何游戏文件\n原因：${failureReason}\n\n提示：\n• 请确保拖拽的是 .exe、.swf、.bat 或压缩包文件（.zip、.rar、.7z 等）\n• 检查文件是否已存在于游戏库中\n• 尝试重新拖拽文件`
         )
       }
 

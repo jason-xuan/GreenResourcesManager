@@ -44,13 +44,15 @@
     "appId": "com.example.green-resources-manager",
     "productName": "GreenResourcesManager",
     "directories": {
-      "output": "dist-electron/v${version}"
+      "output": "dist-electron/v${version}",
+      "buildResources": "build"
     },
     "artifactName": "${productName} ${version}.${ext}",
     "files": [
       "dist/**/*",
       "public/electron.js",
       "public/preload.js",
+      "public/js/**/*",
       "public/butter-logo.svg",
       "public/butter-icon.ico",
       "public/butter-icon.png",
@@ -59,6 +61,9 @@
       "public/camera.mp3",
       "public/achievement.mp3",
       "node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/7zip-bin/**/*"
     ],
     "extraFiles": [
       {
@@ -80,7 +85,9 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "artifactName": "${productName}_Setup_${version}.${ext}"
+      "artifactName": "${productName}_Setup_${version}.${ext}",
+      "useZip": true,
+      "warningsAsErrors": false
     },
     "mac": {
       "category": "public.app-category.productivity",

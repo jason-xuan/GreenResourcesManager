@@ -63,7 +63,7 @@
         </div>
 
         <!-- 页面内容区域 -->
-        <div class="page-content">
+        <div class="page-content" :class="{ 'has-background': backgroundImageUrl }" :style="pageContentStyle">
           <!-- 游戏页面 -->
           <GameView v-if="currentView === 'games'" ref="gameView" @filter-data-updated="updateFilterData" />
 
@@ -187,6 +187,9 @@ export default {
       autoBackupInterval: 0, // 自动备份时间间隔（分钟），0表示禁用
       autoBackupTimer: null, // 自动备份定时器
       lastBackupTime: null, // 上次备份时间
+      // 背景图片相关
+      backgroundImagePath: '', // 背景图片路径
+      backgroundImageUrl: '', // 背景图片URL（用于显示）
       // 统一的页面配置
       viewConfig: {
         // 主导航页面
@@ -263,6 +266,14 @@ export default {
     // 根据点击状态返回对应的 logo 图标
     logoIcon() {
       return this.isLogoClicked ? './hide-icon.png' : './butter-icon.png'
+    },
+    // 页面内容区域的样式（包含背景图片）
+    pageContentStyle() {
+      const style: any = {}
+      if (this.backgroundImageUrl) {
+        style['--bg-image-url'] = `url(${this.backgroundImageUrl})`
+      }
+      return style
     }
   },
   methods: {
@@ -748,6 +759,36 @@ export default {
       const config = this.viewConfig[this.currentView]
       return config?.description || '无描述'
     },
+    async applyBackgroundImage(imagePath: string) {
+      try {
+        this.backgroundImagePath = imagePath
+        // 使用 readFileAsDataUrl 或 getFileUrl 获取图片URL
+        if (window.electronAPI && window.electronAPI.readFileAsDataUrl) {
+          const dataUrl = await window.electronAPI.readFileAsDataUrl(imagePath)
+          if (dataUrl) {
+            this.backgroundImageUrl = dataUrl
+            console.log('背景图片已应用:', imagePath)
+            return
+          }
+        }
+        // 降级到 getFileUrl
+        if (window.electronAPI && window.electronAPI.getFileUrl) {
+          const result = await window.electronAPI.getFileUrl(imagePath)
+          if (result && result.success && result.url) {
+            this.backgroundImageUrl = result.url
+            console.log('背景图片已应用（通过getFileUrl）:', imagePath)
+            return
+          }
+        }
+        // 如果都失败了，尝试直接使用路径（可能不工作，但至少不会报错）
+        console.warn('无法获取背景图片URL，尝试使用原始路径:', imagePath)
+        this.backgroundImageUrl = imagePath
+      } catch (error) {
+        console.error('应用背景图片失败:', error)
+        this.backgroundImageUrl = ''
+      }
+    },
+    
     applyTheme(theme) {
       this.theme = theme
 
@@ -1010,6 +1051,11 @@ export default {
       const theme = settings?.theme || 'auto'
       console.log('从 SaveManager 加载主题设置:', theme)
       this.applyTheme(theme)
+      
+      // 加载背景图片设置
+      if (settings?.backgroundImagePath) {
+        await this.applyBackgroundImage(settings.backgroundImagePath)
+      }
     } catch (error) {
       console.warn('从 SaveManager 加载设置失败，使用默认主题:', error)
       // 如果 SaveManager 也失败了，使用默认主题
@@ -1040,6 +1086,17 @@ export default {
     
     // 检测 WinRAR 安装状态
     await this.checkWinRARInstallation()
+    
+    // 监听背景图片变化事件
+    window.addEventListener('background-image-changed', async (event: CustomEvent) => {
+      const { path } = event.detail
+      this.backgroundImagePath = path || ''
+      if (path) {
+        await this.applyBackgroundImage(path)
+      } else {
+        this.backgroundImageUrl = ''
+      }
+    })
     
     // 监听安全键设置变化事件
     window.addEventListener('safety-key-changed', async (event: CustomEvent) => {
@@ -1112,6 +1169,30 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+}
+
+.page-content.has-background::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: var(--bg-image-url);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  z-index: 0;
+  opacity: 0.3;
+  mix-blend-mode: multiply;/* 混合模式：乘法，使背景图片更暗 */
+  pointer-events: none;
+}
+
+.page-content.has-background > * {
+  position: relative;
+  z-index: 1;
 }
 
 

@@ -46,7 +46,7 @@ export default {
       default: '浏览'
     },
     pickerType: {
-      type: String as () => 'file' | 'directory' | 'screenshots' | 'saveData' | 'executable',
+      type: String as () => 'file' | 'directory' | 'screenshots' | 'saveData' | 'executable' | 'image',
       default: 'directory'
     }
   },
@@ -55,6 +55,17 @@ export default {
     async handleBrowse() {
       try {
         let result: any = null
+        
+        // 调试信息
+        console.log('SettingFilePicker handleBrowse:', {
+          pickerType: this.pickerType,
+          hasElectronAPI: !!window.electronAPI,
+          hasSetSaveDataDirectory: !!window.electronAPI?.setSaveDataDirectory,
+          hasSetScreenshotsDirectory: !!window.electronAPI?.setScreenshotsDirectory,
+          hasSelectFolder: !!window.electronAPI?.selectFolder,
+          hasSelectFile: !!window.electronAPI?.selectFile,
+          hasSelectExecutableFile: !!window.electronAPI?.selectExecutableFile
+        })
         
         if (this.pickerType === 'screenshots' && window.electronAPI?.setScreenshotsDirectory) {
           result = await window.electronAPI.setScreenshotsDirectory()
@@ -67,12 +78,20 @@ export default {
           if (result && result.success) {
             this.$emit('update:modelValue', result.directory)
             this.$emit('browse', { type: 'saveData', result })
+          } else if (result && !result.success) {
+            // 如果 API 调用失败，显示错误信息
+            console.error('设置存档目录失败:', result.error)
+            alert(`设置存档目录失败: ${result.error || '未知错误'}`)
           }
-        } else if (this.pickerType === 'directory' && window.electronAPI?.selectDirectory) {
-          result = await window.electronAPI.selectDirectory()
-          if (result) {
-            this.$emit('update:modelValue', result)
-            this.$emit('browse', { type: 'directory', path: result })
+        } else if (this.pickerType === 'directory' && window.electronAPI?.selectFolder) {
+          // 修复：使用 selectFolder 而不是 selectDirectory
+          result = await window.electronAPI.selectFolder()
+          if (result && result.success) {
+            this.$emit('update:modelValue', result.path)
+            this.$emit('browse', { type: 'directory', path: result.path })
+          } else if (result && !result.success) {
+            console.error('选择目录失败:', result.error)
+            alert(`选择目录失败: ${result.error || '未知错误'}`)
           }
         } else if (this.pickerType === 'file' && window.electronAPI?.selectFile) {
           result = await window.electronAPI.selectFile()
@@ -86,8 +105,23 @@ export default {
             this.$emit('update:modelValue', result)
             this.$emit('browse', { type: 'executable', path: result })
           }
+        } else if (this.pickerType === 'image' && window.electronAPI?.selectImageFile) {
+          result = await window.electronAPI.selectImageFile()
+          if (result) {
+            this.$emit('update:modelValue', result)
+            this.$emit('browse', { type: 'image', path: result })
+          }
         } else {
-          alert('当前环境不支持选择文件/目录功能')
+          // 提供更详细的错误信息
+          const errorMsg = this.pickerType === 'saveData' 
+            ? '当前环境不支持自定义存档功能。请确保在 Electron 环境中运行，并且 preload.js 已正确加载。'
+            : '当前环境不支持选择文件/目录功能'
+          console.error('选择文件/目录失败:', {
+            pickerType: this.pickerType,
+            hasElectronAPI: !!window.electronAPI,
+            electronAPIKeys: window.electronAPI ? Object.keys(window.electronAPI) : []
+          })
+          alert(errorMsg)
         }
       } catch (error: any) {
         console.error('选择文件/目录失败:', error)

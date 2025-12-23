@@ -494,7 +494,7 @@ export default {
           this.editGame(game)
           break
         case 'remove':
-          this.removeGame(game)
+          this.handleRemoveGame(game)
           break
       }
     },
@@ -526,7 +526,7 @@ export default {
           this.editGame(selectedItem)
           break
         case 'remove':
-          this.removeGame(selectedItem)
+          this.handleRemoveGame(selectedItem)
           break
         case 'compress-to':
           this.compressFile(selectedItem)
@@ -571,11 +571,17 @@ export default {
         alert('保存编辑失败: ' + error.message)
       }
     },
-    async removeGame(game) {
+    async handleRemoveGame(game) {
       if (!confirm(`确定要删除游戏 "${game.name}" 吗？`)) return
 
       try {
-        await this.removeGame(game.id)
+        // 调用 composable 的 removeGame 方法（接收 gameId）
+        // composable 的方法已经在 setup 中暴露，可以直接访问
+        if (typeof (this as any).removeGame === 'function') {
+          await (this as any).removeGame(game.id)
+        } else {
+          throw new Error('删除方法不可用')
+        }
         this.showContextMenu = false
       } catch (error: any) {
         notify.toast('error', '删除失败', `无法删除游戏 "${game.name}": ${error.message}`)

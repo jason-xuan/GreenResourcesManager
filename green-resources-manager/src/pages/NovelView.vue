@@ -543,14 +543,8 @@ export default {
     },
     novelActions() {
       const actions = [
-        { key: 'read', icon: '📖', label: '开始阅读', class: 'btn-read-novel' },
-        { key: 'read-v2', icon: '📚', label: 'EPUB阅读器V2', class: 'btn-read-novel-v2' }
+        { key: 'read', icon: '📖', label: '开始阅读', class: 'btn-read-novel' }
       ]
-      
-      // 如果是 EPUB 文件，显示 EPUB阅读器V2 按钮
-      if (this.currentNovel && this.currentNovel.fileType === 'epub') {
-        // EPUB 文件，已包含 read-v2 按钮
-      }
       
       actions.push(
         { key: 'folder', icon: '📁', label: '打开文件夹', class: 'btn-open-folder' },
@@ -810,9 +804,6 @@ export default {
         case 'read':
           this.openNovelReader(novel)
           break
-        case 'read-v2':
-          this.openEbookReaderV2(novel)
-          break
         case 'folder':
           this.openNovelFolder(novel)
           break
@@ -1000,7 +991,15 @@ export default {
     async openNovelWithInternalReader(novel) {
       console.log('使用应用内阅读器打开小说')
       try {
-        // 选择小说进行阅读
+        // 检查文件类型，如果是 EPUB，使用 EPUB 阅读器 V2
+        const fileType = this.getFileType(novel.filePath)
+        if (fileType === 'epub') {
+          console.log('EPUB 文件，使用 EPUB 阅读器 V2 打开')
+          this.openEbookReaderV2(novel)
+          return
+        }
+        
+        // 其他文件类型使用原来的阅读器
         await this.selectNovelForReading(novel)
         notify.native('开始阅读', `"${novel.name}" 已在应用内打开`)
       } catch (error) {
@@ -1169,7 +1168,14 @@ export default {
           await this.openNovelReader(novel)
         } else {
           console.log('使用应用内阅读器')
-          await this.selectNovelForReading(novel)
+          // 检查文件类型，如果是 EPUB，使用 EPUB 阅读器 V2
+          const fileType = this.getFileType(novel.filePath)
+          if (fileType === 'epub') {
+            console.log('EPUB 文件，使用 EPUB 阅读器 V2 打开')
+            this.openEbookReaderV2(novel)
+          } else {
+            await this.selectNovelForReading(novel)
+          }
         }
       } catch (error) {
         console.error('处理小说点击失败:', error)

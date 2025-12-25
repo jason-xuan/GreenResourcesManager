@@ -1,15 +1,13 @@
 <template>
-  <transition name="slide-left">
-      <div class="content">
-          <div class="content-wrapper" v-if="bookAvailable">
-              <div class="content-item" v-for="(item,index) in navigation.toc" :key="index"
-                @click="jumpTo(item.href)">
-                <span class="text">{{item.label}}</span>
-              </div>
+  <div class="content">
+      <div class="content-wrapper" v-if="bookAvailable && navigation && navigation.toc">
+          <div class="content-item" v-for="(item,index) in navigation.toc" :key="index"
+            @click="jumpTo(item.href)">
+            <span class="text">{{item.label}}</span>
           </div>
-          <div class="empty" v-else>加载中...</div>
-      </div> 
-  </transition>
+      </div>
+      <div class="empty" v-else>加载中...</div>
+  </div>
 </template>
 <script>
 export default {
@@ -27,31 +25,41 @@ export default {
 </script>
 
 <style scoped lang='scss'>
-@import '../../styles/epub-reader-v2/global';
+/* Mixin */
+@mixin center() {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
 .content{
-    position: fixed;
-    top: 0;
-    right: 0;
-    z-index: 12;
-    width: 80%;
-    max-width: 400px;
-    height:100%;
+    position: relative;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
     background: var(--bg-secondary, white);
+    display: flex;
+    flex-direction: column;
     .content-wrapper{
         width: 100%;
         height: 100%;
-        overflow: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
         .content-item{
-            padding: 20px 15px;
-            border-bottom: 1px solid #f4f4f4;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color, #f4f4f4);
             cursor: pointer;
+            transition: background 0.2s ease;
             &:hover {
-                background: #f5f5f5;
+                background: var(--bg-tertiary, #f5f5f5);
+            }
+            &:last-child {
+                border-bottom: none;
             }
             .text{
-                font-size: 16px;
-                color: #333;
+                font-size: 15px;
+                color: var(--text-primary, #333);
+                line-height: 1.5;
             }
         }
     }
@@ -59,8 +67,8 @@ export default {
         width: 100%;
         height: 100%;
         @include center;
-        font-size: 18px;
-        color: #333;
+        font-size: 16px;
+        color: var(--text-secondary, #666);
     }
 }
 </style>

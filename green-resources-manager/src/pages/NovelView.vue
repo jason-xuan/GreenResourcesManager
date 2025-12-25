@@ -62,16 +62,6 @@
               </button>
             </div>
           </div>
-          
-          <div class="reader-progress">
-            <div class="progress-info">
-              <span>阅读进度: {{ currentReadingNovel.readProgress || 0 }}%</span>
-              <span>字数: {{ formatNumber(currentReadingNovel.totalWords) }}</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: currentReadingNovel.readProgress + '%' }"></div>
-            </div>
-          </div>
 
           <div class="reader-content" ref="readerContent">
             <!-- PDF 文件使用 PDF 阅读器 -->
@@ -254,11 +244,29 @@
             </button>
           </div>
         </div>
-        <div class="reader-content ebook-reader-v2-content">
-          <EbookReader
-            :file-path="ebookReaderV2FilePath"
-            @close="closeEbookReaderV2"
-          />
+        <div class="reader-content-wrapper ebook-reader-v2-content">
+          <!-- 左侧章节导航栏 -->
+          <div class="chapter-navigation-sidebar">
+            <div class="chapter-nav-header">
+              <h4>章节列表</h4>
+            </div>
+            <ContentView
+              :ifShowContent="true"
+              :navigation="ebookNavigation"
+              :bookAvailable="ebookBookAvailable"
+              @jumpTo="handleEbookJumpTo"
+            />
+          </div>
+          <!-- 右侧阅读器 -->
+          <div class="reader-content-main">
+            <EbookReader
+              ref="ebookReader"
+              :file-path="ebookReaderV2FilePath"
+              @close="closeEbookReaderV2"
+              @navigation-updated="handleNavigationUpdated"
+              @rendition-ready="handleRenditionReady"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -275,6 +283,7 @@ import PathUpdateDialog from '../components/PathUpdateDialog.vue'
 import PdfReader from '../components/PdfReader.vue'
 import TextReader from '../components/TextReader.vue'
 import EbookReader from '../components/epub-reader-v2/EbookReader.vue'
+import ContentView from '../components/epub-reader-v2/ContentView.vue'
 import saveManager from '../utils/SaveManager.ts'
 import { useNovelManagement } from '../composables/novel/useNovelManagement'
 import { useNovelFilter } from '../composables/novel/useNovelFilter'
@@ -294,7 +303,8 @@ export default {
     PathUpdateDialog,
     PdfReader,
     TextReader,
-    EbookReader
+    EbookReader,
+    ContentView
   },
   emits: ['filter-data-updated'],
   setup() {
@@ -441,7 +451,10 @@ export default {
       totalNovelPages: 0,
       // EPUB阅读器V2相关
       showEbookReaderV2: false,
-      ebookReaderV2FilePath: ''
+      ebookReaderV2FilePath: '',
+      ebookNavigation: null,
+      ebookBookAvailable: false,
+      ebookRendition: null
     }
   },
   computed: {
@@ -1557,6 +1570,24 @@ export default {
     closeEbookReaderV2() {
       this.showEbookReaderV2 = false
       this.ebookReaderV2FilePath = ''
+      this.ebookNavigation = null
+      this.ebookBookAvailable = false
+      this.ebookRendition = null
+    },
+    // 处理navigation更新
+    handleNavigationUpdated(navigation) {
+      this.ebookNavigation = navigation
+      this.ebookBookAvailable = true
+    },
+    // 处理章节跳转
+    handleEbookJumpTo(href) {
+      if (this.$refs.ebookReader) {
+        this.$refs.ebookReader.jumpTo(href)
+      }
+    },
+    // 处理rendition就绪
+    handleRenditionReady(rendition) {
+      this.ebookRendition = rendition
     },
     // 根据文件路径获取小说名称
     getNovelNameByPath(filePath) {
@@ -1682,10 +1713,10 @@ export default {
 .novel-reader-content {
   background: var(--bg-secondary);
   border-radius: 12px;
-  width: 95vw;
-  height: 95vh;
-  max-width: 1400px;
-  max-height: 900px;
+  width: 98vw;
+  height: 98vh;
+  max-width: 1800px;
+  max-height: 1200px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
@@ -1743,23 +1774,52 @@ export default {
   }
 }
 
-// 阅读进度
-.reader-progress {
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-  flex-shrink: 0;
 
-  .progress-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
+// 阅读内容包装器
+.reader-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+// 左侧章节导航栏
+.chapter-navigation-sidebar {
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  
+  .chapter-nav-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    flex-shrink: 0;
+    
+    h4 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
   }
 }
 
-// 阅读内容
+// 右侧阅读器主内容
+.reader-content-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+// 阅读内容（保持向后兼容）
 .reader-content {
   flex: 1;
   overflow: hidden;

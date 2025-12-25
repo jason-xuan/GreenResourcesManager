@@ -11,7 +11,22 @@
                 <span class="btn-icon">←</span>
                 上一页
               </button>
-              <span class="page-info">{{ progress }}%</span>
+              <div class="progress-section">
+                <span class="page-info">{{ progress }}%</span>
+                <div class="progress-wrapper">
+                  <input 
+                    class="progress" 
+                    type="range" 
+                    max="100" 
+                    min="0"
+                    step="1" 
+                    @change="onProgressChange($event.target.value)"
+                    @input="onProgressInput($event.target.value)" 
+                    :value="progress"
+                    :disabled="!bookAvailable" 
+                    ref="progress">
+                </div>
+              </div>
               <button class="btn-next" @click="nextPage" :disabled="!canGoNext">
                 下一页
                 <span class="btn-icon">→</span>
@@ -27,11 +42,11 @@
                 :themeList="themeList" 
                 :defaultTheme="defaultTheme"
                 @setTheme = "setTheme" 
+                :fontColorList="fontColorList"
+                :defaultFontColor="defaultFontColor"
+                @setFontColor="setFontColor"
                 :bookAvailable = "bookAvailable" 
-                @onProgressChange = "onProgressChange"
                 @jumpTo="jumpTo"
-                :navigation = "navigation"
-                :parentProgress = "progress"
                 ref="menuBar">
         </menu-bar>
   </div>
@@ -77,7 +92,7 @@ export default {
             ],
             defaultFontSize:16,
             themeList:[{
-                name:'default',
+                name:'默认',
                 style:{
                     body:{
                         'color':'#000',
@@ -85,7 +100,7 @@ export default {
                     }
                 }
             },{
-                name:'eye',
+                name:'护眼绿',
                 style:{
                     body:{
                         'color':'#000',
@@ -93,7 +108,7 @@ export default {
                     }
                 }
             },{
-                name:'night',
+                name:'夜间模式',
                 style:{
                     body:{
                         'color':'#fff',
@@ -101,15 +116,114 @@ export default {
                     }
                 }
             },{
-                name:'gold',
+                name:'米黄色',
                 style:{
                     body:{
                         'color':'#000',
                         'background': 'rgb(238, 232, 170)'
                     }
                 }
+            },{
+                name:'浅蓝色',
+                style:{
+                    body:{
+                        'color':'#000',
+                        'background':'#e6f3ff'
+                    }
+                }
+            },{
+                name:'浅灰色',
+                style:{
+                    body:{
+                        'color':'#000',
+                        'background':'#f5f5f5'
+                    }
+                }
+            },{
+                name:'深灰色',
+                style:{
+                    body:{
+                        'color':'#fff',
+                        'background':'#2d2d2d'
+                    }
+                }
+            },{
+                name:'羊皮纸',
+                style:{
+                    body:{
+                        'color':'#000',
+                        'background':'#f4e4bc'
+                    }
+                }
+            },{
+                name:'淡紫色',
+                style:{
+                    body:{
+                        'color':'#000',
+                        'background':'#f0e6ff'
+                    }
+                }
+            },{
+                name:'淡粉色',
+                style:{
+                    body:{
+                        'color':'#000',
+                        'background':'#ffe6f0'
+                    }
+                }
             }],
             defaultTheme: 0,
+            fontColorList:[
+                {
+                    name: '黑色',
+                    color: '#000000'
+                },
+                {
+                    name: '深灰',
+                    color: '#333333'
+                },
+                {
+                    name: '灰色',
+                    color: '#666666'
+                },
+                {
+                    name: '浅灰',
+                    color: '#999999'
+                },
+                {
+                    name: '深蓝',
+                    color: '#1e3a8a'
+                },
+                {
+                    name: '蓝色',
+                    color: '#3b82f6'
+                },
+                {
+                    name: '深绿',
+                    color: '#166534'
+                },
+                {
+                    name: '绿色',
+                    color: '#22c55e'
+                },
+                {
+                    name: '深红',
+                    color: '#991b1b'
+                },
+                {
+                    name: '红色',
+                    color: '#ef4444'
+                },
+                {
+                    name: '深棕',
+                    color: '#78350f'
+                },
+                {
+                    name: '棕色',
+                    color: '#d97706'
+                }
+            ],
+            defaultFontColor: '#000000',
             bookAvailable :false,
             navigation: null,
             progress:0,
@@ -146,16 +260,28 @@ export default {
             this.progress = this.bookAvailable ? this.locations.percentageFromCfi(currentLoction.start.cfi) : 0
             // 转化成0-100的数字
             this.progress = Math.round(this.progress*100)
+            // 更新进度条样式
+            this.$nextTick(() => {
+                if(this.$refs.progress){
+                    this.$refs.progress.style.backgroundSize = `${this.progress}% 100%`
+                }
+            })
         },
         // 根据链接跳转到指定位置
         jumpTo(href){
-            this.rendition.display(href).then(()=>{
-                this.showProgress()
-            })
+            if(this.rendition){
+                this.rendition.display(href).then(()=>{
+                    this.showProgress()
+                })
+            }
             // 隐藏菜单栏弹出的设置栏
-            this.$refs.menuBar.hideSetting()
-            // 隐藏目录
-            this.$refs.menuBar.hideContent()
+            if(this.$refs.menuBar){
+                this.$refs.menuBar.hideSetting()
+                // 隐藏目录（如果还在菜单中）
+                if(this.$refs.menuBar.hideContent){
+                    this.$refs.menuBar.hideContent()
+                }
+            }
         },
         onProgressChange(progress){
             const percentage = progress / 100
@@ -175,6 +301,16 @@ export default {
             this.defaultFontSize = fontSize
             if(this.themes){
                 this.themes.fontSize(fontSize + 'px')
+            }
+        },
+        setFontColor(color){
+            this.defaultFontColor = color
+            if(this.themes){
+                this.themes.override({
+                    body: {
+                        color: color + ' !important'
+                    }
+                })
             }
         },
         prevPage(){
@@ -237,15 +373,23 @@ export default {
                 this.registerTheme()
                 // this.themes.select(name)
                 this.setTheme(this.defaultTheme)
+                // 设置默认字体颜色
+                this.setFontColor(this.defaultFontColor)
                 // 获取locations对象 epubjs的钩子函数实现
                 this.book.ready.then(()=>{
                     this.navigation = this.book.navigation
+                    // 向父组件发送navigation数据
+                    this.$emit('navigation-updated', this.navigation)
                    
                     return this.book.locations.generate()
                 }).then(result=>{
                     // console.log(result);
                     this.locations = this.book.locations
                     this.bookAvailable = true
+                    // 再次发送navigation数据，确保父组件收到
+                    this.$emit('navigation-updated', this.navigation)
+                    // 发送rendition就绪事件
+                    this.$emit('rendition-ready', this.rendition)
                 }).catch(error => {
                     console.error('加载 EPUB 失败:', error)
                 })
@@ -270,7 +414,101 @@ export default {
 </script>
 
 <style scoped lang='scss'>
-@import '../../styles/epub-reader-v2/global';
+/* Mixin */
+@mixin center() {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Icon样式 */
+.icon-bright::before {
+  content: "☀";
+}
+
+[class^="icon-"], [class*=" icon-"] {
+  display: inline-block;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.icon {
+  color: #333;
+  font-size: 28px;
+  display: inline-block;
+}
+
+/* 过渡动画 */
+.slide-left-enter, .slide-left-leave-to {
+  transform: translate3d(100%, 0, 0);
+}
+.slide-left-enter-to, .slide-left-leave {
+  transform: translate3d(0, 0, 0);
+}
+.slide-left-enter-active, .slide-left-leave-active {
+  transition: all .3s linear;
+}
+
+/* CSS Reset - 仅重置 EPUB 阅读器内部元素 */
+#read,
+#read * {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+    box-sizing: border-box;
+}
+
+#read article,
+#read aside,
+#read details,
+#read figcaption,
+#read figure,
+#read footer,
+#read header,
+#read hgroup,
+#read menu,
+#read nav,
+#read section {
+    display: block;
+}
+
+#read body {
+    line-height: 1.6;
+}
+
+#read ol,
+#read ul {
+    list-style: none;
+}
+
+#read blockquote,
+#read q {
+    quotes: none;
+}
+
+#read blockquote:before,
+#read blockquote:after,
+#read q:before,
+#read q:after {
+    content: '';
+    content: none;
+}
+
+#read table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+#read {
+    width: 100%;
+    height: 100%;
+    font-family: 'PingFangSC-Light', 'PingFang SC', 'STHeitiSC-Light', 'Helvetica-Light', 'Arial', 'sans-serif';
+}
 .ebook{
     position: relative;
     width: 100%;
@@ -316,6 +554,7 @@ export default {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 20px;
     }
     
     .btn-prev,
@@ -331,6 +570,7 @@ export default {
         gap: 5px;
         transition: background 0.3s ease;
         font-size: 14px;
+        flex-shrink: 0;
         
         &:hover:not(:disabled) {
             background: var(--accent-hover, #4fa8d8);
@@ -344,10 +584,68 @@ export default {
         }
     }
     
-    .page-info {
-        color: var(--text-secondary, #666);
-        font-size: 14px;
-        font-weight: 500;
+    .progress-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        
+        .page-info {
+            color: var(--text-secondary, #666);
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .progress-wrapper {
+            width: 100%;
+            padding: 0 10px;
+            
+            .progress {
+                width: 100%;
+                -webkit-appearance: none;
+                appearance: none;
+                height: 4px;
+                background: -webkit-linear-gradient(#999, #999) no-repeat, #ddd;
+                background-size: 0 100%;
+                border-radius: 2px;
+                cursor: pointer;
+                outline: none;
+                
+                &:focus {
+                    outline: none;
+                }
+                
+                &::-webkit-slider-thumb {
+                    -webkit-appearance: none;
+                    appearance: none;
+                    height: 16px;
+                    width: 16px;
+                    border-radius: 50%;
+                    background: var(--accent-color, #66c0f4);
+                    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, .2);
+                    border: 2px solid white;
+                    cursor: pointer;
+                }
+                
+                &::-moz-range-thumb {
+                    height: 16px;
+                    width: 16px;
+                    border-radius: 50%;
+                    background: var(--accent-color, #66c0f4);
+                    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, .2);
+                    border: 2px solid white;
+                    cursor: pointer;
+                }
+                
+                &:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+            }
+        }
     }
 }
 </style>

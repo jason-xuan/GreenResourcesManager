@@ -2,39 +2,37 @@
        <div class="menu-bar">
             <div class="menu-wrapper" :class="{'hide-box-shadow':ifSettingShow}">
                 <div class="icon-wrapper">
-                    <span class="icon-menu icon" @click="showSetting(3)"></span>
-                </div>
-                <div class="icon-wrapper">
-                <span class="icon-progress icon" @click="showSetting(2)"></span>
-                </div>
-                <div class="icon-wrapper">
                 <span class="icon-bright icon" @click="showSetting(1)"></span>
                 </div>
                 <div class="icon-wrapper">
                     <span class="icon-a icon" @click="showSetting(0)">A</span>
                 </div>
+                <!-- 暂时隐藏字体颜色选项 -->
+                <!-- <div class="icon-wrapper">
+                    <span class="icon-color icon" @click="showSetting(2)">🎨</span>
+                </div> -->
             </div>
             <transition name="slide-left">
                 <div class="setting-wrapper" v-show="ifSettingShow">
+                <div class="setting-header">
+                    <span class="setting-title">{{ getSettingTitle() }}</span>
+                    <button class="btn-close-setting" @click="hideSetting" title="关闭">
+                        <span class="close-icon">✕</span>
+                    </button>
+                </div>
                 <div class="setting-font-size" v-if="showTag === 0">
-                    <div class="preview" :style="{fontSize:fontSizeList[0].fontSize + 'px'}">
-                        A
-                    </div>
-                    <div class="select">
-                        <div class="select-wrapper" v-for="(item,index) in fontSizeList" :key="index"
-                        @click="setFontSize(item.fontSize)">
-                            <div class="line"></div>
-                            <div class="point-wrapper">
-                                <div class="point" v-show="defaultFontSize === item.fontSize">
-                                    <div class="small-point"></div>
-                                </div>
-                            </div>
-                            <div class="line"></div>
-                        </div>
-                    </div>
-                    <div class="preview" :style="{fontSize:fontSizeList[fontSizeList.length - 1].fontSize + 'px'}">
-                        A
-                    </div>
+                    <ul class="font-size-list">
+                        <li 
+                            v-for="(item,index) in fontSizeList" 
+                            :key="index"
+                            class="font-size-item"
+                            :class="{'active': defaultFontSize === item.fontSize}"
+                            @click="setFontSize(item.fontSize)">
+                            <span class="font-size-preview" :style="{fontSize: item.fontSize + 'px'}">A</span>
+                            <span class="font-size-value">{{ item.fontSize }}px</span>
+                            <span class="font-size-check" v-if="defaultFontSize === item.fontSize">✓</span>
+                        </li>
+                    </ul>
                 </div>
                 <div class="setting-theme" v-else-if="showTag === 1">
                     <div class="setting-theme-item" v-for="(item,index) in themeList" :key="index"
@@ -44,44 +42,26 @@
                         <div class="text" :class="{'selected':index=== defaultTheme}">{{item.name}}</div>
                     </div>
                 </div>
-                <div class="setting-progress" v-else-if="showTag === 2">
-                   <div class="progress-wrapper">
-                        <input class="progress" 
-                        type="range" 
-                        max="100" 
-                        min = "0"
-                        step = "1" 
-                        @change="onProgressChange($event.target.value)"
-                        @input="onProgressInput($event.target.value)" 
-                        :value="progress"
-                        :disabled="!bookAvailable" 
-                        ref="progress">
-                   </div>
-                   <div class="text-wrapper">
-                        <span>{{bookAvailable ? progress + '%' : '加载中...'}}</span>
-                   </div>
+                <div class="setting-font-color" v-else-if="showTag === 2">
+                    <ul class="font-color-list">
+                        <li 
+                            v-for="(item,index) in fontColorList" 
+                            :key="index"
+                            class="font-color-item"
+                            :class="{'active': defaultFontColor === item.color}"
+                            @click="setFontColor(item.color)">
+                            <span class="font-color-preview" :style="{color: item.color}">A</span>
+                            <span class="font-color-name">{{ item.name }}</span>
+                            <span class="font-color-check" v-if="defaultFontColor === item.color">✓</span>
+                        </li>
+                    </ul>
                 </div>
             </div>
-            </transition>
-            <content-view :ifShowContent="ifShowContent"
-                v-show="ifShowContent"
-                :navigation="navigation"
-                :bookAvailable = "bookAvailable"
-                @jumpTo = "jumpTo">
-            </content-view>
-            <transition name="fade">
-                <div class="content-mask" v-show="ifShowContent"
-                @click="hideContent">
-                </div>
             </transition>
        </div>
 </template>
 <script>
-import ContentView from './ContentView.vue'
 export default {
-    components:{
-        ContentView
-    },
     props:{
         ifTitleAndMenuShow :{
             type:Boolean,
@@ -91,19 +71,17 @@ export default {
         defaultFontSize:Number,
         themeList:Array,
         defaultTheme:Number,
+        fontColorList:Array,
+        defaultFontColor:String,
         bookAvailable : {
             type: Boolean,
             default:false
-        },
-        navigation:Object,
-        parentProgress:Number
+        }
     },
     data(){
         return{
             ifSettingShow:false,
             showTag: 0,
-            progress: 0,
-            ifShowContent:false,
         }
     },
     watch:{
@@ -112,36 +90,13 @@ export default {
                 this.getCurrentLocation()
             }
         },
-        parentProgress: {
-            handler : function (value){
-                this.progress = value
-                if(this.bookAvailable && this.$refs.progress){
-                this.$refs.progress.style.backgroundSize = `${this.progress}% 100%`
-                }
-            },
-            deep:true   
-        }
     },
     methods:{
         getCurrentLocation(){
             this.$emit('getCurrentLocation')
         },
-        hideContent(){
-            this.ifShowContent = false
-        },
         jumpTo(target){
             this.$emit('jumpTo',target)
-        },
-        // 拖动进度条触发事件
-        onProgressInput(progress){
-            this.progress = progress
-            if(this.$refs.progress){
-                this.$refs.progress.style.backgroundSize = `${this.progress}% 100%`
-            }
-        },
-        // 进度条松开后触发事件，根据进度条数值跳转到指定位置
-        onProgressChange(progress){
-            this.$emit('onProgressChange',progress)
         },
         setTheme(index){
             this.$emit('setTheme',index)
@@ -149,13 +104,28 @@ export default {
         setFontSize(fontSize){
             this.$emit('setFontSize',fontSize)
         },
+        setFontColor(color){
+            this.$emit('setFontColor',color)
+        },
         showSetting(tag){
-            this.showTag = tag
-            if(this.showTag === 3){
-                this.ifSettingShow = false
-                this.ifShowContent = true
-            }else{
+            // 如果点击的是同一个按钮且菜单已打开，则关闭
+            if(this.showTag === tag && this.ifSettingShow){
+                this.hideSetting()
+            } else {
+                this.showTag = tag
                 this.ifSettingShow = true
+            }
+        },
+        getSettingTitle(){
+            switch(this.showTag){
+                case 0:
+                    return '字体大小'
+                case 1:
+                    return '背景颜色'
+                case 2:
+                    return '字体颜色'
+                default:
+                    return '设置'
             }
         },
         hideSetting(){
@@ -166,7 +136,42 @@ export default {
 </script>
 
 <style scoped lang='scss'>
-@import '../../styles/epub-reader-v2/global';
+/* Mixin */
+@mixin center() {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Icon样式 */
+.icon-bright::before {
+  content: "☀";
+}
+
+[class^="icon-"], [class*=" icon-"] {
+  display: inline-block;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.icon {
+  color: #333;
+  font-size: 28px;
+  display: inline-block;
+}
+
+/* 过渡动画 */
+.slide-left-enter, .slide-left-leave-to {
+  transform: translate3d(100%, 0, 0);
+}
+.slide-left-enter-to, .slide-left-leave {
+  transform: translate3d(0, 0, 0);
+}
+.slide-left-enter-active, .slide-left-leave-active {
+  transition: all .3s linear;
+}
 
     .menu-bar{
         position: relative;
@@ -221,73 +226,121 @@ export default {
             height: 100%;
             background: var(--bg-secondary, white);
             box-shadow: -2px 0 8px rgba(0,0,0,.15);
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            
+            .setting-header{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px 20px;
+                border-bottom: 1px solid var(--border-color, #e0e0e0);
+                background: var(--bg-tertiary, #f5f5f5);
+                flex-shrink: 0;
+                
+                .setting-title{
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: var(--text-primary, #333);
+                }
+                
+                .btn-close-setting{
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    padding: 4px 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                    transition: background 0.2s ease;
+                    
+                    &:hover{
+                        background: var(--bg-secondary, #e8e8e8);
+                    }
+                    
+                    .close-icon{
+                        font-size: 18px;
+                        color: var(--text-secondary, #666);
+                        line-height: 1;
+                    }
+                }
+            }
+            
             .setting-font-size{
                 display: flex;
                 flex-direction: column;
                 padding: 20px;
-                min-height: 100%;
-                .preview{
-                    flex: 0 0 50px;
-                    @include center;
-                    font-weight: 600;
-                    font-size: 20px;
-                    margin-bottom: 10px;
-                }
-                .select{
-                    display: flex;
+                flex: 1;
+                min-height: 0;
+                overflow: hidden;
+                
+                .font-size-list{
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
                     flex: 1;
-                    flex-direction: column;
-                    margin: 20px 0;
-                        .select-wrapper{
-                        flex: 0 0 40px;
+                    min-height: 0;
+                    overflow-y: auto;
+                    
+                    .font-size-item{
                         display: flex;
                         align-items: center;
+                        padding: 12px 15px;
+                        margin-bottom: 8px;
+                        border: 1px solid var(--border-color, #e0e0e0);
+                        border-radius: 6px;
+                        background: var(--bg-tertiary, #f5f5f5);
                         cursor: pointer;
-                        margin-bottom: 10px;
-                        &:first-child{
-                            .line{
-                                &:first-child{
-                                    border-top: none;
-                                }
+                        transition: all 0.2s ease;
+                        
+                        &:hover{
+                            background: var(--bg-secondary, #e8e8e8);
+                            border-color: var(--accent-color, #66c0f4);
+                        }
+                        
+                        &.active{
+                            background: var(--accent-color, #66c0f4);
+                            border-color: var(--accent-color, #66c0f4);
+                            color: white;
+                            
+                            .font-size-preview{
+                                color: white;
+                            }
+                            
+                            .font-size-value{
+                                color: white;
+                                font-weight: 600;
+                            }
+                            
+                            .font-size-check{
+                                color: white;
                             }
                         }
-
-                        &:last-child{
-                            .line{
-                                &:last-child{
-                                    border-top: none;
-                                }
-                            }
+                        
+                        .font-size-preview{
+                            flex: 0 0 auto;
+                            width: 40px;
+                            text-align: center;
+                            font-weight: 600;
+                            color: var(--text-primary, #333);
+                            margin-right: 15px;
                         }
-                        .line{
+                        
+                        .font-size-value{
                             flex: 1;
-                            height: 0;
-                            border-top: 1px solid #ccc ;
+                            font-size: 14px;
+                            color: var(--text-secondary, #666);
                         }
-                        .point-wrapper{
-                            position: relative;
-                            flex: 0 0 20px;
+                        
+                        .font-size-check{
+                            flex: 0 0 auto;
                             width: 20px;
-                            height: 20px;
-                            .point{
-                                position: absolute;
-                                top: -10px;
-                                left: 0;
-                                width: 20px;
-                                height: 20px;
-                                border-radius: 50%;
-                                background: white;
-                                border: 1px solid #ccc;
-                                box-shadow: 0 4px 4px rgba(0,0,0,.15);
-                                @include center;
-                                .small-point{
-                                    width: 5px;
-                                    height: 5px;
-                                    background: black;
-                                    border-radius: 50%;
-                                }
-                            }
+                            text-align: center;
+                            font-size: 16px;
+                            font-weight: 600;
+                            color: var(--accent-color, #66c0f4);
                         }
                     }
                 }
@@ -298,6 +351,7 @@ export default {
                 display:flex;
                 flex-direction: column;
                 gap: 15px;
+                flex: 1;
                     .setting-theme-item{
                     flex: 0 0 auto;
                     display:flex;
@@ -337,56 +391,79 @@ export default {
                 }
             }
 
-            .setting-progress{
-                position:relative;
-                width:100%;
+            .setting-font-color{
+                display: flex;
+                flex-direction: column;
                 padding: 20px;
-                .progress-wrapper{
-                    width:100%;
-                    padding: 20px 0;
-                    box-sizing: border-box;
-                    .progress{
-                        width:100%;
-                        -webkit-appearance: none;
-                        appearance: none;
-                        height: 2px;
-                        background: -webkit-linear-gradient(#999, #999) no-repeat, #ddd;
-                        background-size: 0 100%;
+                flex: 1;
+                min-height: 0;
+                overflow: hidden;
+                
+                .font-color-list{
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                    flex: 1;
+                    min-height: 0;
+                    overflow-y: auto;
+                    
+                    .font-color-item{
+                        display: flex;
+                        align-items: center;
+                        padding: 12px 15px;
+                        margin-bottom: 8px;
+                        border: 1px solid var(--border-color, #e0e0e0);
+                        border-radius: 6px;
+                        background: var(--bg-tertiary, #f5f5f5);
                         cursor: pointer;
-                        &:focus{
-                            outline:none;
+                        transition: all 0.2s ease;
+                        
+                        &:hover{
+                            background: var(--bg-secondary, #e8e8e8);
+                            border-color: var(--accent-color, #66c0f4);
                         }
-                        &::-webkit-slider-thumb{
-                            -webkit-appearance:none;
-                            appearance: none;
-                            height: 20px;
+                        
+                        &.active{
+                            background: var(--accent-color, #66c0f4);
+                            border-color: var(--accent-color, #66c0f4);
+                            
+                            .font-color-preview,
+                            .font-color-name,
+                            .font-color-check{
+                                color: white;
+                            }
+                            
+                            .font-color-name{
+                                font-weight: 600;
+                            }
+                        }
+                        
+                        .font-color-preview{
+                            flex: 0 0 auto;
+                            width: 40px;
+                            text-align: center;
+                            font-weight: 600;
+                            font-size: 18px;
+                            margin-right: 15px;
+                        }
+                        
+                        .font-color-name{
+                            flex: 1;
+                            font-size: 14px;
+                            color: var(--text-secondary, #666);
+                        }
+                        
+                        .font-color-check{
+                            flex: 0 0 auto;
                             width: 20px;
-                            border-radius:50%;
-                            background:white;
-                            box-shadow: 0 4px 4px 0 rgba(0, 0, 0, .15);
-                            border: 1px solid #ddd;
+                            text-align: center;
+                            font-size: 16px;
+                            font-weight: 600;
+                            color: var(--accent-color, #66c0f4);
                         }
                     }
                 }
-                .text-wrapper{
-                    width: 100%;
-                    margin-top: 15px;
-                    color: var(--text-primary, #333);
-                    font-size: 14px;
-                    text-align: center;
-                }
             }
-        }
-        .content-mask{
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 11;
-            display: flex;
-            background: rgba(51,51,51,.8);
-            cursor: pointer;
         }
     }
 </style>

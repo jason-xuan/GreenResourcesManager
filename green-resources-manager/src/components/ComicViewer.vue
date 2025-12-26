@@ -94,12 +94,6 @@
             <span class="btn-icon">▶</span>
           </button>
         </div>
-        <div class="viewer-settings">
-          <label class="setting-item">
-            <input type="checkbox" v-model="showPageNumbers">
-            显示页码
-          </label>
-        </div>
       </div>
     </div>
   </div>
@@ -133,7 +127,6 @@ export default {
       currentPageImage: null,
       currentFileSize: 0,
       zoomLevel: 1,
-      showPageNumbers: true,
       jumpToPage: 1,
       isFullscreen: false,
       // 图片拖动相关
@@ -1009,25 +1002,6 @@ export default {
   border-color: var(--accent-color);
 }
 
-.viewer-settings {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.setting-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.setting-item input[type="checkbox"] {
-  margin: 0;
-}
-
 /* 全屏模式 */
 .comic-viewer-content:fullscreen {
   width: 100vw;
@@ -1092,11 +1066,6 @@ export default {
   .navigation-controls {
     flex-wrap: wrap;
     justify-content: center;
-  }
-  
-  .viewer-settings {
-    flex-direction: column;
-    gap: 10px;
   }
 }
 </style>

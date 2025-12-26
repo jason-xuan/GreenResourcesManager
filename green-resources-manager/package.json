@@ -71,8 +71,8 @@
         "to": "disguise"
       },
       {
-        "from": "src/third-party/ruffle-nightly-2025_12_20-windows-x86_64",
-        "to": "third-party/ruffle-nightly-2025_12_20-windows-x86_64"
+        "from": "src/third-party",
+        "to": "third-party"
       }
     ],
     "publish": {

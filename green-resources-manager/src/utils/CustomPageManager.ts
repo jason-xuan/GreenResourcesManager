@@ -29,7 +29,10 @@ class CustomPageManager {
     try {
       const loadedPages = await saveManager.readJsonFile(this.pagesFilePath);
       if (loadedPages && Array.isArray(loadedPages) && loadedPages.length > 0) {
-        this.pages = loadedPages;
+        this.pages = loadedPages.map((page: any) => ({
+          ...page,
+          type: (page.type.charAt(0).toUpperCase() + page.type.slice(1).toLowerCase()) as ResourceType
+        }));
       } else {
         this.pages = this.getDefaultPages();
         await this.savePages();
@@ -56,7 +59,7 @@ class CustomPageManager {
       { id: 'videos', name: '视频', icon: '🎬', type: 'Video', isDefault: true, order: 3, createdAt: now, updatedAt: now },
       { id: 'novels', name: '小说', icon: '📚', type: 'Novel', isDefault: true, order: 4, createdAt: now, updatedAt: now },
       { id: 'websites', name: '网站', icon: '🌐', type: 'Website', isDefault: true, order: 5, createdAt: now, updatedAt: now },
-      { id: 'audios', name: '声音', icon: '🎵', type: 'Audio', isDefault: true, order: 6, createdAt: now, updatedAt: now },
+      { id: 'audio', name: '声音', icon: '🎵', type: 'Audio', isDefault: true, order: 6, createdAt: now, updatedAt: now },
     ];
   }
 

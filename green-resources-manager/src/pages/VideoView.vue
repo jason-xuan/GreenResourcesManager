@@ -149,7 +149,8 @@ import FolderVideosGrid from '../components/video/FolderVideosGrid.vue'
 import saveManager from '../utils/SaveManager.ts'
 import notify from '../utils/NotificationService.ts'
 import { unlockAchievement } from './user/AchievementView.vue'
-import { ref, watch } from 'vue'
+import { ref, watch, PropType } from 'vue'
+import { PageConfig } from '../types/page'
 import { usePagination } from '../composables/usePagination'
 import { useVideoFilter } from '../composables/video/useVideoFilter'
 import { useVideoManagement } from '../composables/video/useVideoManagement'
@@ -174,9 +175,15 @@ export default {
     FolderVideosGrid,
   },
   emits: ['filter-data-updated'],
-  setup() {
+  props: {
+    pageConfig: {
+      type: Object as PropType<PageConfig>,
+      default: () => ({ id: 'videos', type: 'Video' })
+    }
+  },
+  setup(props) {
     // 使用视频管理 composable
-    const videoManagementComposable = useVideoManagement()
+    const videoManagementComposable = useVideoManagement(props.pageConfig.id)
     
     // 使用文件夹管理 composable
     const videoFolderComposable = useVideoFolder()
@@ -469,16 +476,6 @@ export default {
     }
   },
   async mounted() {
-    // 等待父组件（App.vue）的存档系统初始化完成
-    const maxWaitTime = 5000
-    const startTime = Date.now()
-    while (!this.$parent.isInitialized && (Date.now() - startTime) < maxWaitTime) {
-      await new Promise(resolve => setTimeout(resolve, 50))
-    }
-    if (this.$parent.isInitialized) {
-      console.log('✅ 存档系统已初始化，开始加载视频数据')
-    }
-    
     // 初始化管理器（在 composables 中已处理）
     if (this.initVideoManager) {
       await this.initVideoManager()
@@ -548,12 +545,12 @@ export default {
       }
       
       // 检测文件存在性（仅在应用启动时检测一次）
-      if (this.$parent.shouldCheckFileLoss && this.$parent.shouldCheckFileLoss()) {
+      if (this.$root.shouldCheckFileLoss && this.$root.shouldCheckFileLoss()) {
         const checkFn = (this as any).checkFileExistence
         if (checkFn && typeof checkFn === 'function') {
           await checkFn.call(this)
         }
-        this.$parent.markFileLossChecked()
+        this.$root.markFileLossChecked()
       }
       
       // 自动更新未知时长的视频（保留在组件中，因为需要访问其他方法）

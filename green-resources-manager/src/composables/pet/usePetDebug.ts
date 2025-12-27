@@ -78,15 +78,55 @@ export function usePetDebug(
   function showClickMarker(clientX: number, clientY: number, regionName: string) {
     if (!debugOverlayRef.value || !petImageRef.value) return
 
+    // 获取 overlay 的实际位置
     const overlayRect = debugOverlayRef.value.getBoundingClientRect()
+    
+    // 计算点击位置相对于 overlay 的位置
+    // clientX/clientY 是相对于视口的坐标
+    // overlayRect.left/top 也是相对于视口的坐标
     const relativeX = clientX - overlayRect.left
     const relativeY = clientY - overlayRect.top
+    
+    // 确保位置在 overlay 范围内
+    if (relativeX < 0 || relativeX > overlayRect.width || relativeY < 0 || relativeY > overlayRect.height) {
+      console.warn('点击位置超出 overlay 范围', { relativeX, relativeY, overlayRect })
+      return
+    }
 
     const marker = document.createElement('div')
     marker.className = 'debug-click-marker'
     marker.textContent = '❤️'
+    // 设置位置，使用 transform 来居中
+    marker.style.position = 'absolute'
     marker.style.left = relativeX + 'px'
     marker.style.top = relativeY + 'px'
+    marker.style.transform = 'translate(-50%, -50%)'
+    marker.style.fontSize = '20px'
+    marker.style.lineHeight = '1'
+    marker.style.pointerEvents = 'none'
+    marker.style.zIndex = '10'
+    marker.style.userSelect = 'none'
+    marker.style.display = 'flex'
+    marker.style.alignItems = 'center'
+    marker.style.justifyContent = 'center'
+    marker.style.animation = 'debugClickFade 2s ease-out forwards'
+    marker.style.willChange = 'transform, opacity' // 优化动画性能
+    
+    // 添加圆形背景（使用 ::before 伪元素的方式）
+    const circle = document.createElement('span')
+    circle.style.position = 'absolute'
+    circle.style.width = '20px'
+    circle.style.height = '20px'
+    circle.style.borderRadius = '50%'
+    circle.style.background = '#ffffff'
+    circle.style.border = '2px solid #ffffff'
+    circle.style.transform = 'translate(-50%, -50%)'
+    circle.style.left = '50%'
+    circle.style.top = '50%'
+    circle.style.animation = 'debugClickFadeCircle 2s ease-out forwards'
+    circle.style.zIndex = '-1'
+    marker.appendChild(circle)
+    
     debugOverlayRef.value.appendChild(marker)
 
     // 2秒后移除标记

@@ -11,7 +11,7 @@
 
 html,
 body {
-  width: 600px;
+  width: 800px;
   height: 700px;
   overflow: hidden;
   background: transparent !important;
@@ -28,5 +28,28 @@ body {
   background: transparent !important;
   position: relative;
   overflow: hidden;
+}
+
+/* 全局动画，确保动态创建的元素也能应用 */
+@keyframes debugClickFade {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+}
+
+@keyframes debugClickFadeCircle {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2);
+  }
 }
 

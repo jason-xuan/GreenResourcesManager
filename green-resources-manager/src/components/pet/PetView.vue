@@ -17,6 +17,7 @@
       @mousemove="handleMouseMove"
       @mouseup="handleMouseUp"
       @mouseleave="handleMouseLeave"
+      @wheel="handleWheel"
     ></div>
 
     <!-- 调试覆盖层 -->
@@ -42,23 +43,34 @@
     <!-- 菜单页面 -->
     <PetMenu
       :is-visible="menu.isVisible.value"
-      :affection="petData.affection.value"
+      :affection-level="petData.affectionSystem.level.value"
+      :affection-exp="petData.affectionSystem.exp.value"
+      :affection-exp-required="petData.affectionSystem.expRequired.value"
+      :affection-exp-progress="petData.affectionSystem.expProgress.value"
+      :affection-total-exp="petData.affectionSystem.getTotalExp()"
       :appetite="petData.appetite.value"
       :sleepiness="petData.sleepiness.value"
       :libido="petData.libido.value"
       :debug-mode="debugMode"
       :debug-info="debugInfo"
+      :coins="petCoins"
+      :inventory-items="inventory.inventoryItems.value"
+      @buy="handleBuyItem"
+      @use="handleUseItem"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { usePetData } from '../../composables/pet/usePetData'
 import { usePetInteraction } from '../../composables/pet/usePetInteraction'
 import { usePetDialog } from '../../composables/pet/usePetDialog'
 import { usePetMenu } from '../../composables/pet/usePetMenu'
 import { usePetDebug } from '../../composables/pet/usePetDebug'
+import { usePetZoom } from '../../composables/pet/usePetZoom'
+import { usePetShop } from '../../composables/pet/usePetShop'
+import { usePetInventory } from '../../composables/pet/usePetInventory'
 import { regionConfig } from '../../composables/pet/usePetRegions'
 import PetDialog from './PetDialog.vue'
 import PetMenu from './PetMenu.vue'
@@ -81,6 +93,15 @@ const { debugMode, debugInfo, toggleDebugMode, showClickMarker, updateDebugInfo 
   petImageRef,
   regionConfig
 )
+
+const { handleWheel } = usePetZoom()
+
+// 金币（暂时使用固定值，后续可以从数据中加载）
+const petCoins = ref(1000)
+
+// 商店和仓库
+const shop = usePetShop(petCoins)
+const inventory = usePetInventory()
 
 // 处理鼠标事件
 function handleMouseDown(e: MouseEvent) {
@@ -161,6 +182,45 @@ function handleSendMessage(message: string) {
   petData.increaseAffection(1)
 }
 
+// 处理购买物品
+function handleBuyItem(item: any) {
+  const result = shop.buyItem(item)
+  if (result.success) {
+    // 添加到仓库（传递完整的物品信息）
+    inventory.addItem(item, 1)
+    // 显示提示
+    dialog.showMessage(result.message || `成功购买 ${item.name}`)
+  } else {
+    dialog.showMessage(result.message || '购买失败')
+  }
+}
+
+// 处理使用物品
+function handleUseItem(item: any) {
+  const result = inventory.useItem(item)
+  if (result.success && result.effect) {
+    // 应用效果
+    if (result.effect.affection) {
+      // 使用经验值系统增加好感度
+      petData.affectionSystem.addExp(result.effect.affection)
+      petData.savePetData()
+    }
+    if (result.effect.appetite) {
+      petData.updateAttribute('appetite', petData.appetite.value + result.effect.appetite)
+    }
+    if (result.effect.sleepiness) {
+      petData.updateAttribute('sleepiness', petData.sleepiness.value + result.effect.sleepiness)
+    }
+    if (result.effect.libido) {
+      petData.updateAttribute('libido', petData.libido.value + result.effect.libido)
+    }
+    // 显示提示
+    dialog.showMessage(result.message || `使用了 ${item.name}`)
+  } else {
+    dialog.showMessage(result.message || '使用失败')
+  }
+}
+
 // 快捷键支持（D键切换调试模式）
 function handleKeyDown(e: KeyboardEvent) {
   // 如果焦点在输入框，不触发快捷键
@@ -206,8 +266,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* 全局动画样式，确保动态创建的元素也能应用 */
 .pet-view {
-  width: 600px; /* 300px 菜单 + 300px 主区域 */
+  width: 800px; /* 500px 菜单 + 300px 主区域 */
   height: 700px;
   overflow: hidden;
   background: transparent;
@@ -221,7 +282,7 @@ onMounted(async () => {
 .interaction-area {
   position: absolute;
   top: 0;
-  left: 300px;
+  left: 500px;
   width: 350px;
   height: calc(100% - 50px);
   z-index: 2;
@@ -231,7 +292,7 @@ onMounted(async () => {
 .pet-image {
   position: absolute;
   top: 0;
-  left: 300px;
+  left: 500px;
   width: 350px;
   height: calc(100% - 50px);
   object-fit: cover;
@@ -244,7 +305,7 @@ onMounted(async () => {
 .debug-overlay {
   position: absolute;
   top: 0;
-  left: 300px;
+  left: 500px;
   width: 350px;
   height: calc(100% - 50px);
   z-index: 3;

@@ -180,7 +180,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPetAffection: () => ipcRenderer.invoke('get-pet-affection'),
   savePetAffection: (affection) => ipcRenderer.invoke('save-pet-affection', affection),
   getPetData: () => ipcRenderer.invoke('get-pet-data'),
-  savePetData: (data) => ipcRenderer.invoke('save-pet-data', data)
+  savePetData: (data) => ipcRenderer.invoke('save-pet-data', data),
+  // 桌宠窗口缩放
+  setPetWindowZoom: (zoomLevel) => ipcRenderer.invoke('set-pet-window-zoom', zoomLevel),
+  getPetWindowZoom: () => ipcRenderer.invoke('get-pet-window-zoom'),
+  adjustPetWindowZoom: (delta) => ipcRenderer.invoke('adjust-pet-window-zoom', delta),
+  // 获取游戏数据（用于收益页面）
+  getPetGamesData: () => ipcRenderer.invoke('get-pet-games-data')
 })
 
 // 监听来自主进程的消息

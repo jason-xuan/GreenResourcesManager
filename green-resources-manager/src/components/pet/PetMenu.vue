@@ -3,73 +3,76 @@
     <div id="menu-header" class="menu-header">
       <div id="menu-title" class="menu-title">桌宠菜单</div>
     </div>
-    <div id="menu-content" class="menu-content">
-      <div class="menu-section">
-        <div class="affection-display">
-          <span class="affection-label">好感度：</span>
-          <span class="affection-value">{{ affection }}</span>
-        </div>
+    <div class="menu-body">
+      <!-- 侧边栏导航 -->
+      <div class="menu-sidebar">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="sidebar-item"
+          :class="{ active: currentTab === tab.id }"
+          @click="currentTab = tab.id"
+        >
+          <span class="sidebar-icon">{{ tab.icon }}</span>
+          <span class="sidebar-label">{{ tab.label }}</span>
+        </button>
       </div>
-      <div class="menu-section">
-        <div class="affection-display">
-          <span class="affection-label">食欲：</span>
-          <span class="affection-value">{{ appetite }}</span>
-        </div>
-      </div>
-      <div class="menu-section">
-        <div class="affection-display">
-          <span class="affection-label">睡眠欲：</span>
-          <span class="affection-value">{{ sleepiness }}</span>
-        </div>
-      </div>
-      <div class="menu-section">
-        <div class="affection-display">
-          <span class="affection-label">性欲：</span>
-          <span class="affection-value">{{ libido }}</span>
-        </div>
-      </div>
-      <!-- 调试信息面板 -->
-      <div v-if="debugMode" class="menu-section" id="debug-info-section">
-        <div class="menu-section-title">调试信息</div>
-        <div class="debug-info-panel" id="debug-info-panel">
-          <div class="debug-info-item">
-            <span class="debug-info-label">调试模式：</span>{{ debugInfo.mode }}
-          </div>
-          <div v-if="debugInfo.clickData" class="debug-info-item">
-            <span class="debug-info-label">点击坐标：</span>({{ debugInfo.clickData.pixelX.toFixed(0) }},
-            {{ debugInfo.clickData.pixelY.toFixed(0) }})
-          </div>
-          <div v-if="debugInfo.clickData" class="debug-info-item">
-            <span class="debug-info-label">相对坐标：</span>({{ (debugInfo.clickData.relativeX * 100).toFixed(1) }}%,
-            {{ (debugInfo.clickData.relativeY * 100).toFixed(1) }}%)
-          </div>
-          <div v-if="debugInfo.clickData" class="debug-info-item">
-            <span class="debug-info-label">区域：</span>{{ debugInfo.clickData.region.name }}
-          </div>
-          <div v-if="debugInfo.clickData" class="debug-info-item">
-            <span class="debug-info-label">区域范围：</span>X: [{{ (debugInfo.clickData.region.x[0] * 100).toFixed(1) }}%,
-            {{ (debugInfo.clickData.region.x[1] * 100).toFixed(1) }}%], Y: [{{ (debugInfo.clickData.region.y[0] * 100).toFixed(1) }}%,
-            {{ (debugInfo.clickData.region.y[1] * 100).toFixed(1) }}%]
-          </div>
-          <div v-if="!debugInfo.clickData" class="debug-info-item">
-            <span class="debug-info-label">点击坐标：</span>未点击
-          </div>
-          <div v-if="!debugInfo.clickData" class="debug-info-item">
-            <span class="debug-info-label">区域：</span>无
-          </div>
-          <div v-if="debugInfo.message" class="debug-info-item" style="margin-top: 10px; color: #4a90e2">
-            {{ debugInfo.message }}
-          </div>
-        </div>
+      
+      <!-- 内容区域 -->
+      <div class="menu-content">
+        <PetMenuStatus
+          v-if="currentTab === 'status'"
+          :appetite="appetite"
+          :sleepiness="sleepiness"
+          :libido="libido"
+          :debug-mode="debugMode"
+          :debug-info="debugInfo"
+        />
+        <PetMenuAffection
+          v-else-if="currentTab === 'affection'"
+          :level="affectionLevel"
+          :exp="affectionExp"
+          :exp-required="affectionExpRequired"
+          :exp-progress="affectionExpProgress"
+          :total-exp="affectionTotalExp"
+        />
+        <PetMenuShop
+          v-else-if="currentTab === 'shop'"
+          :coins="coins"
+          @buy="handleBuy"
+        />
+        <PetMenuInventory
+          v-else-if="currentTab === 'inventory'"
+          :inventory-items="inventoryItems"
+          @use="handleUse"
+        />
+        <PetMenuEarnings
+          v-else-if="currentTab === 'earnings'"
+        />
+        <PetMenuRules
+          v-else-if="currentTab === 'rules'"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { ref } from 'vue'
+import PetMenuStatus from './PetMenuStatus.vue'
+import PetMenuAffection from './PetMenuAffection.vue'
+import PetMenuShop from './PetMenuShop.vue'
+import PetMenuInventory from './PetMenuInventory.vue'
+import PetMenuEarnings from './PetMenuEarnings.vue'
+import PetMenuRules from './PetMenuRules.vue'
+
+const props = defineProps<{
   isVisible: boolean
-  affection: number
+  affectionLevel: number
+  affectionExp: number
+  affectionExpRequired: number
+  affectionExpProgress: number
+  affectionTotalExp: number
   appetite: number
   sleepiness: number
   libido: number
@@ -79,7 +82,33 @@ defineProps<{
     clickData: any
     message?: string
   }
+  coins?: number
+  inventoryItems: any[]
 }>()
+
+const emit = defineEmits<{
+  buy: [item: any]
+  use: [item: any]
+}>()
+
+const currentTab = ref<'status' | 'affection' | 'shop' | 'inventory' | 'earnings' | 'rules'>('status')
+
+const tabs = [
+  { id: 'status' as const, label: '状态', icon: '📊' },
+  { id: 'affection' as const, label: '好感度', icon: '💕' },
+  { id: 'shop' as const, label: '商店', icon: '🛒' },
+  { id: 'inventory' as const, label: '仓库', icon: '📦' },
+  { id: 'earnings' as const, label: '收益', icon: '💰' },
+  { id: 'rules' as const, label: '玩法', icon: '📖' }
+]
+
+function handleBuy(item: any) {
+  emit('buy', item)
+}
+
+function handleUse(item: any) {
+  emit('use', item)
+}
 </script>
 
 <style scoped>
@@ -87,7 +116,7 @@ defineProps<{
   position: absolute;
   top: 0;
   left: 0;
-  width: 300px;
+  width: 500px;
   height: 100%;
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(10px);
@@ -130,8 +159,61 @@ defineProps<{
   color: #333;
 }
 
+.menu-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.menu-sidebar {
+  width: 80px;
+  flex-shrink: 0;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+  background: #f9f9f9;
+}
+
+.sidebar-item {
+  width: 100%;
+  padding: 12px 8px;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+  color: #666;
+}
+
+.sidebar-item:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.sidebar-item.active {
+  background: #e8f4fd;
+  border-left-color: #4a90e2;
+  color: #4a90e2;
+}
+
+.sidebar-icon {
+  font-size: 20px;
+}
+
+.sidebar-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .menu-content {
   flex: 1;
+  overflow-y: auto;
+  padding: 0 10px;
   scrollbar-width: thin;
   scrollbar-color: #c0c0c0 #f0f0f0;
 }
@@ -154,56 +236,5 @@ defineProps<{
   background: #a0a0a0;
 }
 
-.menu-section {
-  margin-bottom: 25px;
-}
-
-.menu-section-title {
-  font-size: 14px;
-  font-weight: bold;
-  color: #666;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.affection-display {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 0;
-}
-
-.affection-label {
-  font-size: 16px;
-  color: #666;
-  font-weight: 500;
-}
-
-.affection-value {
-  font-size: 20px;
-  font-weight: bold;
-  color: #4a90e2;
-}
-
-.debug-info-panel {
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-family: monospace;
-  margin-top: 10px;
-}
-
-.debug-info-item {
-  margin-bottom: 5px;
-  line-height: 1.4;
-}
-
-.debug-info-label {
-  color: #4a90e2;
-  font-weight: bold;
-}
 </style>
 

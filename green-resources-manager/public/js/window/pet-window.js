@@ -71,7 +71,7 @@ function createPetWindow(isDev) {
 
   // 创建桌宠窗口
   petWindow = new BrowserWindow({
-    width: 1000,  // 桌宠窗口大小（300px 菜单 + 300px 主区域）
+    width: 1200,  // 桌宠窗口大小（500px 菜单 + 700px 主区域）
     height: 700,  // 增大高度以显示对话框
     frame: false,  // 无边框
     transparent: true,  // 透明背景
@@ -119,7 +119,7 @@ function createPetWindow(isDev) {
   petWindow.once('ready-to-show', () => {
     if (petWindow && !petWindow.isDestroyed()) {
       // 默认显示在屏幕右下角（窗口大小600x400）
-      const x = screenWidth - 630 // 窗口宽度(600) + 30px 边距
+      const x = screenWidth - 1230 // 窗口宽度(1200) + 30px 边距
       const y = screenHeight - 430 // 窗口高度(400) + 30px 边距
       petWindow.setPosition(x, y)
       petWindow.show()
@@ -251,6 +251,8 @@ function registerIpcHandlers(ipcMain, isDev) {
           return {
             success: true,
             affection: result.data.affection || 0,
+            affectionLevel: result.data.affectionLevel,
+            affectionExp: result.data.affectionExp,
             appetite: result.data.appetite || 0,
             sleepiness: result.data.sleepiness || 0,
             libido: result.data.libido || 0
@@ -262,20 +264,24 @@ function registerIpcHandlers(ipcMain, isDev) {
       return {
         success: true,
         affection: 0,
+        affectionLevel: undefined,
+        affectionExp: undefined,
         appetite: 0,
         sleepiness: 0,
         libido: 0
       }
     } catch (error) {
       console.error('获取桌宠数据失败:', error)
-      return {
-        success: false,
-        error: error.message,
-        affection: 0,
-        appetite: 0,
-        sleepiness: 0,
-        libido: 0
-      }
+        return {
+          success: false,
+          error: error.message,
+          affection: 0,
+          affectionLevel: undefined,
+          affectionExp: undefined,
+          appetite: 0,
+          sleepiness: 0,
+          libido: 0
+        }
     }
   })
 
@@ -304,6 +310,39 @@ function registerIpcHandlers(ipcMain, isDev) {
     } catch (error) {
       console.error('获取桌宠好感度失败:', error)
       return { success: false, error: error.message, affection: 0 }
+    }
+  })
+
+  // 获取游戏数据（用于收益页面）
+  ipcMain.handle('get-pet-games-data', async () => {
+    try {
+      // 获取应用路径
+      const appPath = app.getAppPath()
+      const possiblePaths = [
+        path.join(appPath, 'SaveData', 'Game', 'games.json'),
+        path.join(appPath, '..', 'SaveData', 'Game', 'games.json'),
+        path.join(process.cwd(), 'SaveData', 'Game', 'games.json')
+      ]
+      
+      const gamesDataPath = possiblePaths.find(p => fs.existsSync(p))
+      
+      if (gamesDataPath) {
+        const result = await fileUtils.readJsonFile(gamesDataPath)
+        if (result.success && result.data) {
+          const games = result.data.games || []
+          return {
+            success: true,
+            totalCount: games.length,
+            games: games
+          }
+        }
+      }
+      
+      // 如果文件不存在，返回默认值
+      return { success: true, totalCount: 0, games: [] }
+    } catch (error) {
+      console.error('获取游戏数据失败:', error)
+      return { success: false, error: error.message, totalCount: 0, games: [] }
     }
   })
 
@@ -427,6 +466,34 @@ function registerIpcHandlers(ipcMain, isDev) {
       console.error('保存桌宠好感度失败:', error)
       return { success: false, error: error.message }
     }
+  })
+
+  // 设置桌宠窗口缩放级别
+  ipcMain.handle('set-pet-window-zoom', (event, zoomLevel) => {
+    if (petWindow && !petWindow.isDestroyed()) {
+      petWindow.webContents.setZoomLevel(zoomLevel)
+      return { success: true, zoomLevel }
+    }
+    return { success: false, error: '窗口不存在' }
+  })
+
+  // 获取桌宠窗口缩放级别
+  ipcMain.handle('get-pet-window-zoom', () => {
+    if (petWindow && !petWindow.isDestroyed()) {
+      return { success: true, zoomLevel: petWindow.webContents.getZoomLevel() }
+    }
+    return { success: false, error: '窗口不存在', zoomLevel: 0 }
+  })
+
+  // 调整桌宠窗口缩放（相对调整）
+  ipcMain.handle('adjust-pet-window-zoom', (event, delta) => {
+    if (petWindow && !petWindow.isDestroyed()) {
+      const currentZoom = petWindow.webContents.getZoomLevel()
+      const newZoom = Math.max(-3, Math.min(3, currentZoom + delta)) // 限制在 -3 到 3 之间
+      petWindow.webContents.setZoomLevel(newZoom)
+      return { success: true, zoomLevel: newZoom }
+    }
+    return { success: false, error: '窗口不存在' }
   })
 }
 

@@ -4,19 +4,27 @@
  */
 
 import { ref, computed } from 'vue'
+import { usePetAffection } from './usePetAffection'
 
 export interface PetData {
-  affection: number
+  affection: number // 保持向后兼容，存储总经验值
+  affectionLevel?: number // 可选：等级（用于兼容）
+  affectionExp?: number // 可选：经验值（用于兼容）
   appetite: number
   sleepiness: number
   libido: number
 }
 
 export function usePetData() {
-  const affection = ref(0)
+  // 使用好感度等级系统
+  const affectionSystem = usePetAffection()
+  
   const appetite = ref(0)
   const sleepiness = ref(0)
   const libido = ref(0)
+  
+  // 向后兼容：提供一个数值形式的好感度（用于显示，实际是总经验值）
+  const affection = computed(() => affectionSystem.getTotalExp())
 
   // 加载桌宠数据
   async function loadPetData() {
@@ -24,7 +32,14 @@ export function usePetData() {
       try {
         const result = await window.electronAPI.getPetData()
         if (result && result.success !== false) {
-          affection.value = result.affection || 0
+          // 加载好感度：优先使用等级和经验值，否则使用总经验值
+          if (result.affectionLevel !== undefined && result.affectionExp !== undefined) {
+            affectionSystem.setAffectionData(result.affectionLevel, result.affectionExp)
+          } else {
+            // 向后兼容：如果只有总经验值，使用它
+            affectionSystem.setTotalExp(result.affection || 0)
+          }
+          
           appetite.value = result.appetite || 0
           sleepiness.value = result.sleepiness || 0
           libido.value = result.libido || 0
@@ -40,7 +55,9 @@ export function usePetData() {
     if (window.electronAPI && window.electronAPI.savePetData) {
       try {
         await window.electronAPI.savePetData({
-          affection: affection.value,
+          affection: affectionSystem.getTotalExp(), // 保存总经验值（向后兼容）
+          affectionLevel: affectionSystem.level.value, // 保存等级
+          affectionExp: affectionSystem.exp.value, // 保存经验值
           appetite: appetite.value,
           sleepiness: sleepiness.value,
           libido: libido.value
@@ -51,9 +68,9 @@ export function usePetData() {
     }
   }
 
-  // 增加好感度
+  // 增加好感度（增加经验值）
   async function increaseAffection(amount = 1) {
-    affection.value = Math.min(100, affection.value + amount)
+    affectionSystem.addExp(amount)
     await savePetData()
   }
 
@@ -62,26 +79,27 @@ export function usePetData() {
     attribute: 'affection' | 'appetite' | 'sleepiness' | 'libido',
     value: number
   ) {
-    const clampedValue = Math.max(0, Math.min(100, value))
     switch (attribute) {
       case 'affection':
-        affection.value = clampedValue
+        // 好感度使用经验值系统，直接设置总经验值
+        affectionSystem.setTotalExp(Math.max(0, value))
         break
       case 'appetite':
-        appetite.value = clampedValue
+        appetite.value = Math.max(0, Math.min(100, value))
         break
       case 'sleepiness':
-        sleepiness.value = clampedValue
+        sleepiness.value = Math.max(0, Math.min(100, value))
         break
       case 'libido':
-        libido.value = clampedValue
+        libido.value = Math.max(0, Math.min(100, value))
         break
     }
     savePetData()
   }
 
   return {
-    affection,
+    affection, // 向后兼容：返回总经验值
+    affectionSystem, // 好感度等级系统
     appetite,
     sleepiness,
     libido,

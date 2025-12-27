@@ -149,6 +149,23 @@ declare global {
       removeGlobalScreenshotListener: () => void
       removeAllListeners: (channel: string) => void
       
+      // 桌宠功能
+      showPetWindow: () => Promise<{ success: boolean }>
+      hidePetWindow: () => Promise<{ success: boolean }>
+      togglePetWindow: () => Promise<{ success: boolean; visible?: boolean }>
+      isPetWindowVisible: () => Promise<{ visible: boolean }>
+      getPetWindowPosition: () => Promise<{ success: boolean; x?: number; y?: number; error?: string }>
+      movePetWindow: (x: number, y: number) => Promise<{ success: boolean; error?: string }>
+      resizePetWindow: (width: number, height: number) => Promise<{ success: boolean; error?: string }>
+      getPetData: () => Promise<any>
+      savePetData: (data: any) => Promise<any>
+      // 桌宠窗口缩放
+      setPetWindowZoom: (zoomLevel: number) => Promise<{ success: boolean; zoomLevel?: number; error?: string }>
+      getPetWindowZoom: () => Promise<{ success: boolean; zoomLevel?: number; error?: string }>
+      adjustPetWindowZoom: (delta: number) => Promise<{ success: boolean; zoomLevel?: number; error?: string }>
+      // 获取游戏数据（用于收益页面）
+      getPetGamesData: () => Promise<{ success: boolean; totalCount?: number; games?: any[]; error?: string }>
+      
       // 其他方法
       [key: string]: any
     }

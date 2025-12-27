@@ -49,7 +49,7 @@ function handleMenuClick() {
 .pet-input-container {
   position: absolute;
   bottom: 0;
-  left: 300px;
+  left: 500px;
   width: 300px;
   height: 50px;
   background: rgba(255, 255, 255, 0.95);

@@ -24,7 +24,7 @@ function handleClose() {
 .pet-dialog {
   position: absolute;
   top: 20px;
-  left: 450px; /* 300px 菜单 + 150px（主区域中心） */
+  left: 650px; /* 500px 菜单 + 150px（主区域中心） */
   transform: translateX(-50%);
   min-width: 200px;
   max-width: 280px;

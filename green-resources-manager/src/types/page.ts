@@ -5,6 +5,7 @@ export interface PageConfig {
   name: string;
   icon: string;
   type: ResourceType;
+  description?: string;
   isDefault?: boolean;
   isHidden?: boolean;
   filters?: {

@@ -188,43 +188,12 @@ export default {
       // 统一的页面配置
       pages: [], // 动态页面配置
       viewConfig: {
-        // 主导航页面
+        // 固定页面
         home: {
           name: '主页',
           icon: '🏠',
           description: '欢迎页面，快速访问各个功能模块'
         },
-        games: {
-          name: '游戏',
-          icon: '🎮',
-          description: '可以管理游戏、应用等exe文件'
-        },
-        images: {
-          name: '图片',
-          icon: '🖼️',
-          description: '可以管理图片文件夹，暂不支持单一图片的管理'
-        },
-        videos: {
-          name: '视频',
-          icon: '🎬',
-          description: '可以管理单一视频和视频文件夹'
-        },
-        novels: {
-          name: '小说',
-          icon: '📚',
-          description: '可以管理txt文件，暂不支持其余格式'
-        },
-        websites: {
-          name: '网站',
-          icon: '🌐',
-          description: '需要手动传入网址'
-        },
-        audio: {
-          name: '声音',
-          icon: '🎵',
-          description: '可以管理mp3、wav等常见音频文件'
-        },
-        // 底部导航页面
         users: {
           name: '用户',
           icon: '👤',
@@ -257,11 +226,13 @@ export default {
   },
   computed: {
     currentPageConfig() {
-      return this.pages.find(p => p.id === this.currentView)
+      // 隐藏页面不应被渲染/进入
+      return this.pages.find(p => p.id === this.currentView && !p.isHidden)
     },
     // 主导航页面ID列表
     mainNavViewIds() {
-      return ['home', ...this.pages.map(p => p.id)]
+      // 隐藏页面不出现在导航中
+      return ['home', ...this.pages.filter(p => !p.isHidden).map(p => p.id)]
     },
     // 底部导航页面ID列表
     footerViews() {
@@ -387,6 +358,39 @@ export default {
         w.requestIdleCallback(run, { timeout: 2000 })
       } else {
         setTimeout(run, 0)
+      }
+    },
+
+    // 重新加载自定义页面配置并刷新导航（用于“页面管理”修改后即时生效）
+    async reloadCustomPages() {
+      try {
+        await customPageManager.init()
+        this.pages = customPageManager.getPages()
+
+        // 更新 viewConfig
+        this.pages.forEach(page => {
+          this.viewConfig[page.id] = {
+            name: page.name,
+            icon: page.icon,
+            description: page.description || `${page.name}管理页面`
+          }
+        })
+
+        // 刷新导航项
+        this.navItems = this.mainNavViewIds.map(viewId => ({
+          id: viewId,
+          name: this.viewConfig[viewId]?.name || viewId,
+          icon: this.viewConfig[viewId]?.icon || '📄',
+          description: this.viewConfig[viewId]?.description || ''
+        }))
+
+        // 当前页面如果变为隐藏/已删除（仅资源视图会有 pageConfig）则回退
+        if (this.mainNavViewIds.includes(this.currentView) && this.currentView !== 'home' && !this.currentPageConfig) {
+          const firstVisible = this.pages.find(p => !p.isHidden)?.id
+          this.currentView = firstVisible || 'home'
+        }
+      } catch (e) {
+        console.error('重新加载自定义页面失败:', e)
       }
     },
     
@@ -1063,17 +1067,8 @@ export default {
     // 初始化自定义页面管理器
     try {
       await customPageManager.init()
-      this.pages = customPageManager.getPages()
+      await this.reloadCustomPages()
       console.log('自定义页面初始化成功:', this.pages.length, '个页面')
-      
-      // 更新 viewConfig
-      this.pages.forEach(page => {
-        this.viewConfig[page.id] = {
-          name: page.name,
-          icon: page.icon,
-          description: page.description || `${page.name}管理页面`
-        }
-      })
     } catch (error) {
       console.error('自定义页面初始化失败:', error)
     }
@@ -1086,6 +1081,12 @@ export default {
     } catch (error) {
       console.warn('加载最后访问页面失败，使用默认页面:', error)
       this.currentView = 'home'
+    }
+
+    // lastView 可能是隐藏页面/已删除页面，避免“隐藏后仍然能进入”
+    if (this.currentView !== 'home' && !this.currentPageConfig) {
+      const firstVisible = this.pages.find(p => !p.isHidden)?.id
+      this.currentView = firstVisible || 'home'
     }
 
     // 初始化筛选器状态
@@ -1103,14 +1104,6 @@ export default {
       })
     }
     
-    // 初始化主导航菜单项
-    this.navItems = this.mainNavViewIds.map(viewId => ({
-      id: viewId,
-      name: this.viewConfig[viewId]?.name || viewId,
-      icon: this.viewConfig[viewId]?.icon || '📄',
-      description: this.viewConfig[viewId]?.description || ''
-    }))
-
     // 初始化通知服务
     try {
       notificationService.init(this.$refs.toastNotification)
@@ -1210,6 +1203,11 @@ export default {
       this.autoBackupInterval = interval || 0
       console.log('自动备份时间间隔已更新:', this.autoBackupInterval, '分钟')
       this.startAutoBackupTimer()
+    })
+
+    // 监听页面管理变更（设置页新增/隐藏/排序后刷新导航）
+    window.addEventListener('custom-pages-updated', () => {
+      this.reloadCustomPages()
     })
     
     // 监听安全键触发事件（来自主进程）

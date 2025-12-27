@@ -54,12 +54,12 @@ class CustomPageManager {
   getDefaultPages(): PageConfig[] {
     const now = Date.now();
     return [
-      { id: 'games', name: '游戏', icon: '🎮', type: 'Game', isDefault: true, order: 1, createdAt: now, updatedAt: now },
-      { id: 'images', name: '图片', icon: '🖼️', type: 'Image', isDefault: true, order: 2, createdAt: now, updatedAt: now },
-      { id: 'videos', name: '视频', icon: '🎬', type: 'Video', isDefault: true, order: 3, createdAt: now, updatedAt: now },
-      { id: 'novels', name: '小说', icon: '📚', type: 'Novel', isDefault: true, order: 4, createdAt: now, updatedAt: now },
-      { id: 'websites', name: '网站', icon: '🌐', type: 'Website', isDefault: true, order: 5, createdAt: now, updatedAt: now },
-      { id: 'audio', name: '声音', icon: '🎵', type: 'Audio', isDefault: true, order: 6, createdAt: now, updatedAt: now },
+      { id: 'games', name: '游戏', icon: '🎮', type: 'Game', description: '可以管理游戏、应用等exe文件', isDefault: true, order: 1, createdAt: now, updatedAt: now },
+      { id: 'images', name: '图片', icon: '🖼️', type: 'Image', description: '可以管理图片文件夹，暂不支持单一图片的管理', isDefault: true, order: 2, createdAt: now, updatedAt: now },
+      { id: 'videos', name: '视频', icon: '🎬', type: 'Video', description: '可以管理单一视频和视频文件夹', isDefault: true, order: 3, createdAt: now, updatedAt: now },
+      { id: 'novels', name: '小说', icon: '📚', type: 'Novel', description: '可以管理txt文件，暂不支持其余格式', isDefault: true, order: 4, createdAt: now, updatedAt: now },
+      { id: 'websites', name: '网站', icon: '🌐', type: 'Website', description: '需要手动传入网址', isDefault: true, order: 5, createdAt: now, updatedAt: now },
+      { id: 'audio', name: '声音', icon: '🎵', type: 'Audio', description: '可以管理mp3、wav等常见音频文件', isDefault: true, order: 6, createdAt: now, updatedAt: now },
     ];
   }
 

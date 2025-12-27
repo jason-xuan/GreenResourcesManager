@@ -1088,14 +1088,15 @@ export default {
     
     await this.loadWebsites()
     
-    // 加载排序设置
-    await this.loadSortSetting()
-    
     // 初始化分页信息
     this.updateWebsitePagination()
     
-    // 初始化筛选器数据
-    this.updateFilterData()
+    // 加载排序设置（后台执行）
+    Promise.resolve()
+      .then(() => this.loadSortSetting())
+      .catch((e) => {
+        console.warn('[WebsiteView] 后台加载排序设置失败:', e)
+      })
   }
 }
 </script>

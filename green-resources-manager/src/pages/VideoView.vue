@@ -543,18 +543,31 @@ export default {
       if (loadFn && typeof loadFn === 'function') {
         await loadFn.call(this)
       }
+
+      this.updateFilterData()
       
       // 检测文件存在性（仅在应用启动时检测一次）
       if (this.$root.shouldCheckFileLoss && this.$root.shouldCheckFileLoss()) {
+        ;(this.$root as any).markFileLossChecked()
         const checkFn = (this as any).checkFileExistence
         if (checkFn && typeof checkFn === 'function') {
-          await checkFn.call(this)
+          Promise.resolve()
+            .then(() => checkFn.call(this))
+            .catch((e) => {
+              console.warn('[VideoView] 后台检测文件存在性失败:', e)
+            })
+            .finally(() => {
+              this.updateFilterData()
+            })
         }
-        this.$root.markFileLossChecked()
       }
       
-      // 自动更新未知时长的视频（保留在组件中，因为需要访问其他方法）
-      await this.autoUpdateUnknownDurations()
+      // 自动更新未知时长的视频（后台执行，不阻塞筛选器显示）
+      Promise.resolve()
+        .then(() => this.autoUpdateUnknownDurations())
+        .catch((e) => {
+          console.warn('[VideoView] 后台更新视频时长失败:', e)
+        })
       
       // 计算视频列表总页数（使用 composable 的 updatePagination）
       if (this.updatePagination) {
@@ -563,7 +576,11 @@ export default {
       
       const checkAchievementsFn = (this as any).checkVideoCollectionAchievements
       if (checkAchievementsFn && typeof checkAchievementsFn === 'function') {
-        await checkAchievementsFn.call(this)
+        Promise.resolve()
+          .then(() => checkAchievementsFn.call(this))
+          .catch((e) => {
+            console.warn('[VideoView] 后台成就检测失败:', e)
+          })
       }
     },
 

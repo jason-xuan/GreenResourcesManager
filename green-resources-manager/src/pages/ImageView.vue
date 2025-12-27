@@ -563,14 +563,24 @@ export default {
       }
       
       this.extractAllTags()
+
+      this.updateFilterData()
       
       // 检测文件存在性（仅在应用启动时检测一次）
       if (this.$root.shouldCheckFileLoss && this.$root.shouldCheckFileLoss()) {
         const checkFn = (this as any).checkFileExistence
-        if (checkFn && typeof checkFn === 'function') {
-          await checkFn.call(this)
-        }
+        // 标记为“已开始检测”，避免其它页面重复发起检测
         this.$root.markFileLossChecked()
+        if (checkFn && typeof checkFn === 'function') {
+          Promise.resolve()
+            .then(() => checkFn.call(this))
+            .catch((e) => {
+              console.warn('[ImageView] 后台检测文件存在性失败:', e)
+            })
+            .finally(() => {
+              this.updateFilterData()
+            })
+        }
       }
       
       // 计算漫画列表总页数（使用 composable 的 updatePagination）
@@ -578,7 +588,11 @@ export default {
       
       const checkAchievementsFn = (this as any).checkImageCollectionAchievements
       if (checkAchievementsFn && typeof checkAchievementsFn === 'function') {
-        await checkAchievementsFn.call(this)
+        Promise.resolve()
+          .then(() => checkAchievementsFn.call(this))
+          .catch((e) => {
+            console.warn('[ImageView] 后台成就检测失败:', e)
+          })
       }
     },
 

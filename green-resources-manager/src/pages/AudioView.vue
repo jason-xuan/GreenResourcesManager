@@ -470,15 +470,22 @@ export default {
       try {
         // 调用 composable 的 loadAudios 方法
         await this.loadAudiosFromComposable()
+
+        // 更新筛选器数据
+        this.updateFilterData()
         
         // 检测文件存在性（仅在应用启动时检测一次）
         if (this.$root.shouldCheckFileLoss && this.$root.shouldCheckFileLoss()) {
-          await this.checkFileExistence()
           this.$root.markFileLossChecked()
+          Promise.resolve()
+            .then(() => this.checkFileExistence())
+            .catch((e) => {
+              console.warn('[AudioView] 后台检测文件存在性失败:', e)
+            })
+            .finally(() => {
+              this.updateFilterData()
+            })
         }
-        
-        // 更新筛选器数据
-        this.updateFilterData()
         
         // 计算音频列表总页数
         this.updateAudioPagination()

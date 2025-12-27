@@ -602,32 +602,50 @@ export default {
     formatPlayTime,
     formatLastPlayed,
     // loadGames 已移至 useGameManagement composable
-    async runPostLoadChecks() {
-      // 检测文件存在性（仅在应用启动时检测一次）
-      if ((this.$root as any).shouldCheckFileLoss && (this.$root as any).shouldCheckFileLoss()) {
-        await this.checkFileExistence()
-        // fileExists 状态变化后需要重新提取筛选项（例如“丢失的资源”）
-        if (typeof (this as any).extractAllTags === 'function') {
-          ;(this as any).extractAllTags()
-        }
-        ;(this.$root as any).markFileLossChecked()
-      }
-
-      // 为现有游戏计算文件夹大小（如果还没有的话）
-      await this.updateExistingGamesFolderSize()
-
-      await this.checkGameCollectionAchievements()
-      await this.checkGameTimeAchievements()
-    },
     async loadGamesWithChecks() {
       // 调用 composable 的 loadGames（从 setup 返回，方法名是 loadGames）
-      // 注意：由于 setup() 返回的方法会直接暴露到 this 上，可以直接调用
       if (typeof (this as any).loadGames === 'function') {
         await (this as any).loadGames()
       }
 
-      // 其他检查延后到统一方法
-      await this.runPostLoadChecks()
+      this.updateFilterData()
+
+      // 检测文件存在性（仅在应用启动时检测一次）
+      if ((this.$root as any).shouldCheckFileLoss && (this.$root as any).shouldCheckFileLoss()) {
+        // 标记为已开始检测，避免其它页面重复发起检测
+        ;(this.$root as any).markFileLossChecked()
+        Promise.resolve()
+          .then(() => this.checkFileExistence())
+          .catch((e) => {
+            console.warn('[GameView] 后台检测文件存在性失败:', e)
+          })
+          .finally(() => {
+            // 检测完成后，刷新筛选器
+            this.updateFilterData()
+          })
+      }
+
+      // 为现有游戏计算文件夹大小（如果还没有的话）
+      Promise.resolve()
+        .then(() => this.updateExistingGamesFolderSize())
+        .catch((e) => {
+          console.warn('[GameView] 后台计算文件夹大小失败:', e)
+        })
+
+      // 分页信息会自动更新（usePagination composable 会监听 filteredGames 的变化）
+      // 如果需要手动触发，可以使用 this.updatePagination()
+
+      Promise.resolve()
+        .then(() => this.checkGameCollectionAchievements())
+        .catch((e) => {
+          console.warn('[GameView] 后台成就检测失败(checkGameCollectionAchievements):', e)
+        })
+
+      Promise.resolve()
+        .then(() => this.checkGameTimeAchievements())
+        .catch((e) => {
+          console.warn('[GameView] 后台成就检测失败(checkGameTimeAchievements):', e)
+        })
     },
     // updateExistingGamesFolderSize 和 checkFileExistence 已移至 useGameManagement composable
 
@@ -1636,22 +1654,7 @@ export default {
     // 移除等待逻辑，因为 ResourceView 仅在 App.vue 初始化完成后才渲染
     console.log('✅ 存档系统已初始化，开始加载游戏数据')
     
-    // 先快速加载并立刻推送筛选器数据，避免首屏“暂无筛选器数据”
-    if (typeof (this as any).loadGames === 'function') {
-      await (this as any).loadGames()
-    }
-    this.updateFilterData()
-
-    // 重任务放到后台执行，不阻塞首屏渲染（文件丢失检测 / 文件夹大小 / 成就检查等）
-    setTimeout(async () => {
-      try {
-        await this.runPostLoadChecks()
-        // 检查完成后再推送一次，确保“丢失的资源”等筛选项准确
-        this.updateFilterData()
-      } catch (e) {
-        console.warn('后台执行游戏加载检查失败:', e)
-      }
-    }, 0)
+    await this.loadGamesWithChecks()
 
     // 游戏运行状态现在由 App.vue 全局管理，无需在此处处理
 
@@ -1678,7 +1681,8 @@ export default {
     // 加载排序设置
     await this.loadSortSetting()
 
-    // 初始化筛选器数据已在首屏快速加载后执行；此处避免重复阻塞
+    // 初始化筛选器数据
+    this.updateFilterData()
 
 
     // 监听游戏进程结束事件

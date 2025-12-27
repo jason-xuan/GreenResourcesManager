@@ -91,8 +91,8 @@ function createPetWindow(isDev) {
 
   // 加载桌宠页面
   if (isDev) {
-    // 开发环境：加载 Vite 开发服务器（public 目录下的文件会被 Vite 提供）
-    petWindow.loadURL('http://localhost:5173/html/pet.html').catch(err => {
+    // 开发环境：加载 Vite 开发服务器
+    petWindow.loadURL('http://localhost:5173/pet.html').catch(err => {
       console.error('❌ 加载桌宠页面失败:', err)
       throw new Error(`无法加载桌宠页面: ${err.message}`)
     })
@@ -100,9 +100,9 @@ function createPetWindow(isDev) {
     // 生产环境：加载构建后的文件
     const fs = require('fs')
     const possiblePaths = [
-      path.join(appPath, 'dist', 'html', 'pet.html'),
-      path.join(appPath, 'html', 'pet.html'),
-      path.join(__dirname, '../../html/pet.html')
+      path.join(appPath, 'dist', 'pet.html'),
+      path.join(appPath, 'pet.html'),
+      path.join(__dirname, '../../pet.html')
     ]
     
     const petHtmlPath = possiblePaths.find(p => fs.existsSync(p))

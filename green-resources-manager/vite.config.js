@@ -11,7 +11,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        pet: resolve(__dirname, 'public/html/pet.html'),
+        pet: resolve(__dirname, 'pet.html'),
         'video-player': resolve(__dirname, 'public/html/video-player.html')
       }
     }

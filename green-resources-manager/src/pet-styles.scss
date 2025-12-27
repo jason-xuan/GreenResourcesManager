@@ -1,0 +1,32 @@
+/**
+ * 桌宠窗口专用样式
+ * 不导入主应用的全局样式，保持窗口透明
+ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 600px;
+  height: 700px;
+  overflow: hidden;
+  background: transparent !important;
+  cursor: default;
+  user-select: none;
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
+  position: relative;
+  overflow: hidden;
+}
+

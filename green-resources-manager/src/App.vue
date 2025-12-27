@@ -360,6 +360,35 @@ export default {
         console.error('获取磁盘信息时出错:', error)
       }
     },
+
+    // 预热资源页面
+    prefetchResourceViews() {
+      const run = () => {
+        const loaders: Array<() => Promise<any>> = [
+          () => import('./pages/GameView.vue'),
+          () => import('./pages/ImageView.vue'),
+          () => import('./pages/VideoView.vue'),
+          () => import('./pages/NovelView.vue'),
+          () => import('./pages/WebsiteView.vue'),
+          () => import('./pages/AudioView.vue')
+        ]
+
+        for (const loader of loaders) {
+          try {
+            loader().catch(() => {})
+          } catch (_) {
+            // ignore
+          }
+        }
+      }
+
+      const w = window as any
+      if (typeof w.requestIdleCallback === 'function') {
+        w.requestIdleCallback(run, { timeout: 2000 })
+      } else {
+        setTimeout(run, 0)
+      }
+    },
     
     switchView(viewId) {
       this.currentView = viewId
@@ -1123,6 +1152,9 @@ export default {
 
     // 启动游戏运行状态检查
     this.startPeriodicStatusCheck()
+
+    // 在应用空闲时预热各资源页面
+    this.prefetchResourceViews()
     
     // 启动游戏时长更新
     this.startPeriodicPlaytimeUpdate()

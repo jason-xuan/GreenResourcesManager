@@ -15,7 +15,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, computed, defineAsyncComponent, ref } from 'vue';
+import { defineComponent, PropType, computed, defineAsyncComponent, ref, watch, nextTick } from 'vue';
 import { PageConfig } from '../types/page';
 
 // 异步加载视图组件以避免循环引用和减少初始包大小
@@ -79,6 +79,22 @@ export default defineComponent({
         (innerView.value as any).handleFilterEvent(event, data);
       }
     };
+
+    watch(
+      () => innerView.value,
+      (v) => {
+        if (v && (v as any).updateFilterData) {
+          nextTick(() => {
+            try {
+              (v as any).updateFilterData();
+            } catch (e) {
+              console.warn('[ResourceView] 初始化过滤失败:', e);
+            }
+          });
+        }
+      },
+      { flush: 'post' }
+    );
 
     return {
       viewComponent,

@@ -414,6 +414,11 @@ export default {
       if (currentViewRef && currentViewRef.handleFilterEvent) {
         currentViewRef.handleFilterEvent(event, data)
       }
+
+      // 筛选事件发生后，主动让当前页面重新上报 filterData，
+      if (currentViewRef && currentViewRef.updateFilterData) {
+        currentViewRef.updateFilterData()
+      }
     },
     getCurrentViewRef() {
       // 如果是动态资源页面，返回 ResourceView 的引用

@@ -2096,6 +2096,79 @@ class SaveManager {
       return { success: false, error: error.message }
     }
   }
+
+  /**
+   * 加载页面数据
+   * @param {string} pageId - 页面ID
+   * @returns {Promise<any[]>} 页面数据
+   */
+  async loadPageData(pageId) {
+    // 检查是否为默认页面类型
+    switch (pageId) {
+      case 'games': return this.loadGames()
+      case 'images': return this.loadImages()
+      case 'videos': return this.loadVideos()
+      case 'novels': return this.loadNovels()
+      case 'websites': return this.loadWebsites()
+      case 'audios': return this.loadAudios()
+    }
+
+    // 自定义页面
+    const customPath = `${this.dataDirectory}/CustomPages/${pageId}/data.json`
+    const data = await this.readJsonFile(customPath)
+    // 自定义页面直接存储数组
+    return Array.isArray(data) ? data : []
+  }
+
+  /**
+   * 保存页面数据
+   * @param {string} pageId - 页面ID
+   * @param {any[]} data - 页面数据
+   * @returns {Promise<boolean>} 是否保存成功
+   */
+  async savePageData(pageId, data) {
+    // 检查是否为默认页面类型
+    switch (pageId) {
+      case 'games': return this.saveGames(data)
+      case 'images': return this.saveImages(data)
+      case 'videos': return this.saveVideos(data)
+      case 'novels': return this.saveNovels(data)
+      case 'websites': return this.saveWebsites(data)
+      case 'audios': return this.saveAudios(data)
+    }
+
+    // 自定义页面
+    const customDir = `${this.dataDirectory}/CustomPages/${pageId}`
+    const customPath = `${customDir}/data.json`
+    
+    // 确保目录存在
+    await this.ensureDirectoryByPath(customDir)
+    
+    return this.writeJsonFile(customPath, data)
+  }
+
+  /**
+   * 删除页面数据
+   * @param {string} pageId - 页面ID
+   * @returns {Promise<boolean>} 是否删除成功
+   */
+  async deletePageData(pageId) {
+    // 检查是否为默认页面类型
+    if (this.filePaths[pageId]) {
+      console.warn('Cannot delete default page data:', pageId)
+      return false
+    }
+
+    // 自定义页面
+    const customDir = `${this.dataDirectory}/CustomPages/${pageId}`
+    
+    if (window.electronAPI && window.electronAPI.deleteDirectory) {
+      const result = await window.electronAPI.deleteDirectory(customDir)
+      return result.success
+    }
+    
+    return false
+  }
 }
 
 // 创建单例实例

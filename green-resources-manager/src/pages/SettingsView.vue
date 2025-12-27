@@ -37,6 +37,13 @@
             @action="handleGeneralAction"
           />
 
+          <!-- 个性化设置 -->
+          <PersonalizationSettings 
+            v-if="currentCategory === 'personalization'"
+            :settings="settings"
+            @update:settings="handleSettingUpdate"
+          />
+
           <!-- 游戏设置 -->
           <GameSettings 
             v-if="currentCategory === 'games'"
@@ -94,6 +101,13 @@
             :settings="settings"
             @update:settings="handleSettingUpdate"
           />
+
+          <!-- 桌宠设置 -->
+          <PetSettings 
+            v-if="currentCategory === 'pet'"
+            :settings="settings"
+            @update:settings="handleSettingUpdate"
+          />
         </div>
         
       </div>
@@ -113,6 +127,8 @@ import NovelSettings from '../components/settings/NovelSettings.vue'
 import WebsiteSettings from '../components/settings/WebsiteSettings.vue'
 import UpdateSettings from '../components/settings/UpdateSettings.vue'
 import ArchiveSettings from '../components/settings/ArchiveSettings.vue'
+import PetSettings from '../components/settings/PetSettings.vue'
+import PersonalizationSettings from '../components/settings/PersonalizationSettings.vue'
 
 export default {
   name: 'SettingsView',
@@ -125,13 +141,16 @@ export default {
     NovelSettings,
     WebsiteSettings,
     UpdateSettings,
-    ArchiveSettings
+    ArchiveSettings,
+    PetSettings,
+    PersonalizationSettings
   },
   data() {
     return {
       currentCategory: 'general',
       settingsCategories: [
         { id: 'general', name: '通用', icon: '⚙️', description: '应用的基本设置和外观配置' },
+        { id: 'personalization', name: '个性化', icon: '🎨', description: '个性化外观和主题设置' },
         { id: 'games', name: '游戏', icon: '🎮', description: '游戏相关的设置选项' },
         { id: 'images', name: '图片', icon: '🖼️', description: '图片管理和显示设置' },
         { id: 'videos', name: '视频', icon: '🎬', description: '视频播放和管理设置' },
@@ -139,6 +158,7 @@ export default {
         { id: 'novels', name: '小说', icon: '📚', description: '小说阅读和管理设置' },
         { id: 'websites', name: '网站', icon: '🌐', description: '网站收藏和管理设置' },
         { id: 'archive', name: '解压/压缩', icon: '📦', description: '压缩包解压和压缩相关设置' },
+        { id: 'pet', name: '桌宠', icon: '🐾', description: '桌宠显示和管理设置' },
         { id: 'updates', name: '更新', icon: '🔄', description: '应用更新和版本管理' }
       ],
       settings: {
@@ -148,6 +168,9 @@ export default {
         disguiseMode: false,
         safetyKeyEnabled: false,
         safetyKeyUrl: 'https://www.bilibili.com/video/BV1jR4y1M78W/?p=17&share_source=copy_web&vd_source=7de8c277f16e8e03b48a5328dddfe2ce&t=466',
+        // 个性化设置
+        customAppTitle: '',
+        customAppSubtitle: '',
         // 背景图片设置
         backgroundImagePath: '',
         // 存档设置
@@ -496,6 +519,9 @@ export default {
             // 更新设置
             autoCheckUpdates: true,
             autoDownloadUpdates: false,
+            // 个性化设置
+            customAppTitle: '',
+            customAppSubtitle: '',
             // 背景图片设置
             backgroundImagePath: ''
           }

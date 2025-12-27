@@ -40,6 +40,7 @@ const { spawn } = require('child_process')
 const { exec } = require('child_process')
 const fs = require('fs')
 const path = require('path')
+const { app } = require('electron')
 const windowsUtils = require('../utils/windows-utils')
 const fileUtils = require('../utils/file-utils')
 
@@ -94,39 +95,74 @@ async function loadSettings() {
  * @returns {Promise<string|null>} Ruffle 路径，如果未找到则返回null
  */
 async function findRufflePath() {
-  // 获取当前文件所在目录（public/js/services/）
-  const currentDir = __dirname
-  // 获取应用根目录（public/）
-  const publicDir = path.join(currentDir, '../..')
-  // 获取项目根目录（green-resources-manager/）
-  const projectRoot = path.join(publicDir, '..')
-  
-  // 可能的 Ruffle 路径（按优先级排序）
-  // 注意：打包后，extraFiles 会将文件放到应用根目录下的 third-party/ 目录
-  const possiblePaths = [
-    // 打包环境：应用根目录/third-party/ruffle-nightly-2025_12_20-windows-x86_64/ruffle.exe
-    path.join(publicDir, '..', 'third-party', 'ruffle-nightly-2025_12_20-windows-x86_64', 'ruffle.exe'),
-    // 开发环境：src/third-party/ruffle-nightly-2025_12_20-windows-x86_64/ruffle.exe
-    path.join(projectRoot, 'src', 'third-party', 'ruffle-nightly-2025_12_20-windows-x86_64', 'ruffle.exe'),
-  ]
-
-  // 检查每个路径
-  for (const rufflePath of possiblePaths) {
-    try {
-      const normalizedPath = path.normalize(rufflePath)
-      if (fs.existsSync(normalizedPath)) {
-        console.log('✅ 找到 Ruffle:', normalizedPath)
-        return normalizedPath
-      }
-    } catch (error) {
-      // 忽略路径错误，继续查找下一个
-      continue
+  try {
+    // 获取当前文件所在目录（public/js/services/）
+    const currentDir = __dirname
+    // 获取项目根目录（开发环境）
+    const projectRoot = path.join(currentDir, '../../..')
+    
+    // 判断是否为打包环境
+    const isPackaged = app.isPackaged
+    
+    // 获取应用安装根目录
+    let appRootPath
+    if (isPackaged) {
+      // 打包环境：extraFiles 会将文件放到应用安装根目录（可执行文件所在目录）
+      // process.execPath 是可执行文件的路径，其目录就是应用安装根目录
+      appRootPath = path.dirname(process.execPath)
+      console.log('🔍 查找 Ruffle（打包环境）')
+      console.log('  可执行文件路径:', process.execPath)
+      console.log('  应用根目录:', appRootPath)
+    } else {
+      // 开发环境：使用项目根目录
+      appRootPath = projectRoot
+      console.log('🔍 查找 Ruffle（开发环境）')
+      console.log('  项目根目录:', appRootPath)
     }
-  }
+    
+    // 可能的 Ruffle 路径（按优先级排序）
+    // 注意：打包后，extraFiles 会将文件放到应用安装根目录下的 third-party/ 目录
+    const possiblePaths = []
+    
+    if (isPackaged) {
+      // 打包环境的路径
+      possiblePaths.push(
+        // 应用安装根目录/third-party/ruffle-nightly-2025_12_20-windows-x86_64/ruffle.exe
+        path.join(appRootPath, 'third-party', 'ruffle-nightly-2025_12_20-windows-x86_64', 'ruffle.exe'),
+        // 备用路径：尝试在 resources 同级目录查找（某些打包配置可能不同）
+        path.join(path.dirname(app.getAppPath()), '..', 'third-party', 'ruffle-nightly-2025_12_20-windows-x86_64', 'ruffle.exe')
+      )
+    } else {
+      // 开发环境的路径
+      possiblePaths.push(
+        // src/third-party/ruffle-nightly-2025_12_20-windows-x86_64/ruffle.exe
+        path.join(appRootPath, 'src', 'third-party', 'ruffle-nightly-2025_12_20-windows-x86_64', 'ruffle.exe')
+      )
+    }
 
-  console.warn('⚠️ 未找到 Ruffle 可执行文件')
-  console.warn('已检查的路径:', possiblePaths.map(p => path.normalize(p)))
-  return null
+    // 检查每个路径
+    for (const rufflePath of possiblePaths) {
+      try {
+        const normalizedPath = path.normalize(rufflePath)
+        console.log('  📂 检查路径:', normalizedPath)
+        if (fs.existsSync(normalizedPath)) {
+          console.log('✅ 找到 Ruffle:', normalizedPath)
+          return normalizedPath
+        }
+      } catch (error) {
+        // 忽略路径错误，继续查找下一个
+        console.log('  ⚠️ 路径检查失败:', error.message)
+        continue
+      }
+    }
+
+    console.warn('⚠️ 未找到 Ruffle 可执行文件')
+    console.warn('已检查的路径:', possiblePaths.map(p => path.normalize(p)))
+    return null
+  } catch (error) {
+    console.error('❌ 查找 Ruffle 路径时出错:', error)
+    return null
+  }
 }
 
 /**

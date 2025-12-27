@@ -122,41 +122,43 @@ async function writeJsonFile(filePath, data) {
         fs.copyFileSync(filePath, backupPath)
         console.log('✅ 已创建备份文件:', backupPath)
         
-        // 清理旧备份（只保留最近的N个）
-        try {
-          const dir = path.dirname(filePath)
-          const fileName = path.basename(filePath)
-          const backupPattern = `${fileName}.backup.`
-          
-          const files = fs.readdirSync(dir)
-          const backups = files
-            .filter(file => file.startsWith(backupPattern))
-            .map(file => {
-              const filePath = path.join(dir, file)
-              const stats = fs.statSync(filePath)
-              return {
-                name: file,
-                path: filePath,
-                mtime: stats.mtime.getTime()
-              }
-            })
-            .sort((a, b) => b.mtime - a.mtime)
-          
-          // 删除超出数量的旧备份
-          if (backups.length > MAX_BACKUP_FILES) {
-            const toDelete = backups.slice(MAX_BACKUP_FILES)
-            for (const backup of toDelete) {
-              try {
-                fs.unlinkSync(backup.path)
-                console.log('🗑️ 已删除旧备份:', backup.name)
-              } catch (deleteError) {
-                console.warn('删除旧备份失败:', backup.name, deleteError.message)
+        // 清理旧备份（后台异步执行，不阻塞主线程）
+        setImmediate(() => {
+          try {
+            const dir = path.dirname(filePath)
+            const fileName = path.basename(filePath)
+            const backupPattern = `${fileName}.backup.`
+            
+            const files = fs.readdirSync(dir)
+            const backups = files
+              .filter(file => file.startsWith(backupPattern))
+              .map(file => {
+                const filePath = path.join(dir, file)
+                const stats = fs.statSync(filePath)
+                return {
+                  name: file,
+                  path: filePath,
+                  mtime: stats.mtime.getTime()
+                }
+              })
+              .sort((a, b) => b.mtime - a.mtime)
+            
+            // 删除超出数量的旧备份
+            if (backups.length > MAX_BACKUP_FILES) {
+              const toDelete = backups.slice(MAX_BACKUP_FILES)
+              for (const backup of toDelete) {
+                try {
+                  fs.unlinkSync(backup.path)
+                  console.log('🗑️ 已删除旧备份:', backup.name)
+                } catch (deleteError) {
+                  console.warn('删除旧备份失败:', backup.name, deleteError.message)
+                }
               }
             }
+          } catch (cleanupError) {
+            console.warn('清理旧备份失败（不影响使用）:', cleanupError.message)
           }
-        } catch (cleanupError) {
-          console.warn('清理旧备份失败（不影响使用）:', cleanupError.message)
-        }
+        })
       } catch (backupError) {
         console.warn('创建备份文件失败，继续执行:', backupError.message)
       }

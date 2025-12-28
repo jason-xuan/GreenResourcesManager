@@ -204,9 +204,32 @@ class CustomPageManager {
 
   /**
    * 重新排序页面
-   * @param newOrderIds 新的页面ID顺序数组
+   * @param newOrderIds 新的页面ID顺序数组，必须包含所有现有页面的ID
+   * @throws 如果 newOrderIds 与现有页面的ID不匹配则抛出错误
    */
   async reorderPages(newOrderIds: string[]) {
+    // 验证 newOrderIds 包含的 ID 集合与现有页面 ID 集合一致
+    const existingIds = new Set(this.pages.map(p => p.id));
+    const providedIds = new Set(newOrderIds);
+
+    // 检查是否存在不存在的 ID
+    const nonexistentIds = newOrderIds.filter(id => !existingIds.has(id));
+    if (nonexistentIds.length > 0) {
+      throw new Error(
+        `无法重新排序页面：包含不存在的页面ID: ${nonexistentIds.join(', ')}`
+      );
+    }
+
+    // 检查是否有页面未被包含在 newOrderIds 中
+    const missingIds = Array.from(existingIds).filter(id => !providedIds.has(id));
+    if (missingIds.length > 0) {
+      throw new Error(
+        `无法重新排序页面：缺少必要的页面ID: ${missingIds.join(', ')}。` +
+        `必须为所有页面提供顺序。`
+      );
+    }
+
+    // 创建顺序映射
     const orderMap = new Map(newOrderIds.map((id, index) => [id, index + 1]));
 
     let changed = false;

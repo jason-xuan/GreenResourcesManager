@@ -1,6 +1,8 @@
 # Green Resources Manager（绿色资源管理器）
 
-**一款全能、免费的本地多媒体资源管理器。可以轻松帮您管理游戏、漫画、小说、音乐、网站等资源**
+**一款全能、免费的本地多媒体资源管理器。可以轻松帮您管理游戏、漫画、小说、音乐、网站等资源。**
+
+**另外附加了游戏化，可以让您的资源收集和管理变得像游戏一样有趣！上头！**
 
 [![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](https://github.com/klsdf/GreenResourcesManager) [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-orange.svg)](LICENSE) [![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)](https://github.com/klsdf/GreenResourcesManager) [![Vue](https://img.shields.io/badge/Vue-3.3.8-4FC08D.svg)](https://vuejs.org/) [![Electron](https://img.shields.io/badge/Electron-27.1.0-47848F.svg)](https://www.electronjs.org/)
 
@@ -146,7 +148,6 @@ npm install
 
 - 本项目使用了 [Ruffle](https://ruffle.rs)来运行flash游戏。
 - 本项目的epub阅读器的设计参考了 [vue-epub-reader](https://github.com/lyh-create/vue-epub-reader)
-
 
 ## 🚀 未来规划
 

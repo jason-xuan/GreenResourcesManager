@@ -76,7 +76,11 @@ export default {
   },
   methods: {
     navigateTo(viewId: string) {
-      this.$emit('navigate', viewId)
+      this.$router.push({ name: viewId }).catch(err => {
+        if (err.name !== 'NavigationDuplicated') {
+          console.error('导航失败:', err)
+        }
+      })
     },
     async refreshRecommendations() {
       // 刷新推荐内容

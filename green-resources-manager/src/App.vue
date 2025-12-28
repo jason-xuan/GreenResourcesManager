@@ -24,8 +24,9 @@
       </div>
 
       <ul class="nav-menu">
-        <li v-for="item in navItems" :key="item.id" :class="{ active: currentView === item.id }"
-          @click="switchView(item.id)" class="nav-item">
+        <li v-for="item in navItems" :key="item.id" 
+          :class="{ active: $route.name === item.id }"
+          @click="navigateTo(item.id)" class="nav-item">
           <span class="nav-icon">{{ item.icon }}</span>
           <span class="nav-text">{{ item.name }}</span>
         </li>
@@ -34,8 +35,8 @@
       <!-- 底部按钮 -->
       <div class="nav-footer">
         <div v-for="viewId in footerViews" :key="viewId" 
-          :class="['nav-item', `${viewId}-item`, { active: currentView === viewId }]" 
-          @click="switchView(viewId)">
+          :class="['nav-item', `${viewId}-item`, { active: $route.name === viewId }]" 
+          @click="navigateTo(viewId)">
           <span class="nav-icon">{{ viewConfig[viewId]?.icon || '' }}</span>
           <span class="nav-text">{{ viewConfig[viewId]?.name || '' }}</span>
         </div>
@@ -65,34 +66,12 @@
 
         <!-- 页面内容区域 -->
         <div class="page-content" :class="{ 'has-background': backgroundImageUrl }" :style="pageContentStyle">
-          <!-- 主页 -->
-          <HomeView v-if="currentView === 'home'" @navigate="switchView" />
-
-          <!-- 动态资源页面 -->
-          <ResourceView 
-            ref="resourceView"
-            v-if="currentPageConfig"
-            :page-config="currentPageConfig"
+          <router-view 
+            ref="routerView"
             @filter-data-updated="updateFilterData"
+            @navigate="navigateTo"
+            @theme-changed="onThemeChanged"
           />
-
-          <!-- 用户页面 -->
-          <UserView v-if="currentView === 'users'" />
-
-          <!-- 信息中心页面 -->
-          <MessageCenterView v-if="currentView === 'messages'" />
-
-          <!-- 设置页面 -->
-          <SettingsView v-if="currentView === 'settings'" @theme-changed="onThemeChanged" />
-
-          <!-- 帮助页面 -->
-          <HelpView v-if="currentView === 'help'" />
-
-          <!-- 合集页面 -->
-          <CollectionsView v-if="currentView === 'collections'" />
-
-          <!-- 最近浏览页面 -->
-          <RecentView v-if="currentView === 'recent'" @navigate="switchView" />
         </div>
       </div>
       <!-- 全局音频播放器 -->
@@ -106,17 +85,10 @@
 </template>
 
 <script lang="ts">
-import HomeView from './pages/HomeView.vue'
-import UserView from './pages/UserView.vue'
-import SettingsView from './pages/SettingsView.vue'
-import MessageCenterView from './pages/MessageCenterView.vue'
-import HelpView from './pages/HelpView.vue'
-import CollectionsView from './pages/CollectionsView.vue'
-import RecentView from './pages/RecentView.vue'
 import GlobalAudioPlayer from './components/GlobalAudioPlayer.vue'
 import ToastNotification from './components/ToastNotification.vue'
 import FilterSidebar from './components/FilterSidebar.vue'
-import ResourceView from './components/ResourceView.vue'
+import { updateDynamicRoutes } from './router/index'
 
 
 import notificationService from './utils/NotificationService.ts'
@@ -129,21 +101,12 @@ import { unlockAchievement } from './pages/user/AchievementView.vue'
 export default {
   name: 'App',
   components: {
-    HomeView,
-    UserView,
-    SettingsView,
-    MessageCenterView,
-    HelpView,
-    CollectionsView,
-    RecentView,
     GlobalAudioPlayer,
     ToastNotification,
-    FilterSidebar,
-    ResourceView
+    FilterSidebar
   },
   data() {
     return {
-      currentView: 'home', // 默认页面，稍后会被设置覆盖
       theme: 'light',
       version: '0.0.0',
       isLoading: true, // 应用加载状态
@@ -226,8 +189,13 @@ export default {
   },
   computed: {
     currentPageConfig() {
-      // 隐藏页面不应被渲染/进入
-      return this.pages.find(p => p.id === this.currentView && !p.isHidden)
+      // 从路由 meta 中获取页面配置
+      const route = this.$route
+      if (route.meta?.pageConfig) {
+        return route.meta.pageConfig
+      }
+      // 兼容旧逻辑：从 pages 中查找
+      return this.pages.find(p => p.id === route.name && !p.isHidden)
     },
     // 主导航页面ID列表
     mainNavViewIds() {
@@ -361,7 +329,7 @@ export default {
       }
     },
 
-    // 重新加载自定义页面配置并刷新导航（用于“页面管理”修改后即时生效）
+    // 重新加载自定义页面配置并刷新导航（用于"页面管理"修改后即时生效）
     async reloadCustomPages() {
       try {
         await customPageManager.init()
@@ -384,38 +352,38 @@ export default {
           description: this.viewConfig[viewId]?.description || ''
         }))
 
+        // 更新动态路由
+        if (this.$router) {
+          await updateDynamicRoutes(this.$router)
+        }
+
         // 当前页面如果变为隐藏/已删除（仅资源视图会有 pageConfig）则回退
-        if (this.mainNavViewIds.includes(this.currentView) && this.currentView !== 'home' && !this.currentPageConfig) {
+        const currentRouteName = this.$route.name as string
+        if (this.mainNavViewIds.includes(currentRouteName) && currentRouteName !== 'home' && !this.currentPageConfig) {
           const firstVisible = this.pages.find(p => !p.isHidden)?.id
-          this.currentView = firstVisible || 'home'
+          if (firstVisible) {
+            this.$router.push({ name: firstVisible })
+          } else {
+            this.$router.push({ name: 'home' })
+          }
         }
       } catch (e) {
         console.error('重新加载自定义页面失败:', e)
       }
     },
     
-    switchView(viewId) {
-      this.currentView = viewId
-      // 保存当前页面到设置中
-      this.saveCurrentView(viewId)
-      // 根据页面类型决定是否显示筛选器（主导航页面有筛选器，但主页不需要筛选器）
-      this.showFilterSidebar = this.mainNavViewIds.includes(viewId) && viewId !== 'home'
-      // 重置筛选器数据
-      this.resetFilterData()
-      // 设置加载状态
-      this.isFilterSidebarLoading = this.showFilterSidebar
-      
-      // 如果是有筛选器的页面，需要手动触发筛选器数据更新
-      if (this.showFilterSidebar) {
-        // 使用 nextTick 确保组件已经渲染
-        this.$nextTick(() => {
-          const currentViewRef = this.getCurrentViewRef()
-          if (currentViewRef && currentViewRef.updateFilterData) {
-            currentViewRef.updateFilterData()
-          }
-        })
-      }
+    navigateTo(viewId: string) {
+      this.$router.push({ name: viewId }).catch(err => {
+        // 忽略重复导航错误
+        if (err.name !== 'NavigationDuplicated') {
+          console.error('导航失败:', err)
+        }
+      })
     },
+    // switchView(viewId: string) {
+    //   // 兼容旧代码，重定向到 navigateTo
+    //   this.navigateTo(viewId)
+    // },
     resetFilterData() {
       this.currentFilterData = {
         filters: []
@@ -454,20 +422,13 @@ export default {
       }
     },
     getCurrentViewRef() {
-      // 如果是动态资源页面，返回 ResourceView 的引用
-      if (this.currentPageConfig) {
-        return this.$refs.resourceView
+      // 从 router-view 获取当前组件引用
+      const routerView = this.$refs.routerView as any
+      if (routerView && routerView.$refs) {
+        // 尝试获取内部组件的引用
+        return routerView.$refs.innerView || routerView
       }
-
-      const refMap = {
-        // 'games': this.$refs.gameView, // 已由 ResourceView 接管
-        // 'images': this.$refs.imageView, // 已由 ResourceView 接管
-        // 'videos': this.$refs.videoView, // 已由 ResourceView 接管
-        // 'novels': this.$refs.novelView, // 已由 ResourceView 接管
-        // 'websites': this.$refs.websiteView, // 已由 ResourceView 接管
-        // 'audio': this.$refs.audioView // 已由 ResourceView 接管
-      }
-      return refMap[this.currentView]
+      return routerView
     },
     // 全局游戏运行状态管理方法
     addRunningGame(gameInfo) {
@@ -799,11 +760,19 @@ export default {
       }
     },
     getCurrentViewTitle() {
-      const config = this.viewConfig[this.currentView]
+      const route = this.$route
+      if (route.meta?.title) {
+        return route.meta.title as string
+      }
+      const config = this.viewConfig[route.name as string]
       return config?.name || '未知页面'
     },
     getCurrentViewDescription() {
-      const config = this.viewConfig[this.currentView]
+      const route = this.$route
+      if (route.meta?.description) {
+        return route.meta.description as string
+      }
+      const config = this.viewConfig[route.name as string]
       return config?.description || '无描述'
     },
     async applyBackgroundImage(imagePath: string) {
@@ -864,7 +833,7 @@ export default {
       console.log('🏁 播放列表播放完毕')
       // 可以在这里添加播放列表结束后的逻辑
     },
-    async saveCurrentView(viewId) {
+    async saveCurrentView(viewId: string) {
       try {
         const settings = await saveManager.loadSettings()
         if (settings) {
@@ -1076,21 +1045,48 @@ export default {
     // 加载最后访问的页面
     try {
       const lastView = await this.loadLastView()
-      this.currentView = lastView
-      console.log('🎯 已设置当前页面为:', lastView)
+      // 检查路由是否存在
+      const route = this.$router.resolve({ name: lastView })
+      if (route.name) {
+        this.$router.push({ name: lastView }).catch(() => {
+          // 如果路由不存在，跳转到主页
+          this.$router.push({ name: 'home' })
+        })
+        console.log('🎯 已设置当前页面为:', lastView)
+      } else {
+        this.$router.push({ name: 'home' })
+      }
     } catch (error) {
       console.warn('加载最后访问页面失败，使用默认页面:', error)
-      this.currentView = 'home'
+      this.$router.push({ name: 'home' })
     }
 
-    // lastView 可能是隐藏页面/已删除页面，避免“隐藏后仍然能进入”
-    if (this.currentView !== 'home' && !this.currentPageConfig) {
-      const firstVisible = this.pages.find(p => !p.isHidden)?.id
-      this.currentView = firstVisible || 'home'
-    }
-
-    // 初始化筛选器状态
-    this.showFilterSidebar = this.mainNavViewIds.includes(this.currentView) && this.currentView !== 'home'
+    // 监听路由变化，更新筛选器状态
+    this.$watch(
+      () => this.$route,
+      (route) => {
+        if (route.name) {
+          const requiresFilter = route.meta?.requiresFilter === true
+          this.showFilterSidebar = requiresFilter
+          this.resetFilterData()
+          this.isFilterSidebarLoading = requiresFilter
+          
+          // 保存当前页面
+          this.saveCurrentView(route.name as string)
+          
+          // 如果是有筛选器的页面，需要手动触发筛选器数据更新
+          if (requiresFilter) {
+            this.$nextTick(() => {
+              const currentViewRef = this.getCurrentViewRef()
+              if (currentViewRef && currentViewRef.updateFilterData) {
+                currentViewRef.updateFilterData()
+              }
+            })
+          }
+        }
+      },
+      { immediate: true }
+    )
 
     // 初次进入带筛选器的页面时，显示加载状态并主动触发一次筛选器数据刷新
     this.resetFilterData()

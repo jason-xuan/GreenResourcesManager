@@ -4,48 +4,31 @@
 
       <!-- 子页面导航 -->
       <div class="user-nav">
-        <div 
+        <router-link
           v-for="tab in userTabs" 
           :key="tab.id"
-          :class="{ active: currentTab === tab.id }"
-          @click="switchTab(tab.id)"
+          :to="{ name: `users-${tab.id}` }"
           class="user-nav-item"
+          active-class="active"
         >
           <span class="nav-icon">{{ tab.icon }}</span>
           <span class="nav-text">{{ tab.name }}</span>
-        </div>
+        </router-link>
       </div>
       
       <!-- 子页面内容 -->
       <div class="user-body">
-        <!-- 用户资料页面 -->
-        <ProfileView v-if="currentTab === 'profile'" />
-        
-        <!-- 成就页面 -->
-        <AchievementView v-if="currentTab === 'achievements'" />
-        
-        <!-- 统计页面 -->
-        <StatisticsView v-if="currentTab === 'statistics'" />
+        <router-view />
       </div>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import ProfileView from './user/ProfileView.vue'
-import AchievementView from './user/AchievementView.vue'
-import StatisticsView from './user/StatisticsView.vue'
-
 export default {
   name: 'UserView',
-  components: {
-    ProfileView,
-    AchievementView,
-    StatisticsView
-  },
   data() {
     return {
-      currentTab: 'profile', // 默认显示用户资料页面
       userTabs: [
         {
           id: 'profile',
@@ -65,14 +48,12 @@ export default {
       ]
     }
   },
-  methods: {
-    switchTab(tabId) {
-      this.currentTab = tabId
-      console.log('切换到用户子页面:', tabId)
-    }
-  },
   mounted() {
     console.log('用户页面已加载')
+    // 如果当前路由是 /users，重定向到 profile
+    if (this.$route.path === '/users') {
+      this.$router.replace({ name: 'users-profile' })
+    }
   }
 }
 </script>
@@ -123,6 +104,7 @@ export default {
   border-bottom: 2px solid transparent;
   transition: all 0.3s ease;
   color: var(--text-secondary);
+  text-decoration: none;
 }
 
 .user-nav-item:hover {

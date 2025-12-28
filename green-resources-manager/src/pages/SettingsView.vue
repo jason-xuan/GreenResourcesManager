@@ -241,10 +241,8 @@ export default {
       lastSaveTime: null,
       // 初始化标志，避免在初始化时触发watcher
       isInitializing: true,
-      // 更新相关
-      currentVersion: '0.4.0',
-      isCheckingUpdates: false,
-      updateStatus: null
+      // 更新相关（由UpdateSettings组件管理，这里只存储版本号）
+      currentVersion: '0.4.0'
     }
   },
   watch: {
@@ -884,56 +882,7 @@ export default {
       }
     },
 
-    // ==================== 自动更新相关方法 ====================
-    
-    async checkForUpdates() {
-      try {
-        this.isCheckingUpdates = true
-        this.updateStatus = { checking: true }
-        
-        if (window.electronAPI && window.electronAPI.checkForUpdates) {
-          const result = await window.electronAPI.checkForUpdates()
-          if (result.success) {
-            console.log('更新检查已启动:', result.message)
-            // 不在这里设置 isCheckingUpdates = false，等待事件监听器处理结果
-          } else {
-            this.updateStatus = { error: result.error }
-            this.isCheckingUpdates = false
-          }
-        } else {
-          this.updateStatus = { error: '自动更新功能不可用' }
-          this.isCheckingUpdates = false
-        }
-      } catch (error) {
-        console.error('检查更新失败:', error)
-        this.updateStatus = { error: error.message }
-        this.isCheckingUpdates = false
-      }
-    },
-
-
-
-    onAutoCheckUpdatesChange() {
-      // 自动检查更新设置变化时的处理
-      console.log('自动检查更新设置已更新:', this.settings.autoCheckUpdates)
-    },
-
-    openGitHubPage() {
-      try {
-        const githubUrl = 'https://github.com/klsdf/ButterResourcesManager/releases/latest'
-        
-        if (window.electronAPI && window.electronAPI.openExternal) {
-          window.electronAPI.openExternal(githubUrl)
-        } else {
-          // 降级处理：在浏览器中打开
-          window.open(githubUrl, '_blank')
-        }
-      } catch (error) {
-        console.error('打开GitHub页面失败:', error)
-        // 最后的降级处理
-        window.open('https://github.com/klsdf/ButterResourcesManager/releases/latest', '_blank')
-      }
-    },
+    // 自动更新相关方法已移至UpdateSettings组件
 
 
     formatBytes(bytes) {
@@ -942,51 +891,6 @@ export default {
       const sizes = ['Bytes', 'KB', 'MB', 'GB']
       const i = Math.floor(Math.log(bytes) / Math.log(k))
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-    },
-
-
-
-
-    // 监听自动更新事件
-    setupUpdateListeners() {
-      if (window.electronAPI) {
-        // 监听更新检查事件
-        window.electronAPI.onUpdateChecking(() => {
-          this.updateStatus = { checking: true }
-          this.isCheckingUpdates = true
-        })
-
-        // 监听发现新版本事件
-        window.electronAPI.onUpdateAvailable((event, info) => {
-          this.updateStatus = { 
-            available: true, 
-            version: info.version,
-            releaseNotes: info.releaseNotes 
-          }
-          this.isCheckingUpdates = false
-        })
-
-        // 监听没有新版本事件
-        window.electronAPI.onUpdateNotAvailable((event, info) => {
-          this.updateStatus = { notAvailable: true, version: info.version }
-          this.isCheckingUpdates = false
-        })
-
-
-        // 监听更新错误事件
-        window.electronAPI.onUpdateError((event, error) => {
-          // 处理不同类型的错误
-          let errorMessage = error
-          if (typeof error === 'object') {
-            errorMessage = error.message || '未知错误'
-            if (error.code) {
-              errorMessage += ` (错误代码: ${error.code})`
-            }
-          }
-          this.updateStatus = { error: errorMessage }
-          this.isCheckingUpdates = false
-        })
-      }
     }
   },
   async mounted() {
@@ -1237,8 +1141,7 @@ export default {
         })
       }
       
-      // 设置自动更新事件监听
-      this.setupUpdateListeners()
+      // 更新相关事件监听由UpdateSettings组件处理，不需要在这里设置
     } catch (error) {
       console.error('加载设置失败:', error)
     }

@@ -140,7 +140,7 @@ if (!gotTheLock) {
     )
     
     // 注册自动更新相关的 IPC 处理器
-    autoUpdaterService.registerIpcHandlers(ipcMain, autoUpdater, isDev)
+    autoUpdaterService.registerIpcHandlers(ipcMain, autoUpdater, isDev, () => mainWindowModule.getMainWindow())
     
     // 在 macOS 上，当单击 dock 图标并且没有其他窗口打开时，
     // 通常在应用程序中重新创建窗口

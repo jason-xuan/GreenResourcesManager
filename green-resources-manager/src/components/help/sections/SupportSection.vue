@@ -32,8 +32,8 @@
           <div class="contact-details">
             <h4>GitHub Issues</h4>
             <p>如果您发现 bug 或有技术问题，可以在 GitHub Issues 中反馈</p>
-            <span @click="openExternalLink('https://github.com/klsdf/ButterResourcesManager/issues')" class="external-link">
-              https://github.com/klsdf/ButterResourcesManager/issues
+            <span @click="openExternalLink(GITHUB_REPO.issuesUrl)" class="external-link">
+              {{ GITHUB_REPO.issuesUrl }}
             </span>
           </div>
         </div>
@@ -56,6 +56,7 @@
 import HelpSection from '../HelpSection.vue'
 import DetailCard from '../../DetailCard.vue'
 import { useHelpUtils } from '../../../composables/useHelpUtils'
+import { GITHUB_REPO } from '../../../utils/constants'
 
 const { openExternalLink, copyToClipboard } = useHelpUtils()
 </script>

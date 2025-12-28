@@ -14,7 +14,7 @@
       <SettingToggle
         title="自动检查更新"
         description="应用启动时自动检查是否有新版本"
-        :model-value="settings.autoCheckUpdates"
+        :model-value="autoCheckUpdatesValue"
         @update:model-value="updateSetting('autoCheckUpdates', $event)"
       />
 
@@ -87,6 +87,7 @@
 
 <script lang="ts">
 import SettingToggle from './SettingToggle.vue'
+import { GITHUB_REPO } from '../../utils/constants'
 
 export default {
   name: 'UpdateSettings',
@@ -104,17 +105,38 @@ export default {
     }
   },
   emits: ['update:settings'],
+  computed: {
+    // 确保 autoCheckUpdates 始终是布尔值
+    autoCheckUpdatesValue(): boolean {
+      return this.settings.autoCheckUpdates ?? true
+    }
+  },
   data() {
     return {
       isCheckingUpdates: false,
-      updateStatus: null as any
+      updateStatus: null as any,
+      checkTimeout: null as any // 用于存储超时定时器的引用
     }
   },
   mounted() {
     this.setupUpdateListeners()
   },
   beforeUnmount() {
-    // 清理事件监听器（如果需要）
+    // 清理超时定时器
+    if (this.checkTimeout) {
+      clearTimeout(this.checkTimeout)
+      this.checkTimeout = null
+    }
+    
+    // 清理事件监听器，避免内存泄漏
+    // 注意：由于preload.js的实现限制，我们只能移除所有监听器
+    // 但这是安全的，因为只有UpdateSettings组件会注册这些监听器
+    if (window.electronAPI && window.electronAPI.removeAllListeners) {
+      window.electronAPI.removeAllListeners('update-checking')
+      window.electronAPI.removeAllListeners('update-available')
+      window.electronAPI.removeAllListeners('update-not-available')
+      window.electronAPI.removeAllListeners('update-error')
+    }
   },
   methods: {
     updateSetting(key: string, value: any) {
@@ -123,57 +145,101 @@ export default {
     
     async checkForUpdates() {
       try {
+        // 清理之前的超时定时器
+        if (this.checkTimeout) {
+          clearTimeout(this.checkTimeout)
+          this.checkTimeout = null
+        }
+        
         this.isCheckingUpdates = true
         this.updateStatus = { checking: true }
         
+        console.log('[UpdateSettings] 开始检查更新...')
+        
         if (window.electronAPI && window.electronAPI.checkForUpdates) {
           const result = await window.electronAPI.checkForUpdates()
+          console.log('[UpdateSettings] IPC调用结果:', result)
+          
           if (result.success) {
-            console.log('更新检查已启动:', result.message)
-            // 不在这里设置 isCheckingUpdates = false，等待事件监听器处理结果
+            console.log('[UpdateSettings] 更新检查已启动，等待事件响应...')
+            
+            // 设置超时机制：30秒内如果没有收到任何事件，则显示错误
+            this.checkTimeout = setTimeout(() => {
+              console.warn('[UpdateSettings] 更新检查超时（30秒），可能网络问题或更新服务器无法访问')
+              if (this.isCheckingUpdates) {
+                this.updateStatus = { 
+                  error: '更新检查超时，可能是网络问题或更新服务器无法访问。请稍后重试或手动下载。' 
+                }
+                this.isCheckingUpdates = false
+                this.checkTimeout = null
+              }
+            }, 30000) // 30秒超时
           } else {
-            this.updateStatus = { error: result.error }
+            console.error('[UpdateSettings] IPC调用失败:', result.error)
+            this.updateStatus = { error: result.error || '更新检查启动失败' }
             this.isCheckingUpdates = false
           }
         } else {
-          this.updateStatus = { error: '自动更新功能不可用' }
+          console.error('[UpdateSettings] electronAPI.checkForUpdates 不可用')
+          this.updateStatus = { error: '自动更新功能不可用（当前环境不支持）' }
           this.isCheckingUpdates = false
         }
       } catch (error: any) {
-        console.error('检查更新失败:', error)
-        this.updateStatus = { error: error.message }
+        console.error('[UpdateSettings] 检查更新异常:', error)
+        this.updateStatus = { error: error.message || '检查更新时发生未知错误' }
         this.isCheckingUpdates = false
+        if (this.checkTimeout) {
+          clearTimeout(this.checkTimeout)
+          this.checkTimeout = null
+        }
       }
     },
     
     openGitHubPage() {
       try {
-        const githubUrl = 'https://github.com/klsdf/ButterResourcesManager/releases/latest'
-        
         if (window.electronAPI && window.electronAPI.openExternal) {
-          window.electronAPI.openExternal(githubUrl)
+          window.electronAPI.openExternal(GITHUB_REPO.latestReleaseUrl)
         } else {
           // 降级处理：在浏览器中打开
-          window.open(githubUrl, '_blank')
+          window.open(GITHUB_REPO.latestReleaseUrl, '_blank')
         }
       } catch (error) {
         console.error('打开GitHub页面失败:', error)
         // 最后的降级处理
-        window.open('https://github.com/klsdf/ButterResourcesManager/releases/latest', '_blank')
+        window.open(GITHUB_REPO.latestReleaseUrl, '_blank')
+      }
+    },
+    
+    // 清除超时并更新状态的辅助方法
+    clearCheckTimeout() {
+      if (this.checkTimeout) {
+        clearTimeout(this.checkTimeout)
+        this.checkTimeout = null
       }
     },
     
     // 监听自动更新事件
     setupUpdateListeners() {
       if (window.electronAPI) {
+        console.log('[UpdateSettings] 正在注册更新事件监听器...')
+        
+        // 先清理可能存在的旧监听器，避免重复监听
+        window.electronAPI.removeAllListeners('update-checking')
+        window.electronAPI.removeAllListeners('update-available')
+        window.electronAPI.removeAllListeners('update-not-available')
+        window.electronAPI.removeAllListeners('update-error')
+        
         // 监听更新检查事件
         window.electronAPI.onUpdateChecking(() => {
+          console.log('[UpdateSettings] 收到 update-checking 事件')
           this.updateStatus = { checking: true }
           this.isCheckingUpdates = true
         })
 
         // 监听发现新版本事件
         window.electronAPI.onUpdateAvailable((event: any, info: any) => {
+          console.log('[UpdateSettings] 收到 update-available 事件:', info)
+          this.clearCheckTimeout() // 清除超时定时器
           this.updateStatus = { 
             available: true, 
             version: info.version,
@@ -184,12 +250,16 @@ export default {
 
         // 监听没有新版本事件
         window.electronAPI.onUpdateNotAvailable((event: any, info: any) => {
-          this.updateStatus = { notAvailable: true, version: info.version }
+          console.log('[UpdateSettings] 收到 update-not-available 事件:', info)
+          this.clearCheckTimeout() // 清除超时定时器
+          this.updateStatus = { notAvailable: true, version: info.version || this.currentVersion }
           this.isCheckingUpdates = false
         })
 
         // 监听更新错误事件
         window.electronAPI.onUpdateError((event: any, error: any) => {
+          console.error('[UpdateSettings] 收到 update-error 事件:', error)
+          this.clearCheckTimeout() // 清除超时定时器
           // 处理不同类型的错误
           let errorMessage = error
           if (typeof error === 'object') {
@@ -201,6 +271,10 @@ export default {
           this.updateStatus = { error: errorMessage }
           this.isCheckingUpdates = false
         })
+        
+        console.log('[UpdateSettings] 更新事件监听器注册完成')
+      } else {
+        console.error('[UpdateSettings] window.electronAPI 不可用，无法注册事件监听器')
       }
     }
   }

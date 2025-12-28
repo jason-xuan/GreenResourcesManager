@@ -61,12 +61,12 @@
       <DetailCard title="📂 项目地址">
         我要star！我要star！star、star要要要~
         <div class="project-links">
-          <div @click="openExternalLink('https://github.com/klsdf/ButterResourcesManager.git')"
+          <div @click="openExternalLink(GITHUB_REPO.cloneUrl)"
             class="project-link">
             <span class="link-icon">🐙</span>
             <span class="link-text">GitHub 仓库</span>
           </div>
-          <div @click="openExternalLink('https://github.com/klsdf/ButterResourcesManager/releases')"
+          <div @click="openExternalLink(GITHUB_REPO.releasesUrl)"
             class="project-link">
             <span class="link-icon">📦</span>
             <span class="link-text">下载最新版本</span>
@@ -80,9 +80,9 @@
             <div class="contact-details">
               <h4>GitHub</h4>
               <p>可以去issues板块反馈技术问题</p>
-              <span @click="openExternalLink('https://github.com/klsdf/ButterResourcesManager/issues')"
+              <span @click="openExternalLink(GITHUB_REPO.issuesUrl)"
                 class="external-link">
-                https://github.com/klsdf/ButterResourcesManager/issues
+                {{ GITHUB_REPO.issuesUrl }}
               </span>
             </div>
           </div>
@@ -106,6 +106,7 @@
 <script setup lang="ts">
 import HelpSection from '../HelpSection.vue'
 import DetailCard from '../../DetailCard.vue'
+import { GITHUB_REPO } from '../../../utils/constants'
 import { useHelpUtils } from '../../../composables/useHelpUtils'
 
 const { openExternalLink } = useHelpUtils()

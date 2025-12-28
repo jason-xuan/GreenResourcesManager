@@ -16,6 +16,17 @@ const fixedRoutes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/search',
+    name: 'search',
+    component: () => import('../pages/SearchView.vue'),
+    meta: {
+      title: '搜索',
+      icon: '🔍',
+      description: '在所有资源中搜索内容',
+      requiresFilter: false
+    }
+  },
+  {
     path: '/users',
     name: 'users',
     component: () => import('../pages/UserView.vue'),
@@ -102,6 +113,91 @@ const fixedRoutes: RouteRecordRaw[] = [
       title: '最近浏览',
       icon: '🕒',
       description: '查看最近浏览的内容',
+      requiresFilter: false
+    }
+  },
+  // 资源主页路由 - 使用通用组件
+  {
+    path: '/game-home',
+    name: 'game-home',
+    component: () => import('../pages/ResourceHomeView.vue'),
+    props: {
+      resourceType: 'Game'
+    },
+    meta: {
+      title: '游戏主页',
+      icon: '🎮',
+      description: '游戏资源的主页',
+      requiresFilter: false
+    }
+  },
+  {
+    path: '/image-home',
+    name: 'image-home',
+    component: () => import('../pages/ResourceHomeView.vue'),
+    props: {
+      resourceType: 'Image'
+    },
+    meta: {
+      title: '图片主页',
+      icon: '🖼️',
+      description: '图片资源的主页',
+      requiresFilter: false
+    }
+  },
+  {
+    path: '/video-home',
+    name: 'video-home',
+    component: () => import('../pages/ResourceHomeView.vue'),
+    props: {
+      resourceType: 'Video'
+    },
+    meta: {
+      title: '视频主页',
+      icon: '🎬',
+      description: '视频资源的主页',
+      requiresFilter: false
+    }
+  },
+  {
+    path: '/novel-home',
+    name: 'novel-home',
+    component: () => import('../pages/ResourceHomeView.vue'),
+    props: {
+      resourceType: 'Novel'
+    },
+    meta: {
+      title: '小说主页',
+      icon: '📚',
+      description: '小说资源的主页',
+      requiresFilter: false
+    }
+  },
+  {
+    path: '/website-home',
+    name: 'website-home',
+    component: () => import('../pages/ResourceHomeView.vue'),
+    props: {
+      resourceType: 'Website'
+    },
+    meta: {
+      title: '网站主页',
+      icon: '🌐',
+      description: '网站资源的主页',
+      requiresFilter: false
+    }
+  },
+  {
+    path: '/audio-home',
+    name: 'audio-home',
+    component: () => import('../pages/ResourceHomeView.vue'),
+    props: {
+      resourceType: 'Audio'
+    },
+    meta: {
+      title: '音频主页',
+      icon: '🎵',
+      description: '音频资源的主页',
       requiresFilter: false
     }
   }

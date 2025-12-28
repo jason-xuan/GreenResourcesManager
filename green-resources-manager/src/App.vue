@@ -24,11 +24,81 @@
       </div>
 
       <ul class="nav-menu">
-        <li v-for="item in navItems" :key="item.id" 
-          :class="{ active: $route.name === item.id }"
-          @click="navigateTo(item.id)" class="nav-item">
-          <span class="nav-icon">{{ item.icon }}</span>
-          <span class="nav-text">{{ item.name }}</span>
+        <li v-for="item in navItems" :key="item.id" class="nav-item-wrapper">
+          <!-- 可展开的父级菜单项 -->
+          <div 
+            v-if="item.children && item.children.length > 0"
+            :class="['nav-item', 'nav-item-parent', { 
+              active: isItemActive(item),
+              expanded: expandedItems.includes(item.id)
+            }]"
+          >
+            <div class="nav-item-content" @click="navigateTo(item.id)">
+              <span class="nav-icon">{{ item.icon }}</span>
+              <span class="nav-text">{{ item.name }}</span>
+            </div>
+            <span 
+              class="nav-arrow" 
+              :class="{ expanded: expandedItems.includes(item.id) }"
+              @click.stop="toggleExpand(item.id)"
+            >
+              ▶
+            </span>
+          </div>
+          <!-- 普通菜单项 -->
+          <div 
+            v-else
+            :class="['nav-item', { active: $route.name === item.id }]"
+            @click="navigateTo(item.id)"
+          >
+            <span class="nav-icon">{{ item.icon }}</span>
+            <span class="nav-text">{{ item.name }}</span>
+          </div>
+          <!-- 子菜单 -->
+          <ul 
+            v-if="item.children && item.children.length > 0" 
+            class="nav-submenu"
+            :class="{ expanded: expandedItems.includes(item.id) }"
+          >
+            <li 
+              v-for="child in item.children" 
+              :key="child.id"
+              class="nav-submenu-item"
+            >
+              <!-- 子项本身（资源主页） -->
+              <div
+                :class="['nav-item', 'nav-item-child', { active: isItemActive(child) }]"
+                @click.stop="navigateTo(child.id)"
+              >
+                <span class="nav-icon">{{ child.icon }}</span>
+                <span class="nav-text">{{ child.name }}</span>
+                <span 
+                  v-if="child.children && child.children.length > 0"
+                  class="nav-arrow" 
+                  :class="{ expanded: expandedItems.includes(child.id) }"
+                  @click.stop="toggleExpand(child.id)"
+                >
+                  ▶
+                </span>
+              </div>
+              <!-- 子项的子菜单（管理页面） -->
+              <ul 
+                v-if="child.children && child.children.length > 0" 
+                class="nav-submenu nav-submenu-level2"
+                :class="{ expanded: expandedItems.includes(child.id) }"
+              >
+                <li 
+                  v-for="grandchild in child.children" 
+                  :key="grandchild.id"
+                  :class="['nav-item', 'nav-item-child', 'nav-item-grandchild', { active: $route.name === grandchild.id }]"
+                  @click.stop="navigateTo(grandchild.id)"
+                >
+                  <span class="nav-icon">{{ grandchild.icon }}</span>
+                  <span class="nav-text">{{ grandchild.name }}</span>
+                </li>
+              </ul>
+            </li>
+          </ul>
         </li>
       </ul>
 
@@ -182,12 +252,50 @@ export default {
       lastBackupTime: null, // 上次备份时间
       // 统一的页面配置
       pages: [], // 动态页面配置
+      // 导航展开状态
+      expandedItems: ['home'] as string[], // 默认展开主页
       viewConfig: {
         // 固定页面
         home: {
-          name: '主页',
+          name: '资源管理',
           icon: '🏠',
           description: '欢迎页面，快速访问各个功能模块'
+        },
+        search: {
+          name: '搜索',
+          icon: '🔍',
+          description: '在所有资源中搜索内容'
+        },
+        // 资源主页
+        'game-home': {
+          name: '应用页',
+          icon: '🎮',
+          description: '游戏资源的主页'
+        },
+        'image-home': {
+          name: '图片页',
+          icon: '🖼️',
+          description: '图片资源的主页'
+        },
+        'video-home': {
+          name: '视频页',
+          icon: '🎬',
+          description: '视频资源的主页'
+        },
+        'novel-home': {
+          name: '文档页',
+          icon: '📚',
+          description: '小说资源的主页'
+        },
+        'website-home': {
+          name: '网站页',
+          icon: '🌐',
+          description: '网站资源的主页'
+        },
+        'audio-home': {
+          name: '音频页',
+          icon: '🎵',
+          description: '音频资源的主页'
         },
         users: {
           name: '用户',
@@ -232,7 +340,79 @@ export default {
     // 主导航页面ID列表
     mainNavViewIds() {
       // 隐藏页面不出现在导航中
-      return ['home', ...this.pages.filter(p => !p.isHidden).map(p => p.id)]
+      // 包含主页、资源主页和动态页面
+      const resourceHomeIds = ['game-home', 'image-home', 'video-home', 'novel-home', 'website-home', 'audio-home']
+      return ['home', ...resourceHomeIds, ...this.pages.filter(p => !p.isHidden).map(p => p.id)]
+    },
+    // 构建嵌套导航结构
+    navItems() {
+      const items: any[] = []
+      
+      // 主页及其子项（资源主页）
+      const resourceHomeIds = ['game-home', 'image-home', 'video-home', 'novel-home', 'website-home', 'audio-home']
+      const resourceHomeChildren = resourceHomeIds.map(viewId => ({
+        id: viewId,
+        name: this.viewConfig[viewId]?.name || viewId,
+        icon: this.viewConfig[viewId]?.icon || '📄',
+        description: this.viewConfig[viewId]?.description || ''
+      }))
+      
+      // 主页项（包含资源主页作为子项）
+      items.push({
+        id: 'home',
+        name: this.viewConfig.home?.name || '主页',
+        icon: this.viewConfig.home?.icon || '🏠',
+        description: this.viewConfig.home?.description || '',
+        children: resourceHomeChildren.map(child => {
+          // 为每个资源主页添加其对应的管理页面作为子项
+          const resourceTypeMap: Record<string, string> = {
+            'game-home': 'games',
+            'image-home': 'images',
+            'video-home': 'videos',
+            'novel-home': 'novels',
+            'website-home': 'websites',
+            'audio-home': 'audio'
+          }
+          const managePageId = resourceTypeMap[child.id]
+          const managePage = this.pages.find(p => p.id === managePageId && !p.isHidden)
+          
+          const subChildren = []
+          if (managePage) {
+            subChildren.push({
+              id: managePage.id,
+              name: managePage.name,
+              icon: managePage.icon,
+              description: managePage.description || ''
+            })
+          }
+          
+          return {
+            ...child,
+            children: subChildren.length > 0 ? subChildren : undefined
+          }
+        })
+      })
+      
+      // 搜索项（主页下方，同级别）
+      items.push({
+        id: 'search',
+        name: this.viewConfig.search?.name || '搜索',
+        icon: this.viewConfig.search?.icon || '🔍',
+        description: this.viewConfig.search?.description || ''
+      })
+      
+      // 其他独立页面（没有子项的）
+      const otherPages = this.pages.filter(p => !p.isHidden && !['games', 'images', 'videos', 'novels', 'websites', 'audio'].includes(p.id))
+      otherPages.forEach(page => {
+        items.push({
+          id: page.id,
+          name: page.name,
+          icon: page.icon,
+          description: page.description || ''
+        })
+      })
+      
+      return items
     },
     // 底部导航页面ID列表
     footerViews() {
@@ -368,13 +548,7 @@ export default {
           }
         })
 
-        // 刷新导航项
-        this.navItems = this.mainNavViewIds.map(viewId => ({
-          id: viewId,
-          name: this.viewConfig[viewId]?.name || viewId,
-          icon: this.viewConfig[viewId]?.icon || '📄',
-          description: this.viewConfig[viewId]?.description || ''
-        }))
+        // 导航项现在通过 computed 属性自动计算，无需手动设置
 
         // 更新动态路由
         if (this.$router) {
@@ -403,6 +577,64 @@ export default {
           console.error('导航失败:', err)
         }
       })
+    },
+    // 切换展开/折叠状态
+    toggleExpand(itemId: string) {
+      const index = this.expandedItems.indexOf(itemId)
+      if (index > -1) {
+        this.expandedItems.splice(index, 1)
+      } else {
+        this.expandedItems.push(itemId)
+      }
+    },
+    // 判断菜单项是否激活（包括自身或子项激活）
+    isItemActive(item: any): boolean {
+      if (this.$route.name === item.id) {
+        return true
+      }
+      // 检查子项是否激活
+      if (item.children) {
+        return item.children.some((child: any) => this.isItemActive(child))
+      }
+      return false
+    },
+    // 自动展开相关菜单
+    autoExpandMenu(routeName: string) {
+      // 资源主页映射到主页
+      const resourceHomeIds = ['game-home', 'image-home', 'video-home', 'novel-home', 'website-home', 'audio-home']
+      if (resourceHomeIds.includes(routeName)) {
+        if (!this.expandedItems.includes('home')) {
+          this.expandedItems.push('home')
+        }
+        // 展开对应的资源主页
+        if (!this.expandedItems.includes(routeName)) {
+          this.expandedItems.push(routeName)
+        }
+      }
+      
+      // 管理页面映射到对应的资源主页和主页
+      const resourceTypeMap: Record<string, string> = {
+        'games': 'game-home',
+        'images': 'image-home',
+        'videos': 'video-home',
+        'novels': 'novel-home',
+        'websites': 'website-home',
+        'audio': 'audio-home'
+      }
+      const resourceHomeId = resourceTypeMap[routeName]
+      if (resourceHomeId) {
+        if (!this.expandedItems.includes('home')) {
+          this.expandedItems.push('home')
+        }
+        if (!this.expandedItems.includes(resourceHomeId)) {
+          this.expandedItems.push(resourceHomeId)
+        }
+      }
+      
+      // 如果是主页，确保展开
+      if (routeName === 'home' && !this.expandedItems.includes('home')) {
+        this.expandedItems.push('home')
+      }
     },
     // switchView(viewId: string) {
     //   // 兼容旧代码，重定向到 navigateTo
@@ -942,6 +1174,9 @@ export default {
           
           // 保存当前页面
           this.saveCurrentView(route.name as string)
+          
+          // 自动展开相关菜单
+          this.autoExpandMenu(route.name as string)
           
           // 如果是有筛选器的页面，需要手动触发筛选器数据更新
           if (requiresFilter) {

@@ -15,6 +15,18 @@ class CustomPageManager {
   }
 
   /**
+   * 生成唯一的页面 ID
+   * 使用时间戳和随机数的组合确保唯一性
+   * @returns 唯一的页面 ID
+   */
+  private generatePageId(): string {
+    const timestamp = Date.now();
+    // 生成 8 位随机十六进制字符串，提供足够的随机性
+    const randomPart = Math.random().toString(16).substring(2, 10).padEnd(8, '0');
+    return `custom-${timestamp}-${randomPart}`;
+  }
+
+  /**
    * 获取页面配置文件路径
    */
   private get pagesFilePath(): string {
@@ -127,7 +139,7 @@ class CustomPageManager {
     const now = Date.now();
     const newPage: PageConfig = {
       ...page,
-      id: `custom-${now}`,
+      id: this.generatePageId(),
       order: this.pages.length + 1,
       createdAt: now,
       updatedAt: now

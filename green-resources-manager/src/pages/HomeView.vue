@@ -44,11 +44,13 @@
 
 <script lang="ts">
 import saveManager from '../utils/SaveManager.ts'
+import customPageManager from '../utils/CustomPageManager.ts'
 import ResourceCard from '../components/home/ResourceCard.vue'
+import type { UnifiedResourceType } from '../types/page.ts'
 
 interface UnifiedResource {
   id: string
-  type: 'game' | 'image' | 'video' | 'novel' | 'website' | 'audio'
+  type: UnifiedResourceType
   name: string
   category?: string
   description?: string
@@ -97,6 +99,11 @@ export default {
           saveManager.loadAudios()
         ])
 
+        // 检查是否有番剧页面配置
+        await customPageManager.init()
+        const pages = customPageManager.getPages()
+        const animePage = pages.find(p => p.type === 'Anime' && !p.isHidden)
+        
         // 转换为统一格式
         const allResources: UnifiedResource[] = [
           ...games.map((g: any) => this.normalizeGame(g)),
@@ -106,6 +113,12 @@ export default {
           ...websites.map((w: any) => this.normalizeWebsite(w)),
           ...audios.map((a: any) => this.normalizeAudio(a))
         ]
+        
+        // 如果有番剧页面，将视频数据也作为番剧数据添加（使用相同的数据源）
+        if (animePage) {
+          const animeResources = videos.map((v: any) => this.normalizeAnime(v))
+          allResources.push(...animeResources)
+        }
 
         // 生成新的随机推荐（只显示6个）
         this.recommendedResources = this.generateRandomRecommendations(allResources, 6)
@@ -134,6 +147,11 @@ export default {
           saveManager.loadAudios()
         ])
 
+        // 检查是否有番剧页面配置
+        await customPageManager.init()
+        const pages = customPageManager.getPages()
+        const animePage = pages.find(p => p.type === 'Anime' && !p.isHidden)
+
         // 转换为统一格式
         const allResources: UnifiedResource[] = [
           ...games.map((g: any) => this.normalizeGame(g)),
@@ -143,6 +161,12 @@ export default {
           ...websites.map((w: any) => this.normalizeWebsite(w)),
           ...audios.map((a: any) => this.normalizeAudio(a))
         ]
+        
+        // 如果有番剧页面，将视频数据也作为番剧数据添加（使用相同的数据源）
+        if (animePage) {
+          const animeResources = videos.map((v: any) => this.normalizeAnime(v))
+          allResources.push(...animeResources)
+        }
 
         // 生成随机推荐（只显示6个）
         this.recommendedResources = this.generateRandomRecommendations(allResources, 6)
@@ -227,6 +251,39 @@ export default {
         type: 'video',
         name: video.name,
         category: video.series || '冒险视频',
+        description: video.description,
+        thumbnail: video.thumbnail,
+        lastAccessed: video.lastWatched,
+        badge: badge,
+        metadata: {
+          series: video.series,
+          duration: video.duration,
+          watchCount: video.watchCount,
+          tags: video.tags,
+          actors: video.actors,
+          fileSize: video.fileSize
+        }
+      }
+    },
+    normalizeAnime(video: any): UnifiedResource {
+      // 番剧使用和视频相同的数据结构，但类型不同
+      let badge = undefined
+      if (video.fileSize) {
+        const sizeGB = video.fileSize / (1024 * 1024 * 1024)
+        if (sizeGB >= 4) {
+          badge = '4K'
+        } else if (sizeGB >= 1) {
+          badge = 'HD'
+        }
+      } else if (video.duration) {
+        badge = this.formatDuration(video.duration)
+      }
+      
+      return {
+        id: video.id,
+        type: 'anime',
+        name: video.name,
+        category: video.series || '番剧',
         description: video.description,
         thumbnail: video.thumbnail,
         lastAccessed: video.lastWatched,
@@ -331,8 +388,15 @@ export default {
       
       return withAccessTime.slice(0, count)
     },
-    handleResourceClick(resource: UnifiedResource) {
+    async handleResourceClick(resource: UnifiedResource) {
       // 导航到对应的资源类型页面
+      if (resource.type === 'anime') {
+        // 番剧类型需要异步获取页面ID
+        const animePageId = await this.getAnimePageId()
+        this.navigateTo(animePageId)
+        return
+      }
+      
       const viewMap: { [key: string]: string } = {
         'game': 'games',
         'image': 'images',
@@ -346,6 +410,21 @@ export default {
       if (viewId) {
         this.navigateTo(viewId)
       }
+    },
+    // 获取番剧页面的 ID（从页面配置中查找）
+    async getAnimePageId(): Promise<string> {
+      try {
+        await customPageManager.init()
+        const pages = customPageManager.getPages()
+        const animePage = pages.find(p => p.type === 'Anime' && !p.isHidden)
+        if (animePage) {
+          return animePage.id
+        }
+      } catch (error) {
+        console.warn('获取番剧页面ID失败:', error)
+      }
+      // 如果找不到，返回默认值（用户需要先创建番剧页面）
+      return 'anime-series'
     },
     formatSize(bytes: number): string {
       if (!bytes || bytes === 0) return ''

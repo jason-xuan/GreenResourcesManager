@@ -211,21 +211,21 @@
 </template>
 
 <script lang="ts">
-import audioManager from '../utils/AudioManager.js'
-import BaseView from '../components/BaseView.vue'
-import FormField from '../components/FormField.vue'
-import AudioGrid from '../components/audio/AudioGrid.vue'
-import DetailPanel from '../components/DetailPanel.vue'
-import PathUpdateDialog from '../components/PathUpdateDialog.vue'
+import audioManager from '../../utils/AudioManager.js'
+import BaseView from '../../components/BaseView.vue'
+import FormField from '../../components/FormField.vue'
+import AudioGrid from '../../components/audio/AudioGrid.vue'
+import DetailPanel from '../../components/DetailPanel.vue'
+import PathUpdateDialog from '../../components/PathUpdateDialog.vue'
 
-import saveManager from '../utils/SaveManager.ts'
-import notify from '../utils/NotificationService.ts'
-import { useAudioDuration } from '../composables/audio/useAudioDuration'
-import { useAudioDragDrop } from '../composables/audio/useAudioDragDrop'
-import { useAudioManagement } from '../composables/audio/useAudioManagement'
-import { useAudioFilter } from '../composables/audio/useAudioFilter'
-import { useAudioPlayback } from '../composables/audio/useAudioPlayback'
-import { formatDuration as formatDurationUtil } from '../utils/formatters.ts'
+import saveManager from '../../utils/SaveManager.ts'
+import notify from '../../utils/NotificationService.ts'
+import { useAudioDuration } from '../../composables/audio/useAudioDuration'
+import { useAudioDragDrop } from '../../composables/audio/useAudioDragDrop'
+import { useAudioManagement } from '../../composables/audio/useAudioManagement'
+import { useAudioFilter } from '../../composables/audio/useAudioFilter'
+import { useAudioPlayback } from '../../composables/audio/useAudioPlayback'
+import { formatDuration as formatDurationUtil } from '../../utils/formatters.ts'
 import { ref, computed } from 'vue'
 
 export default {

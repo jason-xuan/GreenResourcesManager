@@ -24,6 +24,7 @@ class SaveManager {
       games: `${this.dataDirectory}/Game`,
       images: `${this.dataDirectory}/Image`,
       videos: `${this.dataDirectory}/Video`,
+      animeSeries: `${this.dataDirectory}/AnimeSeries`,
       audios: `${this.dataDirectory}/Audio`,
       websites: `${this.dataDirectory}/Website`,
       novels: `${this.dataDirectory}/Novel`,
@@ -36,6 +37,8 @@ class SaveManager {
       images: `${this.dataDirectories.images}/images.json`,
       videos: `${this.dataDirectories.videos}/videos.json`,
       videoFolders: `${this.dataDirectories.videos}/folders.json`, // 视频文件夹
+      animeSeries: `${this.dataDirectories.animeSeries}/animeSeries.json`,
+      animeSeriesFolders: `${this.dataDirectories.animeSeries}/folders.json`, // 番剧文件夹
       audios: `${this.dataDirectories.audios}/audios.json`,
       websites: `${this.dataDirectories.websites}/websites.json`,
       novels: `${this.dataDirectories.novels}/novels.json`,
@@ -49,6 +52,7 @@ class SaveManager {
     // 缩略图目录
     this.thumbnailDirectories = {
       videos: `${this.dataDirectories.videos}/Covers`,
+      animeSeries: `${this.dataDirectories.animeSeries}/Covers`,
       images: `${this.dataDirectories.images}/Covers`,
       audios: `${this.dataDirectories.audios}/Covers`,
       games: `${this.dataDirectories.games}/Covers`
@@ -59,6 +63,7 @@ class SaveManager {
       games: [],
       images: [],
       videoFolders: [], // 视频文件夹默认数据
+      animeSeriesFolders: [], // 番剧文件夹默认数据
       settings: {
         theme: 'auto',
         sidebarWidth: 280,
@@ -217,6 +222,7 @@ class SaveManager {
         games: `${this.dataDirectory}/Game`,
         images: `${this.dataDirectory}/Image`,
         videos: `${this.dataDirectory}/Video`,
+        animeSeries: `${this.dataDirectory}/AnimeSeries`,
         audios: `${this.dataDirectory}/Audio`,
         websites: `${this.dataDirectory}/Website`,
         novels: `${this.dataDirectory}/Novel`,
@@ -228,6 +234,8 @@ class SaveManager {
         images: `${this.dataDirectories.images}/images.json`,
         videos: `${this.dataDirectories.videos}/videos.json`,
         videoFolders: `${this.dataDirectories.videos}/videofolders.json`, // 视频文件夹
+        animeSeries: `${this.dataDirectories.animeSeries}/animeSeries.json`,
+        animeSeriesFolders: `${this.dataDirectories.animeSeries}/folders.json`, // 番剧文件夹
         audios: `${this.dataDirectories.audios}/audios.json`,
         websites: `${this.dataDirectories.websites}/websites.json`,
         novels: `${this.dataDirectories.novels}/novels.json`,
@@ -240,6 +248,7 @@ class SaveManager {
       
       this.thumbnailDirectories = {
         videos: `${this.dataDirectories.videos}/Covers`,
+        animeSeries: `${this.dataDirectories.animeSeries}/Covers`,
         images: `${this.dataDirectories.images}/Covers`,
         audios: `${this.dataDirectories.audios}/Covers`,
         games: `${this.dataDirectories.games}/Covers`
@@ -920,6 +929,107 @@ class SaveManager {
       return []
     } catch (error) {
       console.error('加载视频数据失败:', error)
+      return []
+    }
+  }
+
+  /**
+   * 保存番剧数据到本地 JSON 文件
+   * @param {Array} animeSeries - 番剧数据数组
+   * @returns {Promise<boolean>} 保存是否成功
+   */
+  async saveAnimeSeries(animeSeries) {
+    try {
+      await this.ensureDataTypeDirectory('animeSeries')
+
+      const data = {
+        animeSeries: animeSeries,
+        timestamp: new Date().toISOString(),
+        version: this.version
+      }
+
+      const success = await this.writeJsonFile(this.filePaths.animeSeries, data)
+      if (success) {
+        console.log('番剧数据保存成功:', animeSeries.length, '个番剧')
+        this.dataCache.animeSeries = JSON.parse(JSON.stringify(animeSeries)) // 更新缓存
+      }
+      return success
+    } catch (error) {
+      console.error('保存番剧数据失败:', error)
+      return false
+    }
+  }
+
+  /**
+   * 从本地 JSON 文件加载番剧数据
+   * @returns {Promise<Array>} 番剧数据数组
+   */
+  async loadAnimeSeries() {
+    // 检查缓存
+    if (this.dataCache.animeSeries) {
+      console.log('从缓存加载番剧数据:', this.dataCache.animeSeries.length, '个番剧')
+      return JSON.parse(JSON.stringify(this.dataCache.animeSeries))
+    }
+
+    try {
+      const data = await this.readJsonFile(this.filePaths.animeSeries)
+      if (data && Array.isArray(data.animeSeries)) {
+        console.log('加载番剧数据:', data.animeSeries.length, '个番剧')
+        this.dataCache.animeSeries = data.animeSeries // 更新缓存
+        return data.animeSeries
+      }
+      return []
+    } catch (error) {
+      console.error('加载番剧数据失败:', error)
+      return []
+    }
+  }
+
+  /**
+   * 保存番剧文件夹数据到本地 JSON 文件
+   * @param {Array} folders - 文件夹数据数组
+   * @returns {Promise<boolean>} 保存是否成功
+   */
+  async saveAnimeSeriesFolders(folders) {
+    try {
+      await this.ensureDataTypeDirectory('animeSeries')
+
+      const data = {
+        folders: folders,
+        timestamp: new Date().toISOString(),
+        version: this.version
+      }
+
+      console.log('准备保存番剧文件夹数据:')
+      console.log('文件夹数量:', folders.length)
+      console.log('文件路径:', this.filePaths.animeSeriesFolders)
+      console.log('数据内容:', data)
+
+      const success = await this.writeJsonFile(this.filePaths.animeSeriesFolders, data)
+      if (success) {
+        console.log('番剧文件夹数据保存成功:', folders.length, '个文件夹')
+      }
+      return success
+    } catch (error) {
+      console.error('保存番剧文件夹数据失败:', error)
+      return false
+    }
+  }
+
+  /**
+   * 从本地 JSON 文件加载番剧文件夹数据
+   * @returns {Promise<Array>} 番剧文件夹数据数组
+   */
+  async loadAnimeSeriesFolders() {
+    try {
+      const data = await this.readJsonFile(this.filePaths.animeSeriesFolders)
+      if (data && Array.isArray(data.folders)) {
+        console.log('加载番剧文件夹数据:', data.folders.length, '个文件夹')
+        return data.folders
+      }
+      return []
+    } catch (error) {
+      console.error('加载番剧文件夹数据失败:', error)
       return []
     }
   }
@@ -2190,6 +2300,7 @@ class SaveManager {
       case 'games': return this.loadGames()
       case 'images': return this.loadImages()
       case 'videos': return this.loadVideos()
+      case 'anime-series': return this.loadAnimeSeries() // 番剧使用独立的数据源
       case 'novels': return this.loadNovels()
       case 'websites': return this.loadWebsites()
       case 'audios': return this.loadAudios()
@@ -2228,6 +2339,7 @@ class SaveManager {
       case 'games': return this.saveGames(data)
       case 'images': return this.saveImages(data)
       case 'videos': return this.saveVideos(data)
+      case 'anime-series': return this.saveAnimeSeries(data) // 番剧使用独立的数据源
       case 'novels': return this.saveNovels(data)
       case 'websites': return this.saveWebsites(data)
       case 'audios': return this.saveAudios(data)

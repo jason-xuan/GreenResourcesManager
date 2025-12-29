@@ -11,13 +11,15 @@
 
 <script lang="ts">
 import type { ResourceType } from '../types/page'
+import { RESOURCE_TYPES } from '../types/page'
 
 // 资源类型配置映射
 const resourceConfigMap: Record<ResourceType, { name: string; icon: string }> = {
   Game: { name: '游戏', icon: '🎮' },
   Software: { name: '软件', icon: '💾' },
   Image: { name: '图片', icon: '🖼️' },
-  Video: { name: '视频', icon: '🎬' },
+  Video: { name: '电影', icon: '🎬' },
+  Anime: { name: '番剧', icon: '📺' },
   Novel: { name: '小说', icon: '📚' },
   Website: { name: '网站', icon: '🌐' },
   Audio: { name: '音频', icon: '🎵' }
@@ -30,7 +32,7 @@ export default {
       type: String as () => ResourceType,
       required: true,
       validator: (value: string) => {
-        return ['Game', 'Software', 'Image', 'Video', 'Novel', 'Website', 'Audio'].includes(value)
+        return (RESOURCE_TYPES as readonly string[]).includes(value)
       }
     }
   },

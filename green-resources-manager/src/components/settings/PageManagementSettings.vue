@@ -93,12 +93,15 @@
             <label>资源类型</label>
             <select v-model="editingPage.type" :disabled="isEditing">
               <option value="Game">游戏 (Game)</option>
+              <option value="Software">软件 (Software)</option>
               <option value="Image">图片 (Image)</option>
-              <option value="Video">视频 (Video)</option>
+              <option value="Video">电影 (Video)</option>
+              <option value="Anime">番剧 (Anime)</option>
               <option value="Novel">小说 (Novel)</option>
               <option value="Audio">音频 (Audio)</option>
               <option value="Website">网站 (Website)</option>
             </select>
+            <p class="help-text" v-if="!isEditing">提示：单图页面使用 Image 类型，系统会根据页面ID自动识别（ID为 single-image 时使用单图视图）</p>
             <p class="help-text" v-if="isEditing">资源类型创建后不可修改</p>
           </div>
           <div class="form-group">
@@ -132,8 +135,10 @@ import { PageConfig } from '../../types/page'
 
 const TYPE_NAME_MAP: Record<string, string> = {
   Game: '游戏',
+  Software: '软件',
   Image: '图片',
-  Video: '视频',
+  Video: '电影',
+  Anime: '番剧',
   Novel: '小说',
   Audio: '音频',
   Website: '网站'
@@ -154,7 +159,11 @@ export default defineComponent({
     const showDialog = ref(false)
     const isEditing = ref(false)
     const editingPage = ref<Partial<PageConfig>>({ ...DEFAULT_PAGE_PRESET, name: '' })
-    const quickIcons = ['🎮', '🖼️', '🎬', '📚', '🎵', '🌐', '⭐', '❤️', '📁', '📦']
+    const quickIcons = [
+      '🎮', '🖼️', '🎬', '📚', '🎵', '🌐', '⭐', '❤️', '📁', '📦',
+      '📺', '🎨', '🎭', '🎪', '🎯', '🎲', '🎸', '🎹', '🎺', '🎻',
+      '📷', '📹', '💿', '💾', '💽', '📀', '📱', '💻', '🖥️', '⌨️'
+    ]
 
     const isDragging = ref(false)
     const draggedIndex = ref<number | null>(null)

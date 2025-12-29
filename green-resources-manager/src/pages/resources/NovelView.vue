@@ -275,24 +275,24 @@
 </template>
 
 <script lang="ts">
-import novelManager from '../utils/NovelManager.js'
-import BaseView from '../components/BaseView.vue'
-import FormField from '../components/FormField.vue'
-import MediaCard from '../components/MediaCard.vue'
-import DetailPanel from '../components/DetailPanel.vue'
-import PathUpdateDialog from '../components/PathUpdateDialog.vue'
-import PdfReader from '../components/PdfReader.vue'
-import TextReader from '../components/TextReader.vue'
-import EbookReader from '../components/epub-reader-v2/EbookReader.vue'
-import ContentView from '../components/epub-reader-v2/ContentView.vue'
-import saveManager from '../utils/SaveManager.ts'
-import { useNovelManagement } from '../composables/novel/useNovelManagement'
-import { useNovelFilter } from '../composables/novel/useNovelFilter'
+import novelManager from '../../utils/NovelManager.js'
+import BaseView from '../../components/BaseView.vue'
+import FormField from '../../components/FormField.vue'
+import MediaCard from '../../components/MediaCard.vue'
+import DetailPanel from '../../components/DetailPanel.vue'
+import PathUpdateDialog from '../../components/PathUpdateDialog.vue'
+import PdfReader from '../../components/PdfReader.vue'
+import TextReader from '../../components/TextReader.vue'
+import EbookReader from '../../components/epub-reader-v2/EbookReader.vue'
+import ContentView from '../../components/epub-reader-v2/ContentView.vue'
+import saveManager from '../../utils/SaveManager.ts'
+import { useNovelManagement } from '../../composables/novel/useNovelManagement'
+import { useNovelFilter } from '../../composables/novel/useNovelFilter'
 import { ref, PropType } from 'vue'
-import { PageConfig } from '../types/page'
-import { EpubParser } from '../utils/EpubParser'
+import { PageConfig } from '../../types/page'
+import { EpubParser } from '../../utils/EpubParser'
 
-import notify from '../utils/NotificationService.ts'
+import notify from '../../utils/NotificationService.ts'
 
 
 export default {

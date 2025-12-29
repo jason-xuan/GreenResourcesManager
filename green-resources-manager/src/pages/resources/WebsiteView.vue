@@ -180,16 +180,16 @@
 </template>
 
 <script lang="ts">
-import BaseView from '../components/BaseView.vue'
-import FormField from '../components/FormField.vue'
-import MediaCard from '../components/MediaCard.vue'
-import DetailPanel from '../components/DetailPanel.vue'
+import BaseView from '../../components/BaseView.vue'
+import FormField from '../../components/FormField.vue'
+import MediaCard from '../../components/MediaCard.vue'
+import DetailPanel from '../../components/DetailPanel.vue'
 
-import saveManager from '../utils/SaveManager.ts'
-import notify from '../utils/NotificationService.ts'
-import { useWebsiteManagement } from '../composables/website/useWebsiteManagement'
+import saveManager from '../../utils/SaveManager.ts'
+import notify from '../../utils/NotificationService.ts'
+import { useWebsiteManagement } from '../../composables/website/useWebsiteManagement'
 import { PropType } from 'vue'
-import { PageConfig } from '../types/page'
+import { PageConfig } from '../../types/page'
 
 export default {
   name: 'WebsiteView',

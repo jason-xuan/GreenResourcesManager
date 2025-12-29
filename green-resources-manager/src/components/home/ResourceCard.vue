@@ -24,9 +24,11 @@
 </template>
 
 <script lang="ts">
+import type { UnifiedResourceType } from '../../types/page'
+
 interface UnifiedResource {
   id: string
-  type: 'game' | 'image' | 'video' | 'novel' | 'website' | 'audio'
+  type: UnifiedResourceType
   name: string
   category?: string
   description?: string
@@ -146,6 +148,7 @@ export default {
         game: './default-game.png',
         image: './default-image.png',
         video: './default-video.png',
+        anime: './default-video.png',
         audio: './default-audio.png',
         novel: './default-novel.png',
         website: './default-web.png'
@@ -157,6 +160,7 @@ export default {
         game: '游戏',
         image: '图片',
         video: '视频',
+        anime: '番剧',
         audio: '音频',
         novel: '小说',
         website: '网站'
@@ -178,6 +182,7 @@ export default {
           }
           return '未浏览'
         case 'video':
+        case 'anime':
           if (metadata.watchCount) {
             return `观看 ${metadata.watchCount} 次`
           }

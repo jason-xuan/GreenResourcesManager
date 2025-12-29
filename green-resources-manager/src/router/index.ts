@@ -115,103 +115,19 @@ const fixedRoutes: RouteRecordRaw[] = [
       description: '查看最近浏览的内容',
       requiresFilter: false
     }
-  },
-  // 资源主页路由 - 使用通用组件
-  {
-    path: '/game-home',
-    name: 'game-home',
-    component: () => import('../pages/ResourceHomeView.vue'),
-    props: {
-      resourceType: 'Game'
-    },
-    meta: {
-      title: '应用主页',
-      icon: '💻',
-      description: '应用资源的主页',
-      requiresFilter: false
-    }
-  },
-  {
-    path: '/image-home',
-    name: 'image-home',
-    component: () => import('../pages/ResourceHomeView.vue'),
-    props: {
-      resourceType: 'Image'
-    },
-    meta: {
-      title: '图片主页',
-      icon: '🖼️',
-      description: '图片资源的主页',
-      requiresFilter: false
-    }
-  },
-  {
-    path: '/video-home',
-    name: 'video-home',
-    component: () => import('../pages/ResourceHomeView.vue'),
-    props: {
-      resourceType: 'Video'
-    },
-    meta: {
-      title: '视频主页',
-      icon: '🎬',
-      description: '视频资源的主页',
-      requiresFilter: false
-    }
-  },
-  {
-    path: '/novel-home',
-    name: 'novel-home',
-    component: () => import('../pages/ResourceHomeView.vue'),
-    props: {
-      resourceType: 'Novel'
-    },
-    meta: {
-      title: '小说主页',
-      icon: '📚',
-      description: '小说资源的主页',
-      requiresFilter: false
-    }
-  },
-  {
-    path: '/website-home',
-    name: 'website-home',
-    component: () => import('../pages/ResourceHomeView.vue'),
-    props: {
-      resourceType: 'Website'
-    },
-    meta: {
-      title: '网站主页',
-      icon: '🌐',
-      description: '网站资源的主页',
-      requiresFilter: false
-    }
-  },
-  {
-    path: '/audio-home',
-    name: 'audio-home',
-    component: () => import('../pages/ResourceHomeView.vue'),
-    props: {
-      resourceType: 'Audio'
-    },
-    meta: {
-      title: '音频主页',
-      icon: '🎵',
-      description: '音频资源的主页',
-      requiresFilter: false
-    }
   }
 ]
 
 // 资源类型到组件的映射
 const resourceTypeToComponent: Record<string, () => Promise<any>> = {
-  Game: () => import('../pages/GameView.vue'),
-  Software: () => import('../pages/SoftwareView.vue'),
-  Image: () => import('../pages/ImageView.vue'),
-  Video: () => import('../pages/VideoView.vue'),
-  Novel: () => import('../pages/NovelView.vue'),
-  Website: () => import('../pages/WebsiteView.vue'),
-  Audio: () => import('../pages/AudioView.vue')
+  Game: () => import('../pages/resources/GameView.vue'),
+  Software: () => import('../pages/resources/SoftwareView.vue'),
+  Image: () => import('../pages/resources/ImageView.vue'),
+  Video: () => import('../pages/resources/VideoView.vue'),
+  Anime: () => import('../pages/resources/VideoAnimeSeriesView.vue'),
+  Novel: () => import('../pages/resources/NovelView.vue'),
+  Website: () => import('../pages/resources/WebsiteView.vue'),
+  Audio: () => import('../pages/resources/AudioView.vue')
 }
 
 /**

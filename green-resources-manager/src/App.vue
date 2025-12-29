@@ -65,7 +65,7 @@
               :key="child.id"
               class="nav-submenu-item"
             >
-              <!-- 子项本身（资源主页） -->
+              <!-- 子项本身（资源页面） -->
               <div
                 :class="['nav-item', 'nav-item-child', { active: isItemActive(child) }]"
                 @click.stop="navigateTo(child.id)"
@@ -81,7 +81,7 @@
                   ▶
                 </span>
               </div>
-              <!-- 子项的子菜单（管理页面） -->
+              <!-- 子项的子菜单（如果有三级菜单） -->
               <ul 
                 v-if="child.children && child.children.length > 0" 
                 class="nav-submenu nav-submenu-level2"
@@ -266,37 +266,6 @@ export default {
           icon: '🔍',
           description: '在所有资源中搜索内容'
         },
-        // 资源主页
-        'game-home': {
-          name: '应用页',
-          icon: '💻',
-          description: '应用资源的主页，包含游戏和软件'
-        },
-        'image-home': {
-          name: '图片页',
-          icon: '🖼️',
-          description: '图片资源的主页'
-        },
-        'video-home': {
-          name: '视频页',
-          icon: '🎬',
-          description: '视频资源的主页'
-        },
-        'novel-home': {
-          name: '文档页',
-          icon: '📚',
-          description: '小说资源的主页'
-        },
-        'website-home': {
-          name: '网站页',
-          icon: '🌐',
-          description: '网站资源的主页'
-        },
-        'audio-home': {
-          name: '音频页',
-          icon: '🎵',
-          description: '音频资源的主页'
-        },
         users: {
           name: '用户',
           icon: '👤',
@@ -340,121 +309,28 @@ export default {
     // 主导航页面ID列表
     mainNavViewIds() {
       // 隐藏页面不出现在导航中
-      // 包含主页、资源主页和动态页面
-      const resourceHomeIds = ['game-home', 'image-home', 'video-home', 'novel-home', 'website-home', 'audio-home']
-      return ['home', ...resourceHomeIds, ...this.pages.filter(p => !p.isHidden).map(p => p.id)]
+      // 包含主页和动态页面
+      return ['home', ...this.pages.filter(p => !p.isHidden).map(p => p.id)]
     },
     // 构建嵌套导航结构
     navItems() {
       const items: any[] = []
       
-      // 主页及其子项（资源主页）
-      const resourceHomeIds = ['game-home', 'image-home', 'video-home', 'novel-home', 'website-home', 'audio-home']
-      const resourceHomeChildren = resourceHomeIds.map(viewId => ({
-        id: viewId,
-        name: this.viewConfig[viewId]?.name || viewId,
-        icon: this.viewConfig[viewId]?.icon || '📄',
-        description: this.viewConfig[viewId]?.description || ''
-      }))
+      // 获取所有资源页面（默认页面）
+      const resourcePages = this.pages.filter(p => !p.isHidden && ['games', 'software', 'images', 'single-image', 'videos', 'anime-series', 'novels', 'websites', 'audio'].includes(p.id))
       
-      // 主页项（包含资源主页作为子项）
+      // 主页项（直接包含资源页面作为子项）
       items.push({
         id: 'home',
         name: this.viewConfig.home?.name || '主页',
         icon: this.viewConfig.home?.icon || '🏠',
         description: this.viewConfig.home?.description || '',
-        children: resourceHomeChildren.map(child => {
-          // 特殊处理：game-home 有两个子页面（游戏和软件）
-          if (child.id === 'game-home') {
-            const gamesPage = this.pages.find(p => p.id === 'games' && !p.isHidden)
-            const softwarePage = this.pages.find(p => p.id === 'software' && !p.isHidden)
-            
-            // 调试信息：检查页面是否找到
-            if (!gamesPage) {
-              console.warn('[App.vue] 未找到 games 页面，当前 pages:', this.pages.map(p => ({ id: p.id, name: p.name, hidden: p.isHidden })))
-            }
-            if (!softwarePage) {
-              console.warn('[App.vue] 未找到 software 页面，当前 pages:', this.pages.map(p => ({ id: p.id, name: p.name, hidden: p.isHidden })))
-            }
-            
-            const subChildren = []
-            if (gamesPage) {
-              subChildren.push({
-                id: gamesPage.id,
-                name: gamesPage.name,
-                icon: gamesPage.icon,
-                description: gamesPage.description || ''
-              })
-            }
-            if (softwarePage) {
-              subChildren.push({
-                id: softwarePage.id,
-                name: softwarePage.name,
-                icon: softwarePage.icon,
-                description: softwarePage.description || ''
-              })
-            }
-            
-            return {
-              ...child,
-              children: subChildren.length > 0 ? subChildren : undefined
-            }
-          }
-          
-          // 特殊处理：image-home 有两个子页面（图片和单图）
-          if (child.id === 'image-home') {
-            const imagesPage = this.pages.find(p => p.id === 'images' && !p.isHidden)
-            const singleImagePage = this.pages.find(p => p.id === 'single-image' && !p.isHidden)
-            
-            const subChildren = []
-            if (imagesPage) {
-              subChildren.push({
-                id: imagesPage.id,
-                name: imagesPage.name,
-                icon: imagesPage.icon,
-                description: imagesPage.description || ''
-              })
-            }
-            if (singleImagePage) {
-              subChildren.push({
-                id: singleImagePage.id,
-                name: singleImagePage.name,
-                icon: singleImagePage.icon,
-                description: singleImagePage.description || ''
-              })
-            }
-            
-            return {
-              ...child,
-              children: subChildren.length > 0 ? subChildren : undefined
-            }
-          }
-          
-          // 为其他资源主页添加其对应的管理页面作为子项
-          const resourceTypeMap: Record<string, string> = {
-            'video-home': 'videos',
-            'novel-home': 'novels',
-            'website-home': 'websites',
-            'audio-home': 'audio'
-          }
-          const managePageId = resourceTypeMap[child.id]
-          const managePage = this.pages.find(p => p.id === managePageId && !p.isHidden)
-          
-          const subChildren = []
-          if (managePage) {
-            subChildren.push({
-              id: managePage.id,
-              name: managePage.name,
-              icon: managePage.icon,
-              description: managePage.description || ''
-            })
-          }
-          
-          return {
-            ...child,
-            children: subChildren.length > 0 ? subChildren : undefined
-          }
-        })
+        children: resourcePages.map(page => ({
+          id: page.id,
+          name: page.name,
+          icon: page.icon,
+          description: page.description || ''
+        }))
       })
       
       // 搜索项（主页下方，同级别）
@@ -466,7 +342,7 @@ export default {
       })
       
       // 其他独立页面（没有子项的）
-      const otherPages = this.pages.filter(p => !p.isHidden && !['games', 'software', 'images', 'single-image', 'videos', 'novels', 'websites', 'audio'].includes(p.id))
+      const otherPages = this.pages.filter(p => !p.isHidden && !['games', 'software', 'images', 'single-image', 'videos', 'anime-series', 'novels', 'websites', 'audio'].includes(p.id))
       otherPages.forEach(page => {
         items.push({
           id: page.id,
@@ -572,12 +448,12 @@ export default {
     prefetchResourceViews() {
       const run = () => {
         const loaders: Array<() => Promise<any>> = [
-          () => import('./pages/GameView.vue'),
-          () => import('./pages/ImageView.vue'),
-          () => import('./pages/VideoView.vue'),
-          () => import('./pages/NovelView.vue'),
-          () => import('./pages/WebsiteView.vue'),
-          () => import('./pages/AudioView.vue')
+          () => import('./pages/resources/GameView.vue'),
+          () => import('./pages/resources/ImageView.vue'),
+          () => import('./pages/resources/VideoView.vue'),
+          () => import('./pages/resources/NovelView.vue'),
+          () => import('./pages/resources/WebsiteView.vue'),
+          () => import('./pages/resources/AudioView.vue')
         ]
 
         for (const loader of loaders) {
@@ -657,35 +533,11 @@ export default {
     },
     // 自动展开相关菜单
     autoExpandMenu(routeName: string) {
-      // 资源主页映射到主页
-      const resourceHomeIds = ['game-home', 'image-home', 'video-home', 'novel-home', 'website-home', 'audio-home']
-      if (resourceHomeIds.includes(routeName)) {
+      // 资源页面映射到主页
+      const resourcePageIds = ['games', 'software', 'images', 'single-image', 'videos', 'novels', 'websites', 'audio']
+      if (resourcePageIds.includes(routeName)) {
         if (!this.expandedItems.includes('home')) {
           this.expandedItems.push('home')
-        }
-        // 展开对应的资源主页
-        if (!this.expandedItems.includes(routeName)) {
-          this.expandedItems.push(routeName)
-        }
-      }
-      
-      // 管理页面映射到对应的资源主页和主页
-      const resourceTypeMap: Record<string, string> = {
-        'games': 'game-home',
-        'images': 'image-home',
-        'single-image': 'image-home',
-        'videos': 'video-home',
-        'novels': 'novel-home',
-        'websites': 'website-home',
-        'audio': 'audio-home'
-      }
-      const resourceHomeId = resourceTypeMap[routeName]
-      if (resourceHomeId) {
-        if (!this.expandedItems.includes('home')) {
-          this.expandedItems.push('home')
-        }
-        if (!this.expandedItems.includes(resourceHomeId)) {
-          this.expandedItems.push(resourceHomeId)
         }
       }
       

@@ -19,14 +19,15 @@ import { defineComponent, PropType, computed, defineAsyncComponent, ref, watch, 
 import { PageConfig } from '../types/page';
 
 // 异步加载视图组件以避免循环引用和减少初始包大小
-const GameView = defineAsyncComponent(() => import('../pages/GameView.vue'));
-const SoftwareView = defineAsyncComponent(() => import('../pages/SoftwareView.vue'));
-const ImageView = defineAsyncComponent(() => import('../pages/ImageView.vue'));
-const SingleImageView = defineAsyncComponent(() => import('../pages/SingleImageView.vue'));
-const VideoView = defineAsyncComponent(() => import('../pages/VideoView.vue'));
-const NovelView = defineAsyncComponent(() => import('../pages/NovelView.vue'));
-const WebsiteView = defineAsyncComponent(() => import('../pages/WebsiteView.vue'));
-const AudioView = defineAsyncComponent(() => import('../pages/AudioView.vue'));
+const GameView = defineAsyncComponent(() => import('../pages/resources/GameView.vue'));
+const SoftwareView = defineAsyncComponent(() => import('../pages/resources/SoftwareView.vue'));
+const ImageView = defineAsyncComponent(() => import('../pages/resources/ImageView.vue'));
+const SingleImageView = defineAsyncComponent(() => import('../pages/resources/SingleImageView.vue'));
+const VideoView = defineAsyncComponent(() => import('../pages/resources/VideoView.vue'));
+const AnimeSeriesView = defineAsyncComponent(() => import('../pages/resources/VideoAnimeSeriesView.vue'));
+const NovelView = defineAsyncComponent(() => import('../pages/resources/NovelView.vue'));
+const WebsiteView = defineAsyncComponent(() => import('../pages/resources/WebsiteView.vue'));
+const AudioView = defineAsyncComponent(() => import('../pages/resources/AudioView.vue'));
 
 export default defineComponent({
   name: 'ResourceView',
@@ -60,6 +61,8 @@ export default defineComponent({
           return SoftwareView;
         case 'Video':
           return VideoView;
+        case 'Anime':
+          return AnimeSeriesView;
         case 'Novel':
           return NovelView;
         case 'Website':

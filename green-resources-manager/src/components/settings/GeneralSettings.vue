@@ -89,7 +89,7 @@
         v-if="settings.autoBackupEnabled"
         title="保留备份数量"
         description="设置自动备份时保留的备份数量，超出数量的旧备份会被自动删除"
-        :model-value="settings.maxBackupCount"
+        :model-value="maxBackupCountValue"
         :min="3"
         :max="10"
         :step="1"
@@ -166,6 +166,12 @@ export default {
         { value: 'default', label: '默认目录 (根目录/SaveData)' },
         { value: 'custom', label: '自定义目录' }
       ]
+    }
+  },
+  computed: {
+    maxBackupCountValue() {
+      // 使用默认值 5（与 SettingsView.vue 中的 DEFAULT_MAX_BACKUP_COUNT 保持一致）
+      return this.settings.maxBackupCount ?? 5
     }
   },
   methods: {

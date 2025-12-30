@@ -28,6 +28,7 @@ const AnimeSeriesView = defineAsyncComponent(() => import('../pages/resources/Vi
 const NovelView = defineAsyncComponent(() => import('../pages/resources/NovelView.vue'));
 const WebsiteView = defineAsyncComponent(() => import('../pages/resources/WebsiteView.vue'));
 const AudioView = defineAsyncComponent(() => import('../pages/resources/AudioView.vue'));
+const OtherView = defineAsyncComponent(() => import('../pages/resources/OtherView.vue'));
 
 export default defineComponent({
   name: 'ResourceView',
@@ -66,6 +67,8 @@ export default defineComponent({
           return WebsiteView;
         case 'Audio':
           return AudioView;
+        case 'Other':
+          return OtherView;
         default:
           return null;
       }

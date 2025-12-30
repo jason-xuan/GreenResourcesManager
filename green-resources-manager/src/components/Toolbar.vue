@@ -1,7 +1,7 @@
 <template>
   <div class="game-toolbar">
     <div class="toolbar-left">
-      <button class="btn-add-game" @click="$emit('add-item')">
+      <button v-if="addButtonText" class="btn-add-game" @click="$emit('add-item')">
         <span class="btn-icon">➕</span>
         {{ addButtonText }}
       </button>

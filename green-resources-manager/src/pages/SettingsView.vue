@@ -125,6 +125,10 @@
 import saveManager from '../utils/SaveManager.ts'
 import notify from '../utils/NotificationService.ts'
 import GeneralSettings from '../components/settings/GeneralSettings.vue'
+
+// 默认设置常量
+const DEFAULT_MAX_BACKUP_COUNT = 5
+const DEFAULT_AUTO_BACKUP_INTERVAL = 5
 import GameSettings from '../components/settings/GameSettings.vue'
 import ImageSettings from '../components/settings/ImageSettings.vue'
 import VideoSettings from '../components/settings/VideoSettings.vue'
@@ -186,8 +190,8 @@ export default {
         saveDataLocation: 'default',
         saveDataPath: '',
         autoBackupEnabled: false, // 是否开启自动备份
-        autoBackupInterval: 5, // 自动备份时间间隔（分钟）
-        maxBackupCount: 5, // 保留的备份数量
+        autoBackupInterval: DEFAULT_AUTO_BACKUP_INTERVAL, // 自动备份时间间隔（分钟）
+        maxBackupCount: DEFAULT_MAX_BACKUP_COUNT, // 保留的备份数量
         // 截图设置
         screenshotKey: 'Ctrl+F12',
         screenshotLocation: 'default',
@@ -484,8 +488,8 @@ export default {
             saveDataLocation: 'default',
             saveDataPath: '',
             autoBackupEnabled: false,
-            autoBackupInterval: 5,
-            maxBackupCount: 5,
+            autoBackupInterval: DEFAULT_AUTO_BACKUP_INTERVAL,
+            maxBackupCount: DEFAULT_MAX_BACKUP_COUNT,
             // 截图设置
             screenshotKey: 'Ctrl+F12',
             screenshotLocation: 'default',
@@ -1067,6 +1071,17 @@ export default {
         }
       } catch (error) {
         console.error('设置SaveManager数据目录失败:', error)
+      }
+      
+      // 初始化自动备份设置（如果未设置）
+      if (this.settings.autoBackupEnabled === undefined || this.settings.autoBackupEnabled === null) {
+        this.settings.autoBackupEnabled = false
+      }
+      if (!this.settings.autoBackupInterval || this.settings.autoBackupInterval < 5) {
+        this.settings.autoBackupInterval = DEFAULT_AUTO_BACKUP_INTERVAL
+      }
+      if (!this.settings.maxBackupCount || this.settings.maxBackupCount < 3) {
+        this.settings.maxBackupCount = DEFAULT_MAX_BACKUP_COUNT
       }
       
       // 初始化截图设置（如果未设置）

@@ -101,6 +101,7 @@
               <option value="Novel">小说 (Novel)</option>
               <option value="Audio">音频 (Audio)</option>
               <option value="Website">网站 (Website)</option>
+              <option value="Other">其它 (Other)</option>
             </select>
             <p class="help-text" v-if="isEditing && !editingPage.isDefault">资源类型创建后不可修改</p>
             <p class="help-text" v-if="editingPage.isDefault">系统默认页面的资源类型不可修改</p>
@@ -143,7 +144,8 @@ const TYPE_NAME_MAP: Record<string, string> = {
   Anime: '番剧',
   Novel: '小说',
   Audio: '音频',
-  Website: '网站'
+  Website: '网站',
+  Other: '其它'
 }
 
 const DEFAULT_PAGE_PRESET: Partial<PageConfig> = {

@@ -128,7 +128,8 @@ const resourceTypeToComponent: Record<string, () => Promise<any>> = {
   Anime: () => import('../pages/resources/VideoAnimeSeriesView.vue'),
   Novel: () => import('../pages/resources/NovelView.vue'),
   Website: () => import('../pages/resources/WebsiteView.vue'),
-  Audio: () => import('../pages/resources/AudioView.vue')
+  Audio: () => import('../pages/resources/AudioView.vue'),
+  Other: () => import('../pages/resources/OtherView.vue')
 }
 
 /**

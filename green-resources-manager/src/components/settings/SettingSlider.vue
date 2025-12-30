@@ -63,6 +63,11 @@ export default {
       this.$emit('update:modelValue', value)
     },
     formatValue(value: number): string {
+      // 处理 undefined 或 null 值
+      if (value === undefined || value === null || isNaN(value)) {
+        const defaultValue = this.min || 0
+        return this.unit ? `${defaultValue} ${this.unit}` : String(defaultValue)
+      }
       if (this.format) {
         return this.format(value)
       }

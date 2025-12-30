@@ -319,18 +319,31 @@ export default {
       // 获取所有资源页面（默认页面）
       const resourcePages = this.pages.filter(p => !p.isHidden && ['games', 'software', 'images', 'single-image', 'videos', 'anime-series', 'novels', 'websites', 'audio'].includes(p.id))
       
-      // 主页项（直接包含资源页面作为子项）
-      items.push({
-        id: 'home',
-        name: this.viewConfig.home?.name || '主页',
-        icon: this.viewConfig.home?.icon || '🏠',
-        description: this.viewConfig.home?.description || '',
-        children: resourcePages.map(page => ({
+      // 获取其他页面（非资源页面）
+      const otherPages = this.pages.filter(p => !p.isHidden && !['games', 'software', 'images', 'single-image', 'videos', 'anime-series', 'novels', 'websites', 'audio'].includes(p.id))
+      
+      // 主页项（包含资源页面和其他页面作为子项）
+      const homeChildren = [
+        ...resourcePages.map(page => ({
+          id: page.id,
+          name: page.name,
+          icon: page.icon,
+          description: page.description || ''
+        })),
+        ...otherPages.map(page => ({
           id: page.id,
           name: page.name,
           icon: page.icon,
           description: page.description || ''
         }))
+      ]
+      
+      items.push({
+        id: 'home',
+        name: this.viewConfig.home?.name || '主页',
+        icon: this.viewConfig.home?.icon || '🏠',
+        description: this.viewConfig.home?.description || '',
+        children: homeChildren
       })
       
       // 搜索项（主页下方，同级别）
@@ -339,17 +352,6 @@ export default {
         name: this.viewConfig.search?.name || '搜索',
         icon: this.viewConfig.search?.icon || '🔍',
         description: this.viewConfig.search?.description || ''
-      })
-      
-      // 其他独立页面（没有子项的）
-      const otherPages = this.pages.filter(p => !p.isHidden && !['games', 'software', 'images', 'single-image', 'videos', 'anime-series', 'novels', 'websites', 'audio'].includes(p.id))
-      otherPages.forEach(page => {
-        items.push({
-          id: page.id,
-          name: page.name,
-          icon: page.icon,
-          description: page.description || ''
-        })
       })
       
       return items
@@ -533,17 +535,12 @@ export default {
     },
     // 自动展开相关菜单
     autoExpandMenu(routeName: string) {
-      // 资源页面映射到主页
-      const resourcePageIds = ['games', 'software', 'images', 'single-image', 'videos', 'novels', 'websites', 'audio']
-      if (resourcePageIds.includes(routeName)) {
+      // 如果路由名称在 pages 中（包括资源页面和其他页面），都应该展开 home
+      const pageIds = this.pages.filter(p => !p.isHidden).map(p => p.id)
+      if (pageIds.includes(routeName) || routeName === 'home') {
         if (!this.expandedItems.includes('home')) {
           this.expandedItems.push('home')
         }
-      }
-      
-      // 如果是主页，确保展开
-      if (routeName === 'home' && !this.expandedItems.includes('home')) {
-        this.expandedItems.push('home')
       }
     },
     // switchView(viewId: string) {

@@ -458,7 +458,7 @@ export default {
           { value: 'added', label: '按添加时间' }
         ],
         pageType: 'other'
-      },
+      }
     }
   },
   computed: {
@@ -734,6 +734,9 @@ export default {
       
       return Array.from(folderMap.values())
     },
+    
+    // 自动更新未知时长的视频
+    async autoUpdateUnknownDurations() {
       // 防止重复执行
       if (this.isUpdatingDurations) {
         console.log('⏭️ 视频时长更新正在进行中，跳过重复执行')
@@ -1153,53 +1156,53 @@ export default {
 
     // 打开文件夹中的文件（已移除，不再需要）
     // async openFolderFile(file: any) {
-      try {
-        console.log('开始播放文件夹视频:', {
-          name: video.name,
-          path: video.path
-        })
-
-        // 检查视频文件是否存在
-        if (window.electronAPI && window.electronAPI.checkFileExists) {
-          console.log('检查文件存在性:', video.path)
-          const result = await window.electronAPI.checkFileExists(video.path)
-          console.log('文件存在性检查结果:', result)
-          
-          if (!result.exists) {
-            console.error('文件不存在:', video.path)
-            notify.toast('error', '播放失败', `视频文件不存在: ${video.name}\n路径: ${video.path}`)
-            return
-          }
-        } else {
-          console.warn('Electron API 不可用，跳过文件存在性检查')
-        }
-
-        // 获取当前设置
-        const settings = await this.loadSettings()
-        console.log('播放设置:', settings.videoPlayMode)
-        
-        if (settings.videoPlayMode === 'internal') {
-          // 使用内部播放器
-          console.log('使用内部播放器播放')
-          await this.playVideoInternal({
-            name: video.name,
-            filePath: video.path
-          })
-        } else {
-          // 使用外部播放器
-          console.log('使用外部播放器播放')
-          await this.playVideoExternal({
-            name: video.name,
-            filePath: video.path
-          })
-        }
-        
-        notify.toast('success', '播放成功', `正在播放: ${video.name}`)
-      } catch (error) {
-        console.error('播放文件夹视频失败:', error)
-        notify.toast('error', '播放失败', `播放视频失败: ${error.message}`)
-      }
-    },
+    //   try {
+    //     console.log('开始播放文件夹视频:', {
+    //       name: video.name,
+    //       path: video.path
+    //     })
+    //
+    //     // 检查视频文件是否存在
+    //     if (window.electronAPI && window.electronAPI.checkFileExists) {
+    //       console.log('检查文件存在性:', video.path)
+    //       const result = await window.electronAPI.checkFileExists(video.path)
+    //       console.log('文件存在性检查结果:', result)
+    //       
+    //       if (!result.exists) {
+    //         console.error('文件不存在:', video.path)
+    //         notify.toast('error', '播放失败', `视频文件不存在: ${video.name}\n路径: ${video.path}`)
+    //         return
+    //       }
+    //     } else {
+    //       console.warn('Electron API 不可用，跳过文件存在性检查')
+    //     }
+    //
+    //     // 获取当前设置
+    //     const settings = await this.loadSettings()
+    //     console.log('播放设置:', settings.videoPlayMode)
+    //     
+    //     if (settings.videoPlayMode === 'internal') {
+    //       // 使用内部播放器
+    //       console.log('使用内部播放器播放')
+    //       await this.playVideoInternal({
+    //         name: video.name,
+    //         filePath: video.path
+    //       })
+    //     } else {
+    //       // 使用外部播放器
+    //       console.log('使用外部播放器播放')
+    //       await this.playVideoExternal({
+    //         name: video.name,
+    //         filePath: video.path
+    //       })
+    //     }
+    //     
+    //     notify.toast('success', '播放成功', `正在播放: ${video.name}`)
+    //   } catch (error) {
+    //     console.error('播放文件夹视频失败:', error)
+    //     notify.toast('error', '播放失败', `播放视频失败: ${error.message}`)
+    //   }
+    // },
 
     // 为文件夹中的视频生成缩略图
     async generateFolderVideoThumbnail(video, index) {

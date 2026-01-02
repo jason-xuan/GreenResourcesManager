@@ -18,7 +18,15 @@
     @page-change="handleWebsitePageChange"
   >
     <!-- 主内容区域 -->
-    <div class="website-content">
+    <div 
+      class="website-content" 
+      :class="{ 'drag-over': isDragOver, 'importing': isImporting }"
+      :data-progress="importProgress"
+      @dragover.prevent="handleDragOver"
+      @dragenter.prevent="handleDragEnter"
+      @dragleave.prevent="handleDragLeave"
+      @drop.prevent="handleDrop"
+    >
       <!-- 加载状态 -->
       <div v-if="isLoading" class="loading-state">
         <div class="loading-spinner">🔄</div>
@@ -192,6 +200,7 @@ import { useWebsiteFilter } from '../../composables/website/useWebsiteFilter'
 import { usePagination } from '../../composables/usePagination'
 import { PropType, ref, toRefs } from 'vue'
 import { PageConfig } from '../../types/page'
+import { parseBookmarkFromFile, deduplicateBookmarks, type ParsedBookmark } from '../../utils/BookmarkParser'
 
 export default {
   name: 'WebsiteView',
@@ -293,6 +302,10 @@ export default {
       urlError: '',
       editUrlError: '',
       isElectronEnvironment: false,
+      // 拖拽相关
+      isDragOver: false,
+      isImporting: false,
+      importProgress: '',
       // 空状态配置
       websiteEmptyStateConfig: {
         emptyIcon: '🌐',
@@ -933,6 +946,174 @@ export default {
         console.error('刷新 favicon 失败:', error)
         notify.toast('error', 'Favicon 更新失败', `刷新 "${website.name}" 图标时出错: ${error.message}`)
       }
+    },
+
+    // 拖拽事件处理
+    handleDragOver(event) {
+      event.preventDefault()
+      if (!this.isDragOver) {
+        this.isDragOver = true
+      }
+    },
+
+    handleDragEnter(event) {
+      event.preventDefault()
+      this.isDragOver = true
+    },
+
+    handleDragLeave(event) {
+      event.preventDefault()
+      // 只有当离开整个拖拽区域时才取消高亮
+      const relatedTarget = event.relatedTarget as Node
+      if (!event.currentTarget.contains(relatedTarget)) {
+        this.isDragOver = false
+      }
+    },
+
+    async handleDrop(event) {
+      event.preventDefault()
+      this.isDragOver = false
+
+      try {
+        const files = Array.from(event.dataTransfer?.files || []) as File[]
+        
+        if (files.length === 0) {
+          notify.toast('error', '拖拽失败', '请拖拽书签文件到此处')
+          return
+        }
+
+        // 查找HTML文件（书签文件通常是HTML格式）
+        const htmlFiles = files.filter(file => {
+          const fileName = file.name.toLowerCase()
+          return fileName.endsWith('.html') || 
+                 fileName.endsWith('.htm') || 
+                 file.type === 'text/html'
+        })
+
+        if (htmlFiles.length === 0) {
+          notify.toast('error', '文件类型不支持', '请拖拽HTML格式的书签文件（.html 或 .htm）')
+          return
+        }
+
+        // 处理第一个HTML文件（通常只有一个书签文件）
+        const bookmarkFile = htmlFiles[0]
+        await this.importBookmarksFromFile(bookmarkFile)
+      } catch (error) {
+        console.error('处理拖拽文件失败:', error)
+        notify.toast('error', '导入失败', error.message || '无法导入书签文件')
+      }
+    },
+
+    // 从文件导入书签
+    async importBookmarksFromFile(file: File) {
+      this.isImporting = true
+      this.importProgress = '正在解析书签文件...'
+
+      try {
+        // 解析书签文件
+        const parsedBookmarks = await parseBookmarkFromFile(file)
+        
+        if (parsedBookmarks.length === 0) {
+          notify.toast('warning', '导入失败', '书签文件中没有找到有效的网站链接')
+          this.isImporting = false
+          return
+        }
+
+        // 去重
+        const uniqueBookmarks = deduplicateBookmarks(parsedBookmarks)
+        console.log(`解析到 ${parsedBookmarks.length} 个书签，去重后 ${uniqueBookmarks.length} 个`)
+
+        // 检查已存在的网站（基于URL）
+        const existingUrls = new Set(
+          this.websites.map(w => this.normalizeUrlForCompare(w.url))
+        )
+
+        // 过滤出需要导入的书签（排除已存在的）
+        const bookmarksToImport = uniqueBookmarks.filter(bookmark => {
+          const normalizedUrl = this.normalizeUrlForCompare(bookmark.url)
+          return !existingUrls.has(normalizedUrl)
+        })
+
+        if (bookmarksToImport.length === 0) {
+          notify.toast('info', '导入完成', '所有书签都已存在，无需重复导入')
+          this.isImporting = false
+          return
+        }
+
+        console.log(`需要导入 ${bookmarksToImport.length} 个新书签`)
+
+        // 批量导入
+        let successCount = 0
+        let failCount = 0
+        const total = bookmarksToImport.length
+
+        for (let i = 0; i < bookmarksToImport.length; i++) {
+          const bookmark = bookmarksToImport[i]
+          this.importProgress = `正在导入 ${i + 1}/${total}: ${bookmark.name}`
+
+          try {
+            // 获取favicon
+            const favicon = await this.websiteManager.getBestFaviconUrl(bookmark.url)
+            
+            const websiteData = {
+              name: bookmark.name,
+              url: bookmark.url,
+              description: '',
+              category: bookmark.category || '未分类',
+              tags: [],
+              favicon: favicon || ''
+            }
+
+            await this.addWebsiteToManager(websiteData)
+            successCount++
+          } catch (error) {
+            console.error(`导入书签失败 "${bookmark.name}":`, error)
+            failCount++
+          }
+
+          // 每导入10个网站，更新一次列表（避免界面卡顿）
+          if ((i + 1) % 10 === 0) {
+            await this.loadWebsites()
+          }
+        }
+
+        // 重新加载网站列表
+        await this.loadWebsites()
+        
+        // 更新筛选器数据
+        this.updateFilterData()
+
+        // 显示导入结果
+        const message = `成功导入 ${successCount} 个网站${failCount > 0 ? `，失败 ${failCount} 个` : ''}`
+        notify.toast(
+          failCount === 0 ? 'success' : 'warning',
+          '导入完成',
+          message
+        )
+
+        console.log(`✅ 书签导入完成: 成功 ${successCount}，失败 ${failCount}`)
+      } catch (error) {
+        console.error('导入书签失败:', error)
+        notify.toast('error', '导入失败', error.message || '无法解析书签文件')
+      } finally {
+        this.isImporting = false
+        this.importProgress = ''
+      }
+    },
+
+    // 标准化URL用于比较（与BookmarkParser中的逻辑一致）
+    normalizeUrlForCompare(url: string): string {
+      try {
+        const urlObj = new URL(url)
+        let normalized = `${urlObj.protocol}//${urlObj.hostname}${urlObj.pathname}`
+        normalized = normalized.toLowerCase()
+        if (normalized.endsWith('/')) {
+          normalized = normalized.slice(0, -1)
+        }
+        return normalized
+      } catch {
+        return url.toLowerCase()
+      }
     }
   },
   async mounted() {
@@ -1379,6 +1560,71 @@ export default {
 }
 
 
+/* 拖拽样式 */
+.website-content {
+  position: relative;
+  transition: all var(--transition-base);
+}
+
+.website-content.drag-over {
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px dashed var(--accent-color);
+  border-radius: var(--radius-xl);
+
+  &::before {
+    content: '拖拽书签文件到这里导入（支持浏览器导出的HTML格式书签文件）';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--accent-color);
+    color: white;
+    padding: var(--spacing-xl) calc(var(--spacing-xl) * 2);
+    border-radius: var(--radius-xl);
+    font-size: 18px;
+    font-weight: 600;
+    z-index: 1000;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+}
+
+.website-content.importing {
+  pointer-events: none;
+  
+  &::before {
+    content: '正在导入书签...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--accent-color);
+    color: white;
+    padding: var(--spacing-xl) calc(var(--spacing-xl) * 2);
+    border-radius: var(--radius-xl);
+    font-size: 18px;
+    font-weight: 600;
+    z-index: 1000;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  
+  &::after {
+    content: attr(data-progress);
+    position: absolute;
+    top: calc(50% + 50px);
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--accent-color);
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 1000;
+    pointer-events: none;
+  }
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .websites-grid {
@@ -1393,6 +1639,15 @@ export default {
   
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .website-content.drag-over::before,
+  .website-content.importing::before {
+    font-size: 16px;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    white-space: normal;
+    max-width: 90%;
+    text-align: center;
   }
 }
 </style>

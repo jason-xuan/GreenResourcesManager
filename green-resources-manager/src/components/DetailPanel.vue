@@ -20,6 +20,10 @@
               :alt="item.name"
               @error="handleImageError"
             >
+            <!-- 文件不存在错误图标 -->
+            <div v-if="showFileError" class="file-error-icon" title="本地文件不存在">
+              ⚠️
+            </div>
           </div>
           
           <!-- 玩家评价区域 -->
@@ -158,7 +162,7 @@ export default {
     type: {
       type: String,
       required: true,
-      validator: value => ['game', 'image', 'album', 'video', 'audio', 'novel', 'website'].includes(value)
+      validator: value => ['game', 'image', 'album', 'video', 'audio', 'novel', 'website', 'file', 'folder'].includes(value)
     },
     isRunning: {
       type: Boolean,
@@ -191,7 +195,9 @@ export default {
         image: '漫画简介',
         album: '漫画简介',
         video: '视频简介',
-        audio: '音频简介'
+        audio: '音频简介',
+        file: '文件描述',
+        folder: '文件夹描述'
       }
       return titles[this.type] || '简介'
     },
@@ -201,7 +207,9 @@ export default {
         image: '漫画标签',
         album: '漫画标签',
         video: '视频标签',
-        audio: '音频标签'
+        audio: '音频标签',
+        file: '文件标签',
+        folder: '文件夹标签'
       }
       return titles[this.type] || '标签'
     },
@@ -307,6 +315,19 @@ export default {
     currentRating() {
       // 优先显示 hover 的星级，否则显示实际星级
       return this.hoverRating > 0 ? this.hoverRating : (this.item?.rating || 0)
+    },
+    showFileError() {
+      // 检查文件是否存在，对于支持文件存在性检查的类型
+      const fileCheckTypes = ['game', 'audio', 'image', 'album', 'novel', 'video', 'file', 'folder']
+      if (!fileCheckTypes.includes(this.type)) {
+        return false
+      }
+      // 检查 fileExists 属性，如果明确为 false 则显示错误
+      const fileExists = this.item?.fileExists
+      if (fileExists === false) {
+        return true
+      }
+      return false
     }
   },
   methods: {
@@ -462,10 +483,27 @@ export default {
         return this.resolveVideoThumbnail(imagePath)
       }
       
-      // 回退：尝试 file://
-      const normalizedPath = String(imagePath).replace(/\\/g, '/')
-      const fileUrl = `file:///${normalizedPath}`
-      return fileUrl
+      // 回退：尝试 file://，正确处理中文路径
+      try {
+        // 将反斜杠转换为正斜杠，并确保路径以 / 开头（Windows 盘符处理）
+        const normalized = String(imagePath).replace(/\\/g, '/').replace(/^([A-Za-z]:)/, '/$1')
+        
+        // 对路径进行编码，处理中文和特殊字符
+        const encoded = normalized.split('/').map(seg => {
+          if (seg.includes(':')) {
+            // 处理 Windows 盘符（如 C:）
+            return seg
+          }
+          return encodeURIComponent(seg)
+        }).join('/')
+        
+        return `file://${encoded}`
+      } catch (error) {
+        console.error('构建文件URL失败:', error)
+        // 降级处理：简单拼接
+        const normalizedPath = String(imagePath).replace(/\\/g, '/')
+        return `file:///${normalizedPath}`
+      }
     },
     resolveVideoThumbnail(thumbnail) {
       // 处理视频缩略图路径，参考VideoView.vue的逻辑
@@ -475,9 +513,12 @@ export default {
       
       // 相对路径处理（以 SaveData 开头）
       if (thumbnail.startsWith('SaveData/')) {
-        const absolutePath = thumbnail.replace(/\\/g, '/')
-        const fileUrl = `file:///${absolutePath}`
-        return fileUrl
+        const normalized = thumbnail.replace(/\\/g, '/')
+        // 对相对路径也进行编码，处理中文和特殊字符
+        const encoded = normalized.split('/').map(seg => {
+          return encodeURIComponent(seg)
+        }).join('/')
+        return `file:///${encoded}`
       }
       
       // 绝对路径处理
@@ -564,6 +605,7 @@ export default {
   max-width: 90vw;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden; /* 防止横向滚动 */
   box-shadow: 0 20px 40px var(--shadow-medium);
   transition: background-color 0.3s ease;
 }
@@ -629,6 +671,7 @@ export default {
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 8px 25px var(--shadow-medium);
+  position: relative;
 }
 
 .detail-image img {
@@ -637,11 +680,43 @@ export default {
   object-fit: cover;
 }
 
+.file-error-icon {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
 .detail-info {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0; /* 防止 flex 子元素溢出 */
+  overflow-wrap: break-word; /* 允许在单词内部换行 */
 }
 
 .detail-title {
@@ -651,6 +726,9 @@ export default {
   margin: 0;
   transition: color 0.3s ease;
   word-break: break-all;
+  overflow-wrap: break-word; /* 允许在单词内部换行 */
+  word-wrap: break-word; /* 兼容旧浏览器 */
+  max-width: 100%; /* 确保不超过容器宽度 */
 }
 
 .detail-author,
@@ -673,9 +751,13 @@ export default {
   color: var(--text-tertiary);
   font-size: 0.9rem;
   margin: 0 0 15px 0;
-  word-break: break-all;
+  word-break: break-all; /* 允许在任意字符间换行 */
+  overflow-wrap: break-word; /* 允许在单词内部换行 */
+  word-wrap: break-word; /* 兼容旧浏览器 */
   line-height: 1.4;
   transition: color 0.3s ease;
+  white-space: normal; /* 确保允许换行 */
+  max-width: 100%; /* 确保不超过容器宽度 */
 }
 
 .detail-description {

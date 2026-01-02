@@ -80,6 +80,32 @@ export function useImageCache(options: ImageCacheOptions = {}) {
   }
 
   /**
+   * 构建文件 URL（正确处理 Windows 路径和中文）
+   */
+  function buildFileUrl(filePath: string): string {
+    try {
+      // 将反斜杠转换为正斜杠，并确保路径以 / 开头（Windows 盘符处理）
+      const normalized = String(filePath).replace(/\\/g, '/').replace(/^([A-Za-z]:)/, '/$1')
+      
+      // 对路径进行编码，处理中文和特殊字符
+      const encoded = normalized.split('/').map(seg => {
+        if (seg.includes(':')) {
+          // 处理 Windows 盘符（如 C:），保持原样
+          return seg
+        }
+        return encodeURIComponent(seg)
+      }).join('/')
+      
+      return `file://${encoded}`
+    } catch (error) {
+      console.error('构建文件URL失败:', error)
+      // 降级处理：简单拼接
+      const normalizedPath = String(filePath).replace(/\\/g, '/')
+      return `file:///${normalizedPath}`
+    }
+  }
+
+  /**
    * 检查是否为有效图片路径
    */
   function isValidImagePath(imagePath: string | null | undefined): boolean {
@@ -231,8 +257,8 @@ export function useImageCache(options: ImageCacheOptions = {}) {
       console.warn('生成缩略图失败，使用原图:', error)
     }
     
-    // 降级：直接使用原图
-    const fileUrl = `file:///${normalizedPath}`
+    // 降级：直接使用原图（使用 buildFileUrl 正确处理路径）
+    const fileUrl = buildFileUrl(imagePath)
     addToCache(thumbnailKey, fileUrl, 0)
     return fileUrl
   }
@@ -241,14 +267,15 @@ export function useImageCache(options: ImageCacheOptions = {}) {
    * 解析缩略图 - 用于预览和列表显示
    */
   function resolveThumbnailImage(imagePath: string): string {
-    const normalizedPath = normalizePath(imagePath)
-    const fileUrl = `file:///${normalizedPath}`
+    // 使用 buildFileUrl 函数正确处理 Windows 路径和中文
+    const fileUrl = buildFileUrl(imagePath)
     
     // 缓存文件 URL
     addToCache(imagePath, fileUrl, 0)
     
     // 如果启用了缩略图模式，异步生成真正的缩略图
     if (enableThumbnails) {
+      const normalizedPath = normalizePath(imagePath)
       generateThumbnail(imagePath, normalizedPath).then(thumbnailUrl => {
         // 更新缓存为缩略图
         addToCache(imagePath, thumbnailUrl, thumbnailUrl.length * 2)
@@ -266,8 +293,8 @@ export function useImageCache(options: ImageCacheOptions = {}) {
    * 解析原图 - 用于阅读器
    */
   function resolveFullImage(imagePath: string): string {
-    const normalizedPath = normalizePath(imagePath)
-    const fileUrl = `file:///${normalizedPath}`
+    // 使用 buildFileUrl 函数正确处理 Windows 路径和中文
+    const fileUrl = buildFileUrl(imagePath)
     
     // 缓存文件 URL
     addToCache(imagePath, fileUrl, 0)
@@ -299,13 +326,13 @@ export function useImageCache(options: ImageCacheOptions = {}) {
       return cached.url
     }
     
-    const normalizedPath = normalizePath(imagePath)
-    const fileUrl = `file:///${normalizedPath}`
+    // 使用正确的路径编码构建 file URL（处理 Windows 路径和中文）
+    const fileUrl = buildFileUrl(imagePath)
     
     // 缓存封面图 URL
     addToCache(coverKey, fileUrl, 0)
     
-    console.log('封面图加载原图:', imagePath)
+    console.log('封面图加载:', imagePath, 'URL:', fileUrl)
     return fileUrl
   }
 
@@ -327,8 +354,8 @@ export function useImageCache(options: ImageCacheOptions = {}) {
     
     // 对于阅读器，强制使用原图，忽略所有缓存
     if (isComicViewer.value) {
-      const normalizedPath = normalizePath(imagePath)
-      const fileUrl = `file:///${normalizedPath}`
+      // 使用 buildFileUrl 函数正确处理 Windows 路径和中文
+      const fileUrl = buildFileUrl(imagePath)
       console.log('阅读器加载原图:', imagePath)
       return fileUrl
     }
@@ -369,8 +396,8 @@ export function useImageCache(options: ImageCacheOptions = {}) {
     
     // 对于阅读器，强制使用原图，忽略缩略图缓存
     if (isComicViewer.value) {
-      const normalizedPath = normalizePath(imagePath)
-      const fileUrl = `file:///${normalizedPath}`
+      // 使用 buildFileUrl 函数正确处理 Windows 路径和中文
+      const fileUrl = buildFileUrl(imagePath)
       
       // 为阅读器创建专用的原图缓存键
       const fullImageKey = `full_${imagePath}`
@@ -406,8 +433,8 @@ export function useImageCache(options: ImageCacheOptions = {}) {
         return './default-image.png'
       }
     } else {
-      const normalizedPath = normalizePath(imagePath)
-      const fileUrl = `file:///${normalizedPath}`
+      // 使用 buildFileUrl 函数正确处理 Windows 路径和中文
+      const fileUrl = buildFileUrl(imagePath)
       addToCache(imagePath, fileUrl, 0)
       return fileUrl
     }
@@ -418,8 +445,8 @@ export function useImageCache(options: ImageCacheOptions = {}) {
    */
   async function preloadImage(imagePath: string): Promise<HTMLImageElement | null> {
     try {
-      const normalizedPath = normalizePath(imagePath)
-      const fileUrl = `file:///${normalizedPath}`
+      // 使用 buildFileUrl 函数正确处理 Windows 路径和中文
+      const fileUrl = buildFileUrl(imagePath)
       addToCache(imagePath, fileUrl, 0)
       
       // 创建 Image 对象预加载

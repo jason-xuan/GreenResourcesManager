@@ -340,7 +340,21 @@ export default {
       return ''
     },
     showFileError() {
-      return ['game', 'audio', 'image', 'novel', 'video', 'folder'].includes(this.type) && this.fileExists === false
+      // 优先使用 item.fileExists（如果存在），否则使用 prop 的 fileExists
+      // 这样可以避免 prop 默认值导致的误判
+      const fileExistsValue = this.item?.fileExists !== undefined ? this.item.fileExists : this.fileExists
+      const shouldShow = ['game', 'audio', 'image', 'novel', 'video', 'folder'].includes(this.type) && fileExistsValue === false
+      if (this.type === 'image' && fileExistsValue === false) {
+        console.log('🔍 MediaCard showFileError:', {
+          type: this.type,
+          fileExists: this.fileExists,
+          itemFileExists: this.item?.fileExists,
+          fileExistsValue: fileExistsValue,
+          shouldShow: shouldShow,
+          itemName: this.item?.name
+        })
+      }
+      return shouldShow
     },
     isArchive() {
       if (this.type === 'game') {
@@ -624,6 +638,11 @@ export default {
     resolveImage(imagePath) {
       // 空值返回默认
       if (!imagePath || (typeof imagePath === 'string' && imagePath.trim() === '')) {
+        return this.getDefaultImage()
+      }
+      
+      // 对于图片类型，如果文件不存在，直接返回默认图片（感叹号会通过 showFileError 显示）
+      if (this.type === 'image' && this.fileExists === false) {
         return this.getDefaultImage()
       }
       

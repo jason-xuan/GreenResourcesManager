@@ -26,6 +26,19 @@ export function useImageAlbum(pageId: string = 'images') {
     try {
       isLoading.value = true
       albums.value = await saveManager.loadPageData(pageId)
+      
+      // 修复单图的封面：单图模式下，封面应该直接使用 folderPath（图片文件本身）
+      // 同时确保 fileExists 属性存在（默认为 true）
+      albums.value.forEach(album => {
+        // 单图模式：封面就是图片文件本身
+        if (isImageFile(album.folderPath)) {
+          album.cover = album.folderPath
+        }
+        // 确保 fileExists 属性存在（如果没有则默认为 true）
+        if (album.fileExists === undefined) {
+          album.fileExists = true
+        }
+      })
     } catch (error) {
       console.error('加载专辑失败:', error)
       notify.toast('error', '加载失败', '无法加载漫画列表')
@@ -139,6 +152,11 @@ export function useImageAlbum(pageId: string = 'images') {
       }
     }
 
+    // 单图模式：封面就是图片文件本身
+    const cover = isSingleImage 
+      ? (albumData.cover || path)  // 单图：使用 folderPath 作为封面
+      : (albumData.cover || pages[0] || '')  // 多图：使用第一张图片或提供的封面
+
     const album: Album = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       name: albumName,
@@ -146,7 +164,7 @@ export function useImageAlbum(pageId: string = 'images') {
       description: albumData.description?.trim() || '',
       tags: albumData.tags || [],
       folderPath: path,
-      cover: albumData.cover || pages[0] || '',
+      cover: cover,
       pagesCount: pages.length,
       addedDate: new Date().toISOString(),
       lastViewed: null,
@@ -172,14 +190,28 @@ export function useImageAlbum(pageId: string = 'images') {
 
     const target = albums.value[index]
     const oldFolderPath = target.folderPath
+    const isSingleImage = isImageFile(target.folderPath)
     
     // 更新字段
     if (updates.name !== undefined) target.name = updates.name.trim() || target.name
     if (updates.author !== undefined) target.author = updates.author.trim()
     if (updates.description !== undefined) target.description = updates.description.trim()
     if (updates.tags !== undefined) target.tags = [...updates.tags]
-    if (updates.folderPath !== undefined) target.folderPath = updates.folderPath.trim() || target.folderPath
-    if (updates.cover !== undefined) target.cover = updates.cover.trim()
+    if (updates.folderPath !== undefined) {
+      target.folderPath = updates.folderPath.trim() || target.folderPath
+      // 单图模式：如果更新了 folderPath，封面也应该更新为新的 folderPath
+      const newIsSingleImage = isImageFile(target.folderPath)
+      if (newIsSingleImage && (!updates.cover || updates.cover === oldFolderPath)) {
+        target.cover = target.folderPath
+      }
+    }
+    if (updates.cover !== undefined) {
+      // 单图模式：如果明确设置了封面，使用设置的封面；否则使用 folderPath
+      const newIsSingleImage = isImageFile(target.folderPath)
+      target.cover = newIsSingleImage && !updates.cover.trim() 
+        ? target.folderPath 
+        : updates.cover.trim()
+    }
     if (updates.rating !== undefined) target.rating = updates.rating
     if (updates.comment !== undefined) target.comment = updates.comment
     if (updates.isFavorite !== undefined) target.isFavorite = updates.isFavorite
@@ -192,6 +224,10 @@ export function useImageAlbum(pageId: string = 'images') {
     // 如果更换了文件夹，重新扫描图片
     if (updates.folderPath && updates.folderPath.trim() && updates.folderPath !== oldFolderPath) {
       await refreshAlbumPages(target)
+      // 单图模式：更新封面为新的 folderPath
+      if (isImageFile(target.folderPath)) {
+        target.cover = target.folderPath
+      }
     }
 
     await saveAlbums()
@@ -257,14 +293,21 @@ export function useImageAlbum(pageId: string = 'images') {
    * 检查文件存在性
    */
   const checkFileExistence = async (): Promise<void> => {
+    console.log('[useImageAlbum] checkFileExistence 开始执行')
+    console.log('[useImageAlbum] 检查 window.electronAPI.checkFileExists 是否存在:', !!window.electronAPI?.checkFileExists)
     if (!window.electronAPI?.checkFileExists) {
+      console.log('[useImageAlbum] ❌ window.electronAPI.checkFileExists 不可用，设置所有文件为存在')
+      console.log('[useImageAlbum] window.electronAPI 对象:', window.electronAPI)
       albums.value.forEach(album => {
         album.fileExists = true
       })
       return
     }
+    
+    console.log('[useImageAlbum] ✅ window.electronAPI.checkFileExists API 可用，开始检测文件')
 
     const missingFiles: Array<{ name: string; path: string }> = []
+    console.log(`[useImageAlbum] 开始检测 ${albums.value.length} 个图片项的存在性（单图模式：检测单个图片文件）`)
 
     for (const album of albums.value) {
       if (!album.folderPath) {
@@ -273,19 +316,28 @@ export function useImageAlbum(pageId: string = 'images') {
         continue
       }
 
+      // 判断是否为单图文件
+      const isSingleImage = isImageFile(album.folderPath)
+      const fileType = isSingleImage ? '单图文件' : '文件夹'
+      
       try {
+        console.log(`[useImageAlbum] 🔍 [checkFileExists] 准备调用 API，类型: ${fileType}，图片名称: ${album.name}, 文件路径: ${album.folderPath}`)
         const result = await window.electronAPI.checkFileExists(album.folderPath)
+        console.log(`[useImageAlbum] ✅ [checkFileExists] API 调用成功，${fileType}，返回结果:`, JSON.stringify(result))
         album.fileExists = result.exists
+        console.log(`[useImageAlbum] 🔍 检测${fileType}存在性完成: ${album.name} - fileExists=${result.exists}, path=${album.folderPath}`)
         if (!result.exists) {
           missingFiles.push({ name: album.name, path: album.folderPath })
         }
       } catch (error) {
-        console.error(`检测图片文件夹存在性失败: ${album.name}`, error)
+        console.error(`[useImageAlbum] ❌ [checkFileExists] API 调用失败，${fileType}，图片: ${album.name}, 路径: ${album.folderPath}`, error)
         album.fileExists = false
         missingFiles.push({ name: album.name, path: album.folderPath || '路径检测失败' })
       }
     }
 
+    console.log(`[useImageAlbum] 文件存在性检测完成，发现 ${missingFiles.length} 个文件不存在`)
+    
     if (missingFiles.length > 0) {
       const fileList = missingFiles
         .map(file => `• ${file.name}${file.path !== '未设置路径' && file.path !== '路径检测失败' ? ` (${file.path})` : ''}`)
@@ -293,8 +345,8 @@ export function useImageAlbum(pageId: string = 'images') {
       
       notify.toast(
         'warning',
-        '文件夹丢失提醒',
-        `发现 ${missingFiles.length} 个图片文件夹丢失：\n${fileList}\n\n请检查文件夹路径或重新添加这些图片。`
+        '文件丢失提醒',
+        `发现 ${missingFiles.length} 个图片文件丢失：\n${fileList}\n\n请检查文件路径或重新添加这些图片。`
       )
     }
   }

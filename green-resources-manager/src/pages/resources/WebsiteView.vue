@@ -414,10 +414,8 @@ export default {
     websiteStats() {
       if (!this.selectedWebsite) return []
       
+      // 只显示时间相关的内容
       return [
-        { label: 'URL', value: this.selectedWebsite.url },
-        { label: '分类', value: this.selectedWebsite.category || '未分类' },
-        { label: '语言', value: this.selectedWebsite.language || '未知' },
         { label: '访问次数', value: `${this.selectedWebsite.visitCount || 0} 次` },
         { label: '最后访问', value: this.formatDate(this.selectedWebsite.lastVisited) },
         { label: '添加时间', value: this.formatDate(this.selectedWebsite.addedDate) }
@@ -738,7 +736,10 @@ export default {
       }
       
       this.selectedWebsite = originalWebsite
-      this.contextMenu.visible = false
+      // 关闭上下文菜单（如果存在）
+      if (this.$refs.baseView) {
+        (this.$refs.baseView as any).showContextMenu = false
+      }
     },
     
     closeWebsiteDetail() {

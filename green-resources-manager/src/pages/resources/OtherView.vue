@@ -477,17 +477,17 @@ export default {
     itemStats() {
       if (!this.selectedItem) return []
       
-      if (this.selectedItem.type === 'folder') {
-        return [
-          { label: '文件夹路径', value: this.getFolderPath(this.selectedItem) },
-          { label: '添加时间', value: this.formatAddedDate(this.selectedItem.addedDate) }
-        ]
-      } else {
-        return [
-          { label: '文件路径', value: this.selectedItem.filePath || '未设置' },
-          { label: '添加时间', value: this.formatAddedDate(this.selectedItem.addedDate) }
-        ]
-      }
+      // 路径和标签由 DetailPanel 自动显示，这里只显示统计信息
+      const stats = []
+      
+      // 运行次数（打开次数）
+      const openCount = this.selectedItem.openCount || this.selectedItem.playCount || 0
+      stats.push({ label: '运行次数', value: `${openCount} 次` })
+      
+      // 添加时间
+      stats.push({ label: '添加时间', value: this.formatAddedDate(this.selectedItem.addedDate) })
+      
+      return stats
     },
     itemActions() {
       if (this.selectedItem?.type === 'folder') {
@@ -1098,6 +1098,20 @@ export default {
     },
 
     async openFolder(folder) {
+      // 增加运行次数
+      if (folder && folder.id && (this as any).updateFolder) {
+        const currentCount = folder.openCount || folder.playCount || 0
+        await (this as any).updateFolder(folder.id, { 
+          openCount: currentCount + 1,
+          lastOpened: new Date().toISOString()
+        })
+        // 更新选中的文件夹数据
+        if (this.selectedItem && this.selectedItem.id === folder.id) {
+          this.selectedItem.openCount = currentCount + 1
+          this.selectedItem.lastOpened = new Date().toISOString()
+        }
+      }
+      
       if (folder && folder.folderPath && window.electronAPI && window.electronAPI.openFolder) {
         try {
           const result = await window.electronAPI.openFolder(folder.folderPath)
@@ -1116,6 +1130,26 @@ export default {
     },
 
     async openFile(file) {
+      // 增加运行次数
+      if (file && file.id && this.fileManager) {
+        const currentCount = file.openCount || file.playCount || 0
+        await this.fileManager.updateFile(file.id, { 
+          openCount: currentCount + 1,
+          lastOpened: new Date().toISOString()
+        })
+        // 更新本地数据
+        const index = this.files.findIndex(f => f.id === file.id)
+        if (index !== -1) {
+          this.files[index].openCount = currentCount + 1
+          this.files[index].lastOpened = new Date().toISOString()
+        }
+        // 更新选中的文件数据
+        if (this.selectedItem && this.selectedItem.id === file.id) {
+          this.selectedItem.openCount = currentCount + 1
+          this.selectedItem.lastOpened = new Date().toISOString()
+        }
+      }
+      
       if (file && file.filePath && window.electronAPI && window.electronAPI.openFile) {
         try {
           const result = await window.electronAPI.openFile(file.filePath)

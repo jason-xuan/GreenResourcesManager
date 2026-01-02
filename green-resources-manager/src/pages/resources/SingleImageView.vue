@@ -36,7 +36,7 @@
         :item="album"
         type="image"
         :isElectronEnvironment="true"
-        :file-exists="album.fileExists"
+        :file-exists="album.fileExists !== undefined ? album.fileExists : false"
         @click="showAlbumDetail"
         @contextmenu="(event) => ($refs.baseView as any).showContextMenuHandler(event, album)"
         @action="openAlbum"
@@ -580,21 +580,32 @@ export default {
 
       this.updateFilterData()
       
-      // 检测文件存在性（仅在应用启动时检测一次）
-      if (this.$root.shouldCheckFileLoss && this.$root.shouldCheckFileLoss()) {
-        const checkFn = (this as any).checkFileExistence
-        // 标记为“已开始检测”，避免其它页面重复发起检测
-        this.$root.markFileLossChecked()
-        if (checkFn && typeof checkFn === 'function') {
-          Promise.resolve()
-            .then(() => checkFn.call(this))
-            .catch((e) => {
-              console.warn('[ImageView] 后台检测文件存在性失败:', e)
-            })
-            .finally(() => {
-              this.updateFilterData()
-            })
+      // 检测文件存在性（单图模式：检测单个图片文件）
+      const checkFn = (this as any).checkFileExistence
+      console.log('[SingleImageView] [单图模式] 检查 checkFileExistence 方法是否存在:', !!checkFn, typeof checkFn)
+      if (checkFn && typeof checkFn === 'function') {
+        console.log('[SingleImageView] [单图模式] ✅ checkFileExistence 方法存在，准备调用（将触发 checkFileExists API 检查单个图片文件）')
+        // 如果 shouldCheckFileLoss 存在且返回 true，标记为已检测（全局只检测一次）
+        if (this.$root.shouldCheckFileLoss && this.$root.shouldCheckFileLoss()) {
+          this.$root.markFileLossChecked()
         }
+        // 始终执行文件存在性检测（用于显示警告图标）
+        Promise.resolve()
+          .then(() => {
+            console.log('[SingleImageView] [单图模式] 🚀 开始调用 checkFileExistence（将调用 window.electronAPI.checkFileExists 检查图片文件）')
+            return checkFn.call(this)
+          })
+          .then(() => {
+            console.log('[SingleImageView] [单图模式] ✅ checkFileExistence 调用完成（已检查所有图片文件）')
+          })
+          .catch((e) => {
+            console.error('[SingleImageView] [单图模式] ❌ checkFileExistence 调用失败（可能 checkFileExists API 出错）:', e)
+          })
+          .finally(() => {
+            this.updateFilterData()
+          })
+      } else {
+        console.warn('[SingleImageView] [单图模式] ❌ checkFileExistence 方法不存在或不是函数，无法调用 checkFileExists API')
       }
       
       // 计算图片列表总页数（使用 composable 的 updatePagination）
@@ -762,13 +773,16 @@ export default {
       try {
         console.log('开始添加图片，文件路径:', formData.folderPath)
         
+        // 单图模式：封面就是图片文件本身
+        const cover = formData.cover || formData.folderPath
+        
         const album = await this.addAlbum({
           name: formData.name || '',
           author: formData.author || '',
           description: formData.description || '',
           tags: formData.tags || [],
           folderPath: formData.folderPath,
-          cover: formData.cover || ''
+          cover: cover
         })
         
         await this.checkImageCollectionAchievements()
@@ -1061,13 +1075,16 @@ export default {
     },
     async saveEditedAlbum(formData) {
       try {
+        // 单图模式：封面就是图片文件本身
+        const cover = formData.cover || formData.folderPath
+        
         await this.updateAlbum(this.editAlbumForm.id, {
           name: formData.name,
           author: formData.author,
           description: formData.description,
           tags: formData.tags,
           folderPath: formData.folderPath,
-          cover: formData.cover
+          cover: cover
         })
         
         // 重新提取标签和作者信息，更新筛选器

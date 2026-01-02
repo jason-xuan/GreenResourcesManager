@@ -89,7 +89,7 @@
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>添加小说</h3>
-          <button class="modal-close" @click="closeAddNovelDialog">✕</button>
+          <button class="btn-close" @click="closeAddNovelDialog">✕</button>
         </div>
         <div class="modal-body">
           <FormField
@@ -153,7 +153,7 @@
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>编辑小说</h3>
-          <button class="modal-close" @click="closeEditNovelDialog">✕</button>
+          <button class="btn-close" @click="closeEditNovelDialog">✕</button>
         </div>
         <div class="modal-body">
           <FormField
@@ -2144,18 +2144,6 @@ export default {
   }
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: color 0.3s ease;
-
-  &:hover {
-    color: var(--text-primary);
-  }
-}
 
 .modal-body {
   padding: 20px;

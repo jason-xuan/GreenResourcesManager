@@ -29,7 +29,7 @@
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>添加合集</h3>
-          <button class="modal-close" @click="closeAddCollectionDialog">✕</button>
+          <button class="btn-close" @click="closeAddCollectionDialog">✕</button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="addCollection">
@@ -331,13 +331,6 @@ export default {
   border-bottom: 1px solid var(--border-color);
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
 
 .modal-body { padding: 16px 20px; }
 .modal-footer {

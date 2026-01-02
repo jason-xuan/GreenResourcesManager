@@ -3,7 +3,7 @@
     <div class="modal-content" @mousedown.stop>
       <div class="modal-header">
         <h3>{{ title }}</h3>
-        <button class="modal-close" @click="handleCancel">✕</button>
+        <button class="btn-close" @click="handleCancel">✕</button>
       </div>
       <div class="modal-body">
         <div class="path-update-info">
@@ -164,26 +164,6 @@ export default {
   font-size: 20px;
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-}
-
-.modal-close:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
 
 .modal-body {
   padding: 20px;

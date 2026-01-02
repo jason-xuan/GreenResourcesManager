@@ -1695,18 +1695,6 @@ export default {
   }
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: color var(--transition-base);
-
-  &:hover {
-    color: var(--text-primary);
-  }
-}
 
 .modal-body {
   padding: var(--spacing-xl);

@@ -1215,21 +1215,6 @@ export default {
   }
 }
 
-.btn-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 5px;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-  }
-}
 
 .modal-body {
   padding: 20px;

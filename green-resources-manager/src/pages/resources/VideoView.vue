@@ -2656,26 +2656,6 @@ export default {
   }
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-base);
-
-  &:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-  }
-}
 
 .modal-body {
   padding: var(--spacing-xl);

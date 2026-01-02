@@ -63,7 +63,7 @@
         <div class="modal-content" @click.stop>
           <div class="modal-header">
             <h3>强制结束游戏</h3>
-            <button class="modal-close" @click="closeTerminateConfirmDialog">✕</button>
+            <button class="btn-close" @click="closeTerminateConfirmDialog">✕</button>
           </div>
           <div class="modal-body">
             <p>确定要强制结束游戏 <strong>{{ gameToTerminate?.name }}</strong> 吗？</p>
@@ -1990,18 +1990,6 @@ export default {
   }
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: color var(--transition-base);
-
-  &:hover {
-    color: var(--text-primary);
-  }
-}
 
 .modal-body {
   padding: var(--spacing-xl);

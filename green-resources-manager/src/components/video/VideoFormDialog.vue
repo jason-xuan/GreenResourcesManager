@@ -3,7 +3,7 @@
     <div class="modal-content" @mousedown.stop>
       <div class="modal-header">
         <h3>{{ mode === 'add' ? '添加视频' : '编辑视频' }}</h3>
-        <button class="modal-close" @click="handleClose">✕</button>
+        <button class="btn-close" @click="handleClose">✕</button>
       </div>
       <div class="modal-body">
         <FormField

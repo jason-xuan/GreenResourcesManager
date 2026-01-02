@@ -3,7 +3,7 @@
     <div class="modal-content" @mousedown.stop>
       <div class="modal-header">
         <h3>编辑游戏</h3>
-        <button class="modal-close" @click="handleClose">✕</button>
+        <button class="btn-close" @click="handleClose">✕</button>
       </div>
       <div class="modal-body">
         <FormField 
@@ -374,18 +374,6 @@ export default {
   transition: color 0.3s ease;
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: color 0.3s ease;
-}
-
-.modal-close:hover {
-  color: var(--text-primary);
-}
 
 .modal-body {
   padding: 20px;

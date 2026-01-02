@@ -3,7 +3,7 @@
     <div class="modal-content" @mousedown.stop>
       <div class="modal-header">
         <h3>{{ getTitle() }}</h3>
-        <button class="modal-close" @click="handleClose">✕</button>
+        <button class="btn-close" @click="handleClose">✕</button>
       </div>
       <div class="modal-body">
         <FormField
@@ -316,26 +316,6 @@ export default {
   color: var(--text-primary, #333);
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: var(--text-secondary, #666);
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.modal-close:hover {
-  background: var(--bg-hover, #f0f0f0);
-  color: var(--text-primary, #333);
-}
 
 .modal-body {
   padding: 24px;

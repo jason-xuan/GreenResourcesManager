@@ -3,7 +3,7 @@
     <div class="modal-content" @mousedown.stop>
       <div class="modal-header">
         <h3>{{ title }}</h3>
-        <button class="modal-close" @click="handleCancel">✕</button>
+        <button class="btn-close" @click="handleCancel">✕</button>
       </div>
       <div class="modal-body">
         <p class="dialog-message">{{ message }}</p>
@@ -142,26 +142,6 @@ export default {
   color: var(--text-primary);
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.modal-close:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
 
 .modal-body {
   padding: 24px;

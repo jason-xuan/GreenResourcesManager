@@ -1031,56 +1031,48 @@ export default {
       }
     },
 
-    async addFolder(folderData) {
+    async addFolder(folderData?: any) {
       // 如果没有传入 folderData，使用 newFolder
       const data = folderData || this.newFolder
       
       if (!data.name || !data.name.trim()) {
-        alert('请填写文件夹名称')
+        notify.toast('error', '添加失败', '请填写文件夹名称')
         return
       }
       if (!data.folderPath || !data.folderPath.trim()) {
-        alert('请先选择文件夹路径')
+        notify.toast('error', '添加失败', '请先选择文件夹路径')
         return
       }
-
-      this.parseFolderActors()
-      if (!this.newFolder.name || !this.newFolder.name.trim()) {
-        alert('请填写文件夹名称')
-        return
-      }
-      if (!this.newFolder.folderPath || !this.newFolder.folderPath.trim()) {
-        alert('请先选择文件夹路径')
-        return
-      }
-
-      this.parseFolderActors()
 
       try {
         const folder = {
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          name: this.newFolder.name,
-          description: this.newFolder.description,
-          tags: this.newFolder.tags,
-          actors: this.newFolder.actors,
-          series: this.newFolder.series,
-          folderPath: this.newFolder.folderPath,
-          thumbnail: this.newFolder.thumbnail,
+          name: data.name.trim(),
+          description: data.description || '',
+          tags: Array.isArray(data.tags) ? data.tags : [],
+          folderPath: data.folderPath.trim(),
           addedDate: new Date().toISOString()
         }
 
-        // 使用 composable 的 addFolder 方法
-        const success = await this.addFolder(folder)
-        if (success) {
-          // 更新筛选器数据
-          this.updateFilterData()
-          
-          this.closeAddFolderDialog()
-          
-          // 成功时使用 toast 通知
-          notify.toast('success', '添加成功', `文件夹 "${this.newFolder.name}" 已成功添加`)
+        // 使用 composable 的 addFolder 方法（通过 this 访问）
+        if ((this as any).addFolder && typeof (this as any).addFolder === 'function') {
+          const success = await (this as any).addFolder(folder)
+          if (success) {
+            // 更新筛选器数据
+            this.updateFilterData()
+            
+            // 如果是通过对话框添加的，关闭对话框
+            if (!folderData) {
+              this.closeAddFolderDialog()
+            }
+            
+            // 成功时使用 toast 通知
+            notify.toast('success', '添加成功', `文件夹 "${folder.name}" 已成功添加`)
+          } else {
+            notify.toast('error', '添加失败', '文件夹添加失败，请重试')
+          }
         } else {
-          notify.toast('error', '添加失败', '文件夹添加失败，请重试')
+          notify.toast('error', '添加失败', '文件夹添加功能不可用')
         }
       } catch (error) {
         console.error('添加文件夹失败:', error)
@@ -1347,13 +1339,13 @@ export default {
     },
     addEditTag() {
       const tag = this.editTagsInput.trim()
-      if (tag && !this.editVideoForm.tags.includes(tag)) {
-        this.editVideoForm.tags.push(tag)
+      if (tag && !this.editFileForm.tags.includes(tag)) {
+        this.editFileForm.tags.push(tag)
         this.editTagsInput = ''
       }
     },
     removeEditTag(index) {
-      this.editVideoForm.tags.splice(index, 1)
+      this.editFileForm.tags.splice(index, 1)
     },
     async browseEditFile() {
       try {
@@ -1374,51 +1366,46 @@ export default {
     },
      async randomizeThumbnail() {
        try {
-         if (!this.editVideoForm.filePath) {
-           alert('请先选择视频文件')
+         if (!this.editFileForm.filePath) {
+           alert('请先选择文件')
            return
          }
          
          console.log('=== 开始生成随机封面 ===')
-         console.log('视频文件路径:', this.editVideoForm.filePath)
-         console.log('视频名称:', this.editVideoForm.name)
-         console.log('当前缩略图:', this.editVideoForm.thumbnail)
+         console.log('文件路径:', this.editFileForm.filePath)
+         console.log('文件名称:', this.editFileForm.name)
+         console.log('当前缩略图:', this.editFileForm.thumbnail)
          
-         // 使用 composable 的 generateThumbnail 方法
-         const thumb = await this.generateThumbnail(
-           this.editVideoForm.filePath, 
-           this.editVideoForm.name, 
-           this.editVideoForm.thumbnail
-         )
-         console.log('🔄 随机封面生成结果:', thumb)
-         if (thumb) {
-           console.log('✅ 缩略图生成成功，路径:', thumb)
-           this.editVideoForm.thumbnail = thumb
-           
-           // 强制清除缓存，确保新生成的缩略图能正确显示
-           const cache = 'value' in this.thumbnailUrlCache ? this.thumbnailUrlCache.value : this.thumbnailUrlCache
-           cache.delete(thumb)
-           
-           // 强制更新视图
-           this.$nextTick(() => {
-             this.$forceUpdate()
-           })
-           
-           console.log('缩略图生成成功，已更新预览')
-         } else {
-           console.warn('⚠️ 缩略图生成失败')
-           // 检查文件扩展名，给出更友好的提示
-           const extension = this.editVideoForm.filePath.toLowerCase().split('.').pop()
-           const supportedFormats = ['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'flv', 'wmv']
-           
-           let errorMessage = ''
-           if (!supportedFormats.includes(extension)) {
-             errorMessage = `不支持的视频格式 "${extension}"。支持的格式：${supportedFormats.join(', ')}`
+         // 使用 composable 的 generateThumbnail 方法（如果可用）
+         if (this.generateThumbnail) {
+           const thumb = await this.generateThumbnail(
+             this.editFileForm.filePath, 
+             this.editFileForm.name, 
+             this.editFileForm.thumbnail
+           )
+           console.log('🔄 随机封面生成结果:', thumb)
+           if (thumb) {
+             console.log('✅ 缩略图生成成功，路径:', thumb)
+             this.editFileForm.thumbnail = thumb
+             
+             // 强制清除缓存，确保新生成的缩略图能正确显示
+             if (this.thumbnailUrlCache) {
+               const cache = 'value' in this.thumbnailUrlCache ? this.thumbnailUrlCache.value : this.thumbnailUrlCache
+               cache.delete(thumb)
+             }
+             
+             // 强制更新视图
+             this.$nextTick(() => {
+               this.$forceUpdate()
+             })
+             
+             console.log('缩略图生成成功，已更新预览')
            } else {
-             errorMessage = '可能的原因：视频编码格式不被浏览器支持、视频文件损坏或无法访问、文件路径包含特殊字符。建议尝试使用其他视频文件或手动选择缩略图图片。'
+             console.warn('⚠️ 缩略图生成失败')
+             notify.toast('error', '缩略图生成失败', '无法生成缩略图，请检查文件是否有效')
            }
-           
-           notify.toast('error', '缩略图生成失败', errorMessage)
+         } else {
+           notify.toast('info', '功能不可用', '缩略图生成功能在当前页面不可用')
          }
        } catch (e) {
          console.error('❌ 随机封面失败:', e)
@@ -1753,7 +1740,7 @@ export default {
       }
     },
 
-    async saveEditedFolder(folderData) {
+    async saveEditedFolder(folderData?: any) {
       try {
         // 如果没有传入 folderData，使用 editFolderForm
         const data = folderData || this.editFolderForm
@@ -1795,7 +1782,7 @@ export default {
           notify.toast('success', '删除成功', `已成功删除文件夹 "${folder.name}"`)
           console.log('文件夹删除成功:', folder.name)
           
-          this.closeVideoDetail()
+          this.closeItemDetail()
         } else {
           notify.toast('error', '删除失败', '文件夹删除失败，请重试')
         }
@@ -1832,19 +1819,19 @@ export default {
       } else {
         switch (item.key) {
           case 'detail':
-            this.showVideoDetail(selectedItem)
+            this.showFileDetail(selectedItem)
             break
-          case 'play':
-            this.playVideo(selectedItem)
+          case 'open':
+            this.openFile(selectedItem)
             break
           case 'folder':
-            this.openVideoFolder(selectedItem)
+            this.openFileFolder(selectedItem)
             break
           case 'edit':
-            this.editVideo(selectedItem)
+            this.editFile(selectedItem)
             break
           case 'remove':
-            this.deleteVideo(selectedItem)
+            this.deleteFile(selectedItem)
             break
         }
       }
@@ -2111,8 +2098,11 @@ export default {
 
     // 处理缩略图预览加载错误（使用 composable 的方法）
     async handleThumbnailPreviewError(event) {
-      // 使用 composable 的 handleThumbnailPreviewError 方法
-      await this.handleThumbnailPreviewError(event, this.editVideoForm.thumbnail)
+      // 处理缩略图预览加载错误
+      if (event && event.target) {
+        event.target.style.display = 'none'
+      }
+      console.warn('缩略图预览加载失败')
     },
 
     // 处理缩略图预览加载成功
@@ -2125,7 +2115,7 @@ export default {
     closePathUpdateDialog() {
       this.showPathUpdateDialog = false
       this.pathUpdateInfo = {
-        existingVideo: null,
+        existingItem: null,
         newPath: '',
         newFileName: ''
       }
@@ -2134,69 +2124,35 @@ export default {
     // 确认路径更新
     async confirmPathUpdate() {
       try {
-        const { existingVideo, newPath } = this.pathUpdateInfo
-        
-        if (!existingVideo || !newPath) {
-          console.error('路径更新信息不完整')
+        const { existingItem, newPath } = this.pathUpdateInfo
+        if (!existingItem || !newPath) {
           notify.toast('error', '更新失败', '路径更新信息不完整')
           return
         }
         
-        console.log('开始更新视频路径:', existingVideo.name)
-        console.log('从:', existingVideo.filePath)
-        console.log('到:', newPath)
-        
-        // 更新视频路径
-        existingVideo.filePath = newPath
-        existingVideo.fileExists = true
-        
-        // 重新获取视频时长（如果之前没有）- 使用 composable 的方法
-        if (!existingVideo.duration || existingVideo.duration === 0) {
-          try {
-            console.log('🔄 重新获取视频时长...')
-            const duration = await this.getVideoDuration(newPath)
-            if (duration > 0) {
-              existingVideo.duration = duration
-              console.log('✅ 视频时长更新成功:', duration, '分钟')
-            }
-          } catch (e) {
-            console.warn('获取视频时长失败:', e)
+        if (existingItem.type === 'folder') {
+          // 更新文件夹路径
+          if ((this as any).updateFolder) {
+            await (this as any).updateFolder(existingItem.id, { folderPath: newPath })
+            await this.loadFolders()
+          }
+        } else {
+          // 更新文件路径
+          if (this.fileManager) {
+            await this.fileManager.updateFile(existingItem.id, { filePath: newPath })
+            await this.loadFiles()
           }
         }
         
-        // 重新生成缩略图（如果之前没有）- 使用 composable 的方法
-        if (!existingVideo.thumbnail || !existingVideo.thumbnail.trim()) {
-          try {
-            console.log('🔄 重新生成缩略图...')
-            const thumbnail = await this.generateThumbnail(newPath, existingVideo.name, null)
-            if (thumbnail) {
-              existingVideo.thumbnail = thumbnail
-              console.log('✅ 缩略图生成成功')
-            }
-          } catch (e) {
-            console.warn('生成缩略图失败:', e)
-          }
-        }
-        
-        // 使用 composable 的 updateVideo 方法保存视频数据
-        await this.updateVideo(existingVideo.id, existingVideo)
-        
-        // 重新加载视频列表
-        await this.loadVideos()
-        
-        // 关闭对话框
         this.closePathUpdateDialog()
-        
-        // 成功时不显示通知，只在控制台记录
-        console.log('✅ 视频路径更新成功:', existingVideo.name)
-        
-        notify.toast('success', '路径更新成功', `视频 "${existingVideo.name}" 的路径已更新`)
-        
+        this.updateFilterData()
+        notify.toast('success', '路径更新成功', `路径已更新`)
       } catch (error) {
-        console.error('更新视频路径失败:', error)
-        notify.toast('error', '更新失败', `更新视频路径失败: ${error.message}`)
+        console.error('更新路径失败:', error)
+        notify.toast('error', '更新失败', `更新路径失败: ${error.message}`)
       }
     },
+
 
 
     // extractAllFilters 已移至 useVideoFilter composable（通过 allTags, allActors, allSeries 计算属性自动提取）
@@ -2257,174 +2213,6 @@ export default {
         console.log(`✅ 已保存${pageType}页面排序方式:`, sortBy)
       } catch (error) {
         console.warn('保存排序方式失败:', error)
-      }
-    },
-    handleSearchQueryChanged(newValue) {
-      this.searchQuery = newValue
-    },
-    handleSortByChanged(newValue) {
-      this.sortBy = newValue
-    },
-    addEditTag() {
-      const tag = this.editTagsInput.trim()
-      if (tag && !this.editFileForm.tags.includes(tag)) {
-        this.editFileForm.tags.push(tag)
-        this.editTagsInput = ''
-      }
-    },
-    removeEditTag(index) {
-      this.editFileForm.tags.splice(index, 1)
-    },
-    addFolderTag() {
-      const tag = this.folderTagsInput.trim()
-      if (tag && !this.newFolder.tags.includes(tag)) {
-        this.newFolder.tags.push(tag)
-        this.folderTagsInput = ''
-      }
-    },
-    removeFolderTag(index) {
-      this.newFolder.tags.splice(index, 1)
-    },
-    addEditFolderTag() {
-      const tag = this.editFolderTagsInput.trim()
-      if (tag && !this.editFolderForm.tags.includes(tag)) {
-        this.editFolderForm.tags.push(tag)
-        this.editFolderTagsInput = ''
-      }
-    },
-    removeEditFolderTag(index) {
-      this.editFolderForm.tags.splice(index, 1)
-    },
-    async selectNewFolderPath() {
-      try {
-        if (window.electronAPI && window.electronAPI.selectFolder) {
-          const result = await window.electronAPI.selectFolder()
-          if (result && result.success && result.path) {
-            this.newFolder.folderPath = result.path
-            if (!this.newFolder.name || !this.newFolder.name.trim()) {
-              const parts = result.path.replace(/\\/g, '/').split('/')
-              this.newFolder.name = parts[parts.length - 1]
-            }
-          }
-        }
-      } catch (e) {
-        console.error('选择文件夹失败:', e)
-      }
-    },
-    async selectEditFolderPath() {
-      try {
-        if (window.electronAPI && window.electronAPI.selectFolder) {
-          const result = await window.electronAPI.selectFolder()
-          if (result && result.success && result.path) {
-            this.editFolderForm.folderPath = result.path
-          }
-        }
-      } catch (e) {
-        console.error('选择编辑文件夹路径失败:', e)
-      }
-    },
-    async saveEditedFolder() {
-      try {
-        this.parseEditFolderActors()
-        const payload = {
-          name: (this.editFolderForm.name || '').trim(),
-          description: (this.editFolderForm.description || '').trim(),
-          tags: this.editFolderForm.tags || [],
-          folderPath: (this.editFolderForm.folderPath || '').trim()
-        }
-        if ((this as any).updateFolder) {
-          await (this as any).updateFolder(this.editFolderForm.id, payload)
-          this.updateFilterData()
-          this.showEditFolderDialog = false
-          notify.toast('success', '保存成功', `文件夹 "${payload.name}" 已更新`)
-        }
-      } catch (e) {
-        console.error('保存编辑文件夹失败:', e)
-        notify.toast('error', '保存失败', `保存文件夹失败: ${e.message}`)
-      }
-    },
-    parseEditFolderActors() {
-      // 不再需要，已移除 actors
-    },
-    async deleteFolder(folder) {
-      if (!confirm(`确定要删除文件夹 "${folder.name}" 吗？`)) return
-      
-      try {
-        if ((this as any).deleteFolder) {
-          const success = await (this as any).deleteFolder(folder.id)
-          if (success) {
-            this.updateFilterData()
-            notify.toast('success', '删除成功', `已成功删除文件夹 "${folder.name}"`)
-            this.closeItemDetail()
-          } else {
-            notify.toast('error', '删除失败', '文件夹删除失败，请重试')
-          }
-        }
-      } catch (error) {
-        console.error('删除文件夹失败:', error)
-        notify.toast('error', '删除失败', `无法删除文件夹 "${folder.name}": ${error.message}`)
-      }
-    },
-    editFolder(folder) {
-      if (!folder) return
-      this.showDetailDialog = false
-      this.editFolderForm = {
-        id: folder.id,
-        name: folder.name || '',
-        description: folder.description || '',
-        tags: Array.isArray(folder.tags) ? [...folder.tags] : [],
-        folderPath: folder.folderPath || ''
-      }
-      this.editFolderTagsInput = ''
-      this.showEditFolderDialog = true
-    },
-    closeEditFolderDialog() {
-      this.showEditFolderDialog = false
-    },
-    formatAddedDate(dateString) {
-      if (!dateString) return ''
-      const date = new Date(dateString)
-      const now = new Date()
-      const diffTime = Math.abs(now.getTime() - date.getTime())
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      if (diffDays === 0) return '今天'
-      if (diffDays === 1) return '昨天'
-      if (diffDays < 7) return `${diffDays}天前`
-      if (diffDays < 30) return `${Math.ceil(diffDays / 7)}周前`
-      if (diffDays < 365) return `${Math.ceil(diffDays / 30)}个月前`
-      return `${Math.ceil(diffDays / 365)}年前`
-    },
-    getFolderPath(folder) {
-      return folder.folderPath || '未设置路径'
-    },
-    confirmPathUpdate() {
-      // 路径更新功能（简化版）
-      const { existingItem, newPath } = this.pathUpdateInfo
-      if (!existingItem || !newPath) {
-        notify.toast('error', '更新失败', '路径更新信息不完整')
-        return
-      }
-      if (existingItem.type === 'folder') {
-        // 更新文件夹路径
-        if ((this as any).updateFolder) {
-          (this as any).updateFolder(existingItem.id, { folderPath: newPath })
-        }
-      } else {
-        // 更新文件路径
-        if (this.fileManager) {
-          this.fileManager.updateFile(existingItem.id, { filePath: newPath })
-        }
-      }
-      this.closePathUpdateDialog()
-      this.loadFiles()
-      notify.toast('success', '路径更新成功', `文件路径已更新`)
-    },
-    closePathUpdateDialog() {
-      this.showPathUpdateDialog = false
-      this.pathUpdateInfo = {
-        existingItem: null,
-        newPath: '',
-        newFileName: ''
       }
     },
     
@@ -2833,18 +2621,14 @@ export default {
 }
 
 .modal-content {
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-color);
-  max-width: 600px;
-  width: 90%;
-  max-height: 80vh;
+  width: 500px;
+  max-width: 90vw;
+  max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 40px var(--shadow-dark);
-}
-
-.video-detail-modal {
-  max-width: 800px;
+  box-shadow: 0 20px 40px var(--shadow-medium);
+  transition: background-color var(--transition-base);
 }
 
 .modal-header {
@@ -2855,30 +2639,9 @@ export default {
   border-bottom: 1px solid var(--border-color);
 
   h3 {
+    color: var(--text-primary);
     margin: 0;
-    color: var(--text-primary);
-    font-size: var(--font-size-xl);
-  }
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-base);
-
-  &:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    transition: color var(--transition-base);
   }
 }
 
@@ -2981,44 +2744,48 @@ export default {
 
 // 按钮样式
 .btn-cancel {
-  padding: var(--spacing-md) var(--spacing-xl);
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-base);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-base);
 
   &:hover {
-    background: var(--bg-tertiary);
+    background: var(--bg-secondary);
   }
 }
 
 .btn-confirm {
-  padding: var(--spacing-md) var(--spacing-xl);
   background: var(--accent-color);
   color: white;
   border: none;
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-base);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-base);
+  font-weight: 600;
+  transition: background var(--transition-base);
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: var(--accent-hover);
   }
 }
 
-.btn-play {
-  padding: var(--spacing-md) var(--spacing-xl);
+.btn-open {
   background: var(--accent-color);
   color: white;
   border: none;
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-base);
+  padding: 12px 24px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all var(--transition-base);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.3s ease;
+  flex: 1;
+  justify-content: center;
 
   &:hover {
     background: var(--accent-hover);
@@ -3026,32 +2793,38 @@ export default {
 }
 
 .btn-edit {
-  padding: var(--spacing-md) var(--spacing-xl);
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-base);
+  padding: 12px 20px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all var(--transition-base);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
 
   &:hover {
-    background: var(--bg-tertiary);
+    background: var(--bg-secondary);
   }
 }
 
-.btn-delete {
-  padding: var(--spacing-md) var(--spacing-xl);
-  background: #dc3545;
-  color: white;
-  border: none;
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-base);
+.btn-remove {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 12px 20px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all var(--transition-base);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
 
   &:hover {
-    background: #c82333;
+    background: #fecaca;
   }
 }
 
@@ -3059,14 +2832,14 @@ export default {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 6px;
-  transition: all var(--transition-base);
+  gap: 8px;
+  transition: all 0.3s ease;
 
   &:hover {
     background: var(--bg-secondary);
@@ -3420,7 +3193,7 @@ export default {
 
 // 响应式设计
 @media (max-width: 768px) {
-  .videos-grid {
+  .items-grid {
     grid-template-columns: 1fr;
   }
   
@@ -3428,13 +3201,8 @@ export default {
     grid-template-columns: 1fr;
   }
   
-  .video-detail-content {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-xl);
-  }
-  
   .modal-content {
-    width: 95%;
+    width: 95vw;
     margin: var(--spacing-xl);
   }
 

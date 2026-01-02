@@ -3,7 +3,7 @@
     <div class="modal-content" @click.stop>
       <div class="modal-header">
         <h3>添加视频</h3>
-        <button class="modal-close" @click="closeDialog">✕</button>
+        <button class="btn-close" @click="closeDialog">✕</button>
       </div>
       <div class="modal-body">
         <form @submit.prevent="handleAddVideo">
@@ -526,23 +526,6 @@ export default {
   font-size: 18px;
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  color: #666;
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-close:hover {
-  color: #333;
-}
 
 .modal-body {
   padding: 20px;

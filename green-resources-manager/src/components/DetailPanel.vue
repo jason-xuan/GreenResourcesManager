@@ -871,6 +871,26 @@ export default {
   background: var(--bg-secondary);
 }
 
+.btn-open {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.3s ease;
+  flex: 1;
+  justify-content: center;
+}
+
+.btn-open:hover {
+  background: var(--accent-hover);
+}
+
 .btn-update-duration {
   background: #17a2b8;
   color: white;
@@ -962,6 +982,24 @@ export default {
 }
 
 .btn-delete:hover {
+  background: #fecaca;
+}
+
+.btn-remove {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.btn-remove:hover {
   background: #fecaca;
 }
 

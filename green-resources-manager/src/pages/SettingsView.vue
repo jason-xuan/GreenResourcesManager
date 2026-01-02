@@ -899,255 +899,271 @@ export default {
   },
   async mounted() {
     try {
-      // 等待父组件（App.vue）的存档系统初始化完成
-      const maxWaitTime = 5000
-      const startTime = Date.now()
-      while (!this.$parent.isInitialized && (Date.now() - startTime) < maxWaitTime) {
-        await new Promise(resolve => setTimeout(resolve, 50))
-      }
-      if (this.$parent.isInitialized) {
-        console.log('✅ 存档系统已初始化，开始加载设置数据')
-      }
-      
-      // 使用 SaveManager 加载设置
-      this.settings = await saveManager.loadSettings()
-      console.log('加载的设置:', this.settings)
-      
-      // 从novel对象中读取小说设置到表单字段
-      if (this.settings.novel) {
-        this.settings.novelDefaultOpenMode = this.settings.novel.defaultOpenMode || 'internal'
-        if (this.settings.novel.readerSettings) {
-          this.settings.novelFontSize = this.settings.novel.readerSettings.fontSize || 16
-          this.settings.novelLineHeight = this.settings.novel.readerSettings.lineHeight || 1.6
-          this.settings.novelFontFamily = this.settings.novel.readerSettings.fontFamily || 'Microsoft YaHei, sans-serif'
-          this.settings.novelBackgroundColor = this.settings.novel.readerSettings.backgroundColor || '#ffffff'
-          this.settings.novelTextColor = this.settings.novel.readerSettings.textColor || '#333333'
-          this.settings.novelWordsPerPage = this.settings.novel.readerSettings.wordsPerPage || 1000
-          this.settings.novelShowProgress = this.settings.novel.readerSettings.showProgress !== undefined ? this.settings.novel.readerSettings.showProgress : true
-        }
-      }
-      
-      // 从image对象中读取图片设置到表单字段
-      if (this.settings.image) {
-        this.settings.image = {
-          listPageSize: parseInt(this.settings.image.listPageSize) || 20,
-          jpegQuality: this.settings.image.jpegQuality || 80,
-          thumbnailSize: this.settings.image.thumbnailSize || 200,
-          cacheSize: this.settings.image.cacheSize || 50,
-          enableThumbnails: this.settings.image.enableThumbnails !== undefined ? this.settings.image.enableThumbnails : true,
-          preloadCount: this.settings.image.preloadCount || 3,
-          hardwareAcceleration: this.settings.image.hardwareAcceleration !== undefined ? this.settings.image.hardwareAcceleration : true,
-          renderQuality: this.settings.image.renderQuality || 'high',
-          detailPageSize: parseInt(this.settings.image.detailPageSize) || 50
-        }
-      } else {
-        // 如果没有image对象，创建默认的
-        this.settings.image = {
-          listPageSize: 20,
-          jpegQuality: 80,
-          thumbnailSize: 200,
-          cacheSize: 50,
-          enableThumbnails: true,
-          preloadCount: 3,
-          hardwareAcceleration: true,
-          renderQuality: 'high',
-          detailPageSize: 50
-        }
-      }
-      
-      // 从video对象中读取视频设置到表单字段
-      if (this.settings.video) {
-        this.settings.video = {
-          listPageSize: parseInt(this.settings.video.listPageSize) || 20
-        }
-      } else {
-        this.settings.video = {
-          listPageSize: 20
-        }
-      }
-      
-      // 从audio对象中读取音频设置到表单字段
-      if (this.settings.audio) {
-        this.settings.audio = {
-          listPageSize: parseInt(this.settings.audio.listPageSize) || 20
-        }
-      } else {
-        this.settings.audio = {
-          listPageSize: 20
-        }
-      }
-      
-      // 从game对象中读取游戏设置到表单字段
-      if (this.settings.game) {
-        this.settings.game = {
-          listPageSize: parseInt(this.settings.game.listPageSize) || 20
-        }
-      } else {
-        this.settings.game = {
-          listPageSize: 20
-        }
-      }
-      
-      // 从novel对象中读取小说分页设置到表单字段
-      if (this.settings.novel) {
-        this.settings.novel = {
-          listPageSize: parseInt(this.settings.novel.listPageSize) || 20
-        }
-      } else {
-        this.settings.novel = {
-          listPageSize: 20
-        }
-      }
-      
-      // 确保小说设置字段存在并设置默认值
-      if (!this.settings.novelDefaultOpenMode) {
-        this.settings.novelDefaultOpenMode = 'internal'
-      }
-      if (!this.settings.novelFontSize) {
-        this.settings.novelFontSize = 16
-      }
-      if (!this.settings.novelLineHeight) {
-        this.settings.novelLineHeight = 1.6
-      }
-      if (!this.settings.novelFontFamily) {
-        this.settings.novelFontFamily = 'Microsoft YaHei, sans-serif'
-      }
-      if (!this.settings.novelBackgroundColor) {
-        this.settings.novelBackgroundColor = '#ffffff'
-      }
-      if (!this.settings.novelTextColor) {
-        this.settings.novelTextColor = '#333333'
-      }
-      if (!this.settings.novelWordsPerPage) {
-        this.settings.novelWordsPerPage = 1000
-      }
-      if (this.settings.novelShowProgress === undefined) {
-        this.settings.novelShowProgress = true
-      }
-      
-      // 初始化安全键设置（如果未设置）
-      if (this.settings.safetyKeyEnabled === undefined || this.settings.safetyKeyEnabled === null) {
-        this.settings.safetyKeyEnabled = false
-      }
-      if (!this.settings.safetyKeyUrl) {
-        this.settings.safetyKeyUrl = 'https://www.bilibili.com/video/BV1jR4y1M78W/?p=17&share_source=copy_web&vd_source=7de8c277f16e8e03b48a5328dddfe2ce&t=466'
-      }
-      
-      // 加载设置后立即应用主题
-      if (this.settings.theme) {
-        this.applyTheme(this.settings.theme)
-      }
-      
-      // 初始化存档设置（如果未设置）
+      // 先初始化存档设置的默认值，确保UI可以立即显示
       if (!this.settings.saveDataLocation) {
         this.settings.saveDataLocation = 'default'
       }
       
-      // 如果使用自定义目录但没有设置路径，尝试获取
-      if (this.settings.saveDataLocation === 'custom' && !this.settings.saveDataPath) {
+      // 立即尝试加载设置，不等待父组件初始化（SaveManager可以直接读取文件）
+      const loadSettingsData = async () => {
         try {
-          if (window.electronAPI && window.electronAPI.getSaveDataDirectory) {
-            this.settings.saveDataPath = await window.electronAPI.getSaveDataDirectory()
-          }
-        } catch (error) {
-          console.error('获取默认存档目录失败:', error)
-        }
-      }
-      
-      // 根据设置更新SaveManager的数据目录
-      try {
-        let saveDataPath = ''
-        if (this.settings.saveDataLocation === 'default') {
-          saveDataPath = 'SaveData' // 默认根目录下的SaveData
-        } else if (this.settings.saveDataLocation === 'custom' && this.settings.saveDataPath) {
-          saveDataPath = this.settings.saveDataPath + '/SaveData' // 自定义目录下的SaveData
-        }
+          // 直接使用 SaveManager 加载设置，不需要等待父组件初始化
+          const loadedSettings = await saveManager.loadSettings()
+          console.log('加载的设置:', loadedSettings)
+          
+          if (loadedSettings) {
+            // 合并加载的设置到当前settings（保留已显示的默认值）
+            Object.assign(this.settings, loadedSettings)
         
-        if (saveDataPath) {
-          const saveManagerUpdated = saveManager.setDataDirectory(saveDataPath)
-          if (saveManagerUpdated) {
-            console.log('SaveManager数据目录已设置为:', saveDataPath)
-          }
-        }
-      } catch (error) {
-        console.error('设置SaveManager数据目录失败:', error)
-      }
-      
-      // 初始化自动备份设置（如果未设置）
-      if (this.settings.autoBackupEnabled === undefined || this.settings.autoBackupEnabled === null) {
-        this.settings.autoBackupEnabled = false
-      }
-      if (!this.settings.autoBackupInterval || this.settings.autoBackupInterval < 5) {
-        this.settings.autoBackupInterval = DEFAULT_AUTO_BACKUP_INTERVAL
-      }
-      if (!this.settings.maxBackupCount || this.settings.maxBackupCount < 3) {
-        this.settings.maxBackupCount = DEFAULT_MAX_BACKUP_COUNT
-      }
-      
-      // 初始化截图设置（如果未设置）
-      if (!this.settings.screenshotLocation) {
-        this.settings.screenshotLocation = 'default'
-      }
-      
-      // 如果使用默认目录，清空自定义路径
-      if (this.settings.screenshotLocation === 'default') {
-        this.settings.screenshotsPath = ''
-      } else if (this.settings.screenshotLocation === 'custom' && !this.settings.screenshotsPath) {
-        // 如果使用自定义目录但没有设置路径，尝试获取
-        try {
-          if (window.electronAPI && window.electronAPI.getScreenshotsDirectory) {
-            this.settings.screenshotsPath = await window.electronAPI.getScreenshotsDirectory()
-          }
-        } catch (error) {
-          console.error('获取默认截图目录失败:', error)
-        }
-      }
-      
-      // 获取当前开机自启状态（仅在设置文件中没有值时获取）
-      if (this.settings.autoStart === undefined || this.settings.autoStart === null) {
-        try {
-          if (window.electronAPI && window.electronAPI.getAutoStart) {
-            const result = await window.electronAPI.getAutoStart()
-            if (result.success) {
-              this.settings.autoStart = result.enabled
-              console.log('从系统获取开机自启状态:', result.enabled)
+            // 从novel对象中读取小说设置到表单字段
+            if (this.settings.novel) {
+              this.settings.novelDefaultOpenMode = this.settings.novel.defaultOpenMode || 'internal'
+              if (this.settings.novel.readerSettings) {
+                this.settings.novelFontSize = this.settings.novel.readerSettings.fontSize || 16
+                this.settings.novelLineHeight = this.settings.novel.readerSettings.lineHeight || 1.6
+                this.settings.novelFontFamily = this.settings.novel.readerSettings.fontFamily || 'Microsoft YaHei, sans-serif'
+                this.settings.novelBackgroundColor = this.settings.novel.readerSettings.backgroundColor || '#ffffff'
+                this.settings.novelTextColor = this.settings.novel.readerSettings.textColor || '#333333'
+                this.settings.novelWordsPerPage = this.settings.novel.readerSettings.wordsPerPage || 1000
+                this.settings.novelShowProgress = this.settings.novel.readerSettings.showProgress !== undefined ? this.settings.novel.readerSettings.showProgress : true
+              }
             }
-          }
-        } catch (error) {
-          console.error('获取开机自启状态失败:', error)
-          // 如果获取失败，使用默认值
-          this.settings.autoStart = false
-        }
-      } else {
-        console.log('使用设置文件中的开机自启状态:', this.settings.autoStart)
-      }
-      
-      // 获取当前最小化到托盘状态（仅在设置文件中没有值时获取）
-      if (this.settings.minimizeToTray === undefined || this.settings.minimizeToTray === null) {
-        try {
-          if (window.electronAPI && window.electronAPI.getMinimizeToTray) {
-            const result = await window.electronAPI.getMinimizeToTray()
-            if (result.success) {
-              this.settings.minimizeToTray = result.enabled
-              console.log('从系统获取最小化到托盘状态:', result.enabled)
+            
+            // 从image对象中读取图片设置到表单字段
+            if (this.settings.image) {
+              this.settings.image = {
+                listPageSize: parseInt(this.settings.image.listPageSize) || 20,
+                jpegQuality: this.settings.image.jpegQuality || 80,
+                thumbnailSize: this.settings.image.thumbnailSize || 200,
+                cacheSize: this.settings.image.cacheSize || 50,
+                enableThumbnails: this.settings.image.enableThumbnails !== undefined ? this.settings.image.enableThumbnails : true,
+                preloadCount: this.settings.image.preloadCount || 3,
+                hardwareAcceleration: this.settings.image.hardwareAcceleration !== undefined ? this.settings.image.hardwareAcceleration : true,
+                renderQuality: this.settings.image.renderQuality || 'high',
+                detailPageSize: parseInt(this.settings.image.detailPageSize) || 50
+              }
+            } else {
+              // 如果没有image对象，创建默认的
+              this.settings.image = {
+                listPageSize: 20,
+                jpegQuality: 80,
+                thumbnailSize: 200,
+                cacheSize: 50,
+                enableThumbnails: true,
+                preloadCount: 3,
+                hardwareAcceleration: true,
+                renderQuality: 'high',
+                detailPageSize: 50
+              }
             }
+            
+            // 从video对象中读取视频设置到表单字段
+            if (this.settings.video) {
+              this.settings.video = {
+                listPageSize: parseInt(this.settings.video.listPageSize) || 20
+              }
+            } else {
+              this.settings.video = {
+                listPageSize: 20
+              }
+            }
+            
+            // 从audio对象中读取音频设置到表单字段
+            if (this.settings.audio) {
+              this.settings.audio = {
+                listPageSize: parseInt(this.settings.audio.listPageSize) || 20
+              }
+            } else {
+              this.settings.audio = {
+                listPageSize: 20
+              }
+            }
+            
+            // 从game对象中读取游戏设置到表单字段
+            if (this.settings.game) {
+              this.settings.game = {
+                listPageSize: parseInt(this.settings.game.listPageSize) || 20
+              }
+            } else {
+              this.settings.game = {
+                listPageSize: 20
+              }
+            }
+            
+            // 从novel对象中读取小说分页设置到表单字段
+            if (this.settings.novel) {
+              this.settings.novel = {
+                listPageSize: parseInt(this.settings.novel.listPageSize) || 20
+              }
+            } else {
+              this.settings.novel = {
+                listPageSize: 20
+              }
+            }
+            
+            // 确保小说设置字段存在并设置默认值
+            if (!this.settings.novelDefaultOpenMode) {
+              this.settings.novelDefaultOpenMode = 'internal'
+            }
+            if (!this.settings.novelFontSize) {
+              this.settings.novelFontSize = 16
+            }
+            if (!this.settings.novelLineHeight) {
+              this.settings.novelLineHeight = 1.6
+            }
+            if (!this.settings.novelFontFamily) {
+              this.settings.novelFontFamily = 'Microsoft YaHei, sans-serif'
+            }
+            if (!this.settings.novelBackgroundColor) {
+              this.settings.novelBackgroundColor = '#ffffff'
+            }
+            if (!this.settings.novelTextColor) {
+              this.settings.novelTextColor = '#333333'
+            }
+            if (!this.settings.novelWordsPerPage) {
+              this.settings.novelWordsPerPage = 1000
+            }
+            if (this.settings.novelShowProgress === undefined) {
+              this.settings.novelShowProgress = true
+            }
+            
+            // 初始化安全键设置（如果未设置）
+            if (this.settings.safetyKeyEnabled === undefined || this.settings.safetyKeyEnabled === null) {
+              this.settings.safetyKeyEnabled = false
+            }
+            if (!this.settings.safetyKeyUrl) {
+              this.settings.safetyKeyUrl = 'https://www.bilibili.com/video/BV1jR4y1M78W/?p=17&share_source=copy_web&vd_source=7de8c277f16e8e03b48a5328dddfe2ce&t=466'
+            }
+            
+            // 加载设置后立即应用主题
+            if (this.settings.theme) {
+              this.applyTheme(this.settings.theme)
+            }
+            
+            // 初始化存档设置（如果未设置）
+            if (!this.settings.saveDataLocation) {
+              this.settings.saveDataLocation = 'default'
+            }
+            
+            // 如果使用自定义目录但没有设置路径，尝试获取（后台异步，不阻塞UI）
+            if (this.settings.saveDataLocation === 'custom' && !this.settings.saveDataPath) {
+              try {
+                if (window.electronAPI && window.electronAPI.getSaveDataDirectory) {
+                  const path = await window.electronAPI.getSaveDataDirectory()
+                  if (path) {
+                    this.settings.saveDataPath = path
+                  }
+                }
+              } catch (error) {
+                console.error('获取默认存档目录失败:', error)
+              }
+            }
+            
+            // 根据设置更新SaveManager的数据目录
+            try {
+              let saveDataPath = ''
+              if (this.settings.saveDataLocation === 'default') {
+                saveDataPath = 'SaveData' // 默认根目录下的SaveData
+              } else if (this.settings.saveDataLocation === 'custom' && this.settings.saveDataPath) {
+                saveDataPath = this.settings.saveDataPath + '/SaveData' // 自定义目录下的SaveData
+              }
+              
+              if (saveDataPath) {
+                const saveManagerUpdated = saveManager.setDataDirectory(saveDataPath)
+                if (saveManagerUpdated) {
+                  console.log('SaveManager数据目录已设置为:', saveDataPath)
+                }
+              }
+            } catch (error) {
+              console.error('设置SaveManager数据目录失败:', error)
+            }
+            
+            // 初始化自动备份设置（如果未设置）
+            if (this.settings.autoBackupEnabled === undefined || this.settings.autoBackupEnabled === null) {
+              this.settings.autoBackupEnabled = false
+            }
+            if (!this.settings.autoBackupInterval || this.settings.autoBackupInterval < 5) {
+              this.settings.autoBackupInterval = DEFAULT_AUTO_BACKUP_INTERVAL
+            }
+            if (!this.settings.maxBackupCount || this.settings.maxBackupCount < 3) {
+              this.settings.maxBackupCount = DEFAULT_MAX_BACKUP_COUNT
+            }
+            
+            // 初始化截图设置（如果未设置）
+            if (!this.settings.screenshotLocation) {
+              this.settings.screenshotLocation = 'default'
+            }
+            
+            // 如果使用默认目录，清空自定义路径
+            if (this.settings.screenshotLocation === 'default') {
+              this.settings.screenshotsPath = ''
+            } else if (this.settings.screenshotLocation === 'custom' && !this.settings.screenshotsPath) {
+              // 如果使用自定义目录但没有设置路径，尝试获取
+              try {
+                if (window.electronAPI && window.electronAPI.getScreenshotsDirectory) {
+                  this.settings.screenshotsPath = await window.electronAPI.getScreenshotsDirectory()
+                }
+              } catch (error) {
+                console.error('获取默认截图目录失败:', error)
+              }
+            }
+            
+            // 获取当前开机自启状态（仅在设置文件中没有值时获取）
+            if (this.settings.autoStart === undefined || this.settings.autoStart === null) {
+              try {
+                if (window.electronAPI && window.electronAPI.getAutoStart) {
+                  const result = await window.electronAPI.getAutoStart()
+                  if (result.success) {
+                    this.settings.autoStart = result.enabled
+                    console.log('从系统获取开机自启状态:', result.enabled)
+                  }
+                }
+              } catch (error) {
+                console.error('获取开机自启状态失败:', error)
+                // 如果获取失败，使用默认值
+                this.settings.autoStart = false
+              }
+            } else {
+              console.log('使用设置文件中的开机自启状态:', this.settings.autoStart)
+            }
+            
+            // 获取当前最小化到托盘状态（仅在设置文件中没有值时获取）
+            if (this.settings.minimizeToTray === undefined || this.settings.minimizeToTray === null) {
+              try {
+                if (window.electronAPI && window.electronAPI.getMinimizeToTray) {
+                  const result = await window.electronAPI.getMinimizeToTray()
+                  if (result.success) {
+                    this.settings.minimizeToTray = result.enabled
+                    console.log('从系统获取最小化到托盘状态:', result.enabled)
+                  }
+                }
+              } catch (error) {
+                console.error('获取最小化到托盘状态失败:', error)
+                // 如果获取失败，使用默认值
+                this.settings.minimizeToTray = true
+              }
+            } else {
+              console.log('使用设置文件中的最小化到托盘状态:', this.settings.minimizeToTray)
+            }
+            
+            // 设置初始保存时间，启用自动保存
+            this.lastSaveTime = new Date()
+            // 初始化完成，启用watcher
+            this.isInitializing = false
+            console.log('设置页面已加载，自动保存功能已启用')
           }
         } catch (error) {
-          console.error('获取最小化到托盘状态失败:', error)
-          // 如果获取失败，使用默认值
-          this.settings.minimizeToTray = true
+          console.error('加载设置失败:', error)
+          // 即使加载失败，也要启用watcher，避免界面卡死
+          this.isInitializing = false
+          this.lastSaveTime = new Date()
         }
-      } else {
-        console.log('使用设置文件中的最小化到托盘状态:', this.settings.minimizeToTray)
       }
       
-      // 设置初始保存时间，启用自动保存
-      this.lastSaveTime = new Date()
-      // 初始化完成，启用watcher
-      this.isInitializing = false
-      console.log('设置页面已加载，自动保存功能已启用')
+      // 立即加载设置，不等待父组件初始化
+      loadSettingsData()
       
-      // 获取当前版本信息
+      // 获取当前版本信息（不阻塞UI）
       if (window.electronAPI && window.electronAPI.getAppVersion) {
         window.electronAPI.getAppVersion().then(version => {
           this.currentVersion = version
@@ -1158,7 +1174,10 @@ export default {
       
       // 更新相关事件监听由UpdateSettings组件处理，不需要在这里设置
     } catch (error) {
-      console.error('加载设置失败:', error)
+      console.error('初始化设置页面失败:', error)
+      // 确保即使出错也能正常使用
+      this.isInitializing = false
+      this.lastSaveTime = new Date()
     }
   },
   

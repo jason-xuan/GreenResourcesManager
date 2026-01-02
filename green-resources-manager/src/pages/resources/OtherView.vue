@@ -300,8 +300,8 @@ export default {
     // 文件列表
     const files = ref([])
     
-    // 使用文件夹管理 composable
-    const folderComposable = useVideoFolder()
+    // 使用文件夹管理 composable（传入页面ID以隔离数据）
+    const folderComposable = useVideoFolder(props.pageConfig.id)
     
     // 使用筛选 composable（基于 files 和 folders）
     const filterComposable = useVideoFilter(

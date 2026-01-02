@@ -8,7 +8,7 @@ import saveManager from '../../utils/SaveManager'
 import notify from '../../utils/NotificationService'
 import type { VideoFolder, FolderVideo } from '../../types/video'
 
-export function useVideoFolder() {
+export function useVideoFolder(pageId?: string) {
   const folders = ref<VideoFolder[]>([])
   const folderManager = ref<FolderManager | null>(null)
   const isLoading = ref(false)
@@ -18,7 +18,7 @@ export function useVideoFolder() {
    */
   const initFolderManager = async () => {
     if (!folderManager.value) {
-      folderManager.value = new FolderManager()
+      folderManager.value = new FolderManager(pageId)
       await folderManager.value.init(saveManager)
     }
     return folderManager.value

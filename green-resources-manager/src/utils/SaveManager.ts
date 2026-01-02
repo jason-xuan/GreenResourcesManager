@@ -22,7 +22,9 @@ class SaveManager {
     // 各种数据类型的根目录
     this.dataDirectories = {
       games: `${this.dataDirectory}/Game`,
+      software: `${this.dataDirectory}/Software`,
       images: `${this.dataDirectory}/Image`,
+      singleImage: `${this.dataDirectory}/SingleImage`,
       videos: `${this.dataDirectory}/Video`,
       animeSeries: `${this.dataDirectory}/AnimeSeries`,
       audios: `${this.dataDirectory}/Audio`,
@@ -34,7 +36,9 @@ class SaveManager {
     // 各种数据类型的存档文件路径
     this.filePaths = {
       games: `${this.dataDirectories.games}/games.json`,
+      software: `${this.dataDirectories.software}/software.json`,
       images: `${this.dataDirectories.images}/images.json`,
+      singleImage: `${this.dataDirectories.singleImage}/singleImage.json`,
       videos: `${this.dataDirectories.videos}/videos.json`,
       videoFolders: `${this.dataDirectories.videos}/folders.json`, // 视频文件夹
       animeSeries: `${this.dataDirectories.animeSeries}/animeSeries.json`,
@@ -220,7 +224,9 @@ class SaveManager {
       // 重新构建所有路径
       this.dataDirectories = {
         games: `${this.dataDirectory}/Game`,
+        software: `${this.dataDirectory}/Software`,
         images: `${this.dataDirectory}/Image`,
+        singleImage: `${this.dataDirectory}/SingleImage`,
         videos: `${this.dataDirectory}/Video`,
         animeSeries: `${this.dataDirectory}/AnimeSeries`,
         audios: `${this.dataDirectory}/Audio`,
@@ -231,7 +237,9 @@ class SaveManager {
       
       this.filePaths = {
         games: `${this.dataDirectories.games}/games.json`,
+        software: `${this.dataDirectories.software}/software.json`,
         images: `${this.dataDirectories.images}/images.json`,
+        singleImage: `${this.dataDirectories.singleImage}/singleImage.json`,
         videos: `${this.dataDirectories.videos}/videos.json`,
         videoFolders: `${this.dataDirectories.videos}/videofolders.json`, // 视频文件夹
         animeSeries: `${this.dataDirectories.animeSeries}/animeSeries.json`,
@@ -882,6 +890,60 @@ class SaveManager {
   }
 
   /**
+   * 保存软件数据到本地 JSON 文件
+   * @param {Array} software - 软件数据数组
+   * @returns {Promise<boolean>} 保存是否成功
+   */
+  async saveSoftware(software) {
+    try {
+      await this.ensureDataTypeDirectory('software')
+      
+      const data = {
+        software: software,
+        timestamp: new Date().toISOString(),
+        version: this.version
+      }
+      
+      const success = await this.writeJsonFile(this.filePaths.software, data)
+      if (success) {
+        console.log('软件数据保存成功:', software.length, '个软件')
+        this.dataCache.software = JSON.parse(JSON.stringify(software)) // 更新缓存
+      }
+      return success
+    } catch (error) {
+      console.error('保存软件数据失败:', error)
+      return false
+    }
+  }
+
+  /**
+   * 保存单图数据到本地 JSON 文件
+   * @param {Array} singleImage - 单图数据数组
+   * @returns {Promise<boolean>} 保存是否成功
+   */
+  async saveSingleImage(singleImage) {
+    try {
+      await this.ensureDataTypeDirectory('singleImage')
+      
+      const data = {
+        singleImage: singleImage,
+        timestamp: new Date().toISOString(),
+        version: this.version
+      }
+      
+      const success = await this.writeJsonFile(this.filePaths.singleImage, data)
+      if (success) {
+        console.log('单图数据保存成功:', singleImage.length, '个单图')
+        this.dataCache.singleImage = JSON.parse(JSON.stringify(singleImage)) // 更新缓存
+      }
+      return success
+    } catch (error) {
+      console.error('保存单图数据失败:', error)
+      return false
+    }
+  }
+
+  /**
    * 保存视频数据到本地 JSON 文件
    * @param {Array} videos - 视频数据数组
    * @returns {Promise<boolean>} 保存是否成功
@@ -1039,8 +1101,46 @@ class SaveManager {
    * @param {Array} folders - 文件夹数据数组
    * @returns {Promise<boolean>} 保存是否成功
    */
-  async saveVideoFolders(folders) {
+  async saveVideoFolders(folders, pageId?: string) {
     try {
+      // 如果提供了 pageId，保存到页面特定的数据文件
+      if (pageId) {
+        // 番剧页面使用根目录的文件夹数据
+        if (pageId === 'anime-series') {
+          return await this.saveAnimeSeriesFolders(folders)
+        }
+        
+        // 检查是否是系统默认页面（不应该在 CustomPages 中）
+        const isSystemPage = ['games', 'software', 'images', 'single-image', 'videos', 'anime-series', 'novels', 'websites', 'audios', 'other'].includes(pageId)
+        
+        if (isSystemPage) {
+          // 系统默认页面不应该在 CustomPages 中，这些页面可能不需要文件夹功能
+          console.warn(`系统默认页面 ${pageId} 不支持文件夹功能，保存操作被忽略`)
+          return false
+        }
+        
+        // 自定义页面保存到 CustomPages 目录
+        await this.ensureDataTypeDirectory('videos')
+        const customPath = `${this.dataDirectory}/CustomPages/${pageId}/folders.json`
+        
+        const data = {
+          folders: folders,
+          timestamp: new Date().toISOString(),
+          version: this.version
+        }
+
+        console.log(`准备保存页面 ${pageId} 的文件夹数据:`)
+        console.log('文件夹数量:', folders.length)
+        console.log('文件路径:', customPath)
+
+        const success = await this.writeJsonFile(customPath, data)
+        if (success) {
+          console.log(`页面 ${pageId} 的文件夹数据保存成功:`, folders.length, '个文件夹')
+        }
+        return success
+      }
+
+      // 默认保存到全局文件夹数据文件（向后兼容）
       await this.ensureDataTypeDirectory('videos')
 
       const data = {
@@ -1067,10 +1167,48 @@ class SaveManager {
 
   /**
    * 从本地 JSON 文件加载视频文件夹数据
+   * @param {string} pageId - 页面ID，如果提供则加载该页面的文件夹数据，否则加载全局数据
    * @returns {Promise<Array>} 文件夹数据数组
    */
-  async loadVideoFolders() {
+  async loadVideoFolders(pageId?: string) {
     try {
+      // 如果提供了 pageId，使用页面特定的数据文件
+      if (pageId) {
+        // 番剧页面使用根目录的文件夹数据
+        if (pageId === 'anime-series') {
+          return await this.loadAnimeSeriesFolders()
+        }
+        
+        // 其他页面尝试从页面特定的文件夹文件加载
+        // 首先检查是否是系统默认页面（不应该在 CustomPages 中）
+        const isSystemPage = ['games', 'software', 'images', 'single-image', 'videos', 'anime-series', 'novels', 'websites', 'audios', 'other'].includes(pageId)
+        
+        if (isSystemPage) {
+          // 系统默认页面不应该在 CustomPages 中，返回空数组（这些页面可能不需要文件夹功能）
+          console.log(`系统默认页面 ${pageId} 不支持文件夹功能，返回空数组`)
+          return []
+        }
+        
+        // 自定义页面从 CustomPages 目录加载
+        const customPath = `${this.dataDirectory}/CustomPages/${pageId}/folders.json`
+        try {
+          const data = await this.readJsonFile(customPath)
+          if (data && Array.isArray(data.folders)) {
+            console.log(`加载页面 ${pageId} 的文件夹数据:`, data.folders.length, '个文件夹')
+            return data.folders
+          }
+          if (Array.isArray(data)) {
+            console.log(`加载页面 ${pageId} 的文件夹数据:`, data.length, '个文件夹')
+            return data
+          }
+        } catch (e) {
+          // 文件不存在，返回空数组
+          console.log(`页面 ${pageId} 的文件夹数据文件不存在，返回空数组`)
+        }
+        return []
+      }
+      
+      // 默认加载全局文件夹数据（向后兼容）
       const data = await this.readJsonFile(this.filePaths.videoFolders)
       if (data && Array.isArray(data.folders)) {
         console.log('加载视频文件夹数据:', data.folders.length, '个文件夹')
@@ -1410,6 +1548,60 @@ class SaveManager {
         }
       }
       
+      return []
+    }
+  }
+
+  /**
+   * 从本地 JSON 文件加载软件数据
+   * @returns {Promise<Array>} 软件数据数组
+   */
+  async loadSoftware() {
+    // 检查缓存
+    if (this.dataCache.software) {
+      console.log('从缓存加载软件数据:', this.dataCache.software.length, '个软件')
+      return JSON.parse(JSON.stringify(this.dataCache.software))
+    }
+
+    try {
+      let data = await this.readJsonFile(this.filePaths.software)
+      
+      if (!data || !data.software || !Array.isArray(data.software)) {
+        console.log('软件数据文件不存在或为空，返回空数组')
+        return []
+      }
+      
+      this.dataCache.software = data.software
+      return data.software
+    } catch (error) {
+      console.error('加载软件数据失败:', error)
+      return []
+    }
+  }
+
+  /**
+   * 从本地 JSON 文件加载单图数据
+   * @returns {Promise<Array>} 单图数据数组
+   */
+  async loadSingleImage() {
+    // 检查缓存
+    if (this.dataCache.singleImage) {
+      console.log('从缓存加载单图数据:', this.dataCache.singleImage.length, '个单图')
+      return JSON.parse(JSON.stringify(this.dataCache.singleImage))
+    }
+
+    try {
+      let data = await this.readJsonFile(this.filePaths.singleImage)
+      
+      if (!data || !data.singleImage || !Array.isArray(data.singleImage)) {
+        console.log('单图数据文件不存在或为空，返回空数组')
+        return []
+      }
+      
+      this.dataCache.singleImage = data.singleImage
+      return data.singleImage
+    } catch (error) {
+      console.error('加载单图数据失败:', error)
       return []
     }
   }
@@ -2298,7 +2490,9 @@ class SaveManager {
     // 检查是否为默认页面类型
     switch (pageId) {
       case 'games': return this.loadGames()
+      case 'software': return this.loadSoftware()
       case 'images': return this.loadImages()
+      case 'single-image': return this.loadSingleImage()
       case 'videos': return this.loadVideos()
       case 'anime-series': return this.loadAnimeSeries() // 番剧使用独立的数据源
       case 'novels': return this.loadNovels()
@@ -2337,7 +2531,9 @@ class SaveManager {
     // 检查是否为默认页面类型
     switch (pageId) {
       case 'games': return this.saveGames(data)
+      case 'software': return this.saveSoftware(data)
       case 'images': return this.saveImages(data)
+      case 'single-image': return this.saveSingleImage(data)
       case 'videos': return this.saveVideos(data)
       case 'anime-series': return this.saveAnimeSeries(data) // 番剧使用独立的数据源
       case 'novels': return this.saveNovels(data)

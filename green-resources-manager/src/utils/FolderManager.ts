@@ -5,10 +5,12 @@
 class FolderManager {
   folders: any[]
   saveManager: any
+  pageId: string | null
 
-  constructor() {
+  constructor(pageId?: string) {
     this.folders = []
     this.saveManager = null
+    this.pageId = pageId || null
   }
 
   /**
@@ -25,8 +27,8 @@ class FolderManager {
    */
   async loadFolders() {
     if (this.saveManager) {
-      this.folders = await this.saveManager.loadVideoFolders()
-      console.log('文件夹管理器初始化完成，加载了', this.folders.length, '个文件夹')
+      this.folders = await this.saveManager.loadVideoFolders(this.pageId || undefined)
+      console.log(`文件夹管理器初始化完成（页面: ${this.pageId || '全局'}），加载了`, this.folders.length, '个文件夹')
     }
   }
 
@@ -35,9 +37,9 @@ class FolderManager {
    */
   async saveFolders() {
     if (this.saveManager) {
-      const success = await this.saveManager.saveVideoFolders(this.folders)
+      const success = await this.saveManager.saveVideoFolders(this.folders, this.pageId || undefined)
       if (success) {
-        console.log('文件夹数据保存成功')
+        console.log(`文件夹数据保存成功（页面: ${this.pageId || '全局'}）`)
       }
       return success
     }

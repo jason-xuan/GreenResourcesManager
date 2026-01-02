@@ -24,11 +24,56 @@
       </div>
 
       <ul class="nav-menu">
-        <li v-for="item in navItems" :key="item.id" 
-          :class="{ active: $route.name === item.id }"
-          @click="navigateTo(item.id)" class="nav-item">
-          <span class="nav-icon">{{ item.icon }}</span>
-          <span class="nav-text">{{ item.name }}</span>
+        <!-- 主页（可展开/折叠） -->
+        <li class="nav-item-wrapper">
+          <div 
+            class="nav-item" 
+            :class="{ active: $route.name === 'home' || isResourcePageActive }"
+          >
+            <div class="nav-item-content" @click="navigateTo('home')">
+              <span class="nav-icon">{{ viewConfig.home?.icon || '🏠' }}</span>
+              <span class="nav-text">{{ viewConfig.home?.name || '主页' }}</span>
+            </div>
+            <span 
+              class="nav-arrow" 
+              :class="{ expanded: isHomeMenuExpanded }"
+              @click.stop="toggleHomeMenu"
+            >
+              ▶
+            </span>
+          </div>
+          <!-- 资源页面子菜单 -->
+          <ul class="nav-submenu" :class="{ expanded: isHomeMenuExpanded }">
+            <li 
+              v-for="page in resourcePages" 
+              :key="page.id"
+              class="nav-submenu-item"
+            >
+              <div 
+                class="nav-item nav-item-child"
+                :class="{ active: $route.name === page.id }"
+                @click="navigateTo(page.id)"
+              >
+                <span class="nav-icon">{{ page.icon }}</span>
+                <span class="nav-text">{{ page.name }}</span>
+              </div>
+            </li>
+          </ul>
+        </li>
+        
+        <!-- 搜索（一级菜单） -->
+        <li 
+          class="nav-item-wrapper"
+          :class="{ active: $route.name === 'search' }"
+        >
+          <div 
+            class="nav-item"
+            :class="{ active: $route.name === 'search' }"
+            @click="navigateTo('search')"
+          >
+            <span class="nav-icon">{{ viewConfig.search?.icon || '🔍' }}</span>
+            <span class="nav-text">{{ viewConfig.search?.name || '搜索' }}</span>
+          </div>
         </li>
       </ul>
 
@@ -150,12 +195,18 @@ export default {
       backgroundImageUrl: '', // 背景图片URL（用于显示）
       // 统一的页面配置
       pages: [], // 动态页面配置
+      isHomeMenuExpanded: true, // 主页菜单是否展开（默认展开）
       viewConfig: {
         // 固定页面
         home: {
           name: '主页',
           icon: '🏠',
           description: '欢迎页面，快速访问各个功能模块'
+        },
+        search: {
+          name: '搜索',
+          icon: '🔍',
+          description: '在所有资源中搜索内容'
         },
         users: {
           name: '用户',
@@ -197,10 +248,18 @@ export default {
       // 兼容旧逻辑：从 pages 中查找
       return this.pages.find(p => p.id === route.name && !p.isHidden)
     },
-    // 主导航页面ID列表
+    // 主导航页面ID列表（一级菜单）
     mainNavViewIds() {
-      // 隐藏页面不出现在导航中
-      return ['home', ...this.pages.filter(p => !p.isHidden).map(p => p.id)]
+      // 主页和搜索是一级菜单，资源页面是主页的子菜单
+      return ['home', 'search']
+    },
+    // 资源页面列表（主页的子菜单）
+    resourcePages() {
+      return this.pages.filter(p => !p.isHidden)
+    },
+    // 检查当前是否在资源页面（用于高亮主页）
+    isResourcePageActive() {
+      return this.resourcePages.some(page => this.$route.name === page.id)
     },
     // 底部导航页面ID列表
     footerViews() {
@@ -344,7 +403,8 @@ export default {
           }
         })
 
-        // 刷新导航项
+        // 导航项现在通过模板直接渲染，不需要在这里设置
+        // 但保留这个逻辑以防其他地方使用
         this.navItems = this.mainNavViewIds.map(viewId => ({
           id: viewId,
           name: this.viewConfig[viewId]?.name || viewId,
@@ -379,6 +439,10 @@ export default {
           console.error('导航失败:', err)
         }
       })
+    },
+    // 切换主页菜单展开/折叠
+    toggleHomeMenu() {
+      this.isHomeMenuExpanded = !this.isHomeMenuExpanded
     },
     // switchView(viewId: string) {
     //   // 兼容旧代码，重定向到 navigateTo
@@ -1058,6 +1122,12 @@ export default {
           
           // 保存当前页面
           this.saveCurrentView(route.name as string)
+          
+          // 如果当前在资源页面，自动展开主页菜单
+          const isResourcePage = this.resourcePages.some(page => route.name === page.id)
+          if (isResourcePage) {
+            this.isHomeMenuExpanded = true
+          }
           
           // 如果是有筛选器的页面，需要手动触发筛选器数据更新
           if (requiresFilter) {

@@ -183,8 +183,8 @@ export default {
     // 使用视频管理 composable
     const videoManagementComposable = useVideoManagement(props.pageConfig.id)
     
-    // 使用文件夹管理 composable
-    const videoFolderComposable = useVideoFolder()
+    // 使用文件夹管理 composable（传入页面ID以隔离数据）
+    const videoFolderComposable = useVideoFolder(props.pageConfig.id)
     
     // 使用筛选 composable（基于 videos 和 folders）
     const videoFilterComposable = useVideoFilter(

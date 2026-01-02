@@ -182,8 +182,8 @@ export default {
     // 使用视频管理 composable
     const videoManagementComposable = useVideoManagement(props.pageConfig.id)
     
-    // 使用文件夹管理 composable
-    const videoFolderComposable = useVideoFolder()
+    // 使用文件夹管理 composable（传入页面ID以隔离数据）
+    const videoFolderComposable = useVideoFolder(props.pageConfig.id)
     
     // 解构文件夹管理 composable，重命名 deleteFolder 避免与 methods 冲突
     const { deleteFolder: deleteFolderById, ...restVideoFolderComposable } = videoFolderComposable

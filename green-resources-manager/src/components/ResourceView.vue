@@ -20,11 +20,15 @@ import { PageConfig } from '../types/page';
 
 // 异步加载视图组件以避免循环引用和减少初始包大小
 const GameView = defineAsyncComponent(() => import('../pages/resources/GameView.vue'));
+const SoftwareView = defineAsyncComponent(() => import('../pages/resources/SoftwareView.vue'));
 const ImageView = defineAsyncComponent(() => import('../pages/resources/ImageView.vue'));
+const SingleImageView = defineAsyncComponent(() => import('../pages/resources/SingleImageView.vue'));
 const VideoView = defineAsyncComponent(() => import('../pages/resources/VideoView.vue'));
+const VideoAnimeSeriesView = defineAsyncComponent(() => import('../pages/resources/VideoAnimeSeriesView.vue'));
 const NovelView = defineAsyncComponent(() => import('../pages/resources/NovelView.vue'));
 const WebsiteView = defineAsyncComponent(() => import('../pages/resources/WebsiteView.vue'));
 const AudioView = defineAsyncComponent(() => import('../pages/resources/AudioView.vue'));
+const OtherView = defineAsyncComponent(() => import('../pages/resources/OtherView.vue'));
 
 export default defineComponent({
   name: 'ResourceView',
@@ -41,23 +45,57 @@ export default defineComponent({
     const viewComponent = computed(() => {
       if (!props.pageConfig || !props.pageConfig.type) return null;
       
-      const normalizedType = props.pageConfig.type.charAt(0).toUpperCase() + props.pageConfig.type.slice(1).toLowerCase();
+      // 直接使用原始类型，因为类型定义中已经是正确的大小写格式
+      const type = props.pageConfig.type as string;
       
-      switch (normalizedType) {
+      switch (type) {
         case 'Game':
           return GameView;
+        case 'Software':
+          return SoftwareView;
         case 'Image':
           return ImageView;
+        case 'SingleImage':
+          return SingleImageView;
         case 'Video':
           return VideoView;
+        case 'Anime':
+          return VideoAnimeSeriesView;
         case 'Novel':
           return NovelView;
         case 'Website':
           return WebsiteView;
         case 'Audio':
           return AudioView;
+        case 'Other':
+          return OtherView;
         default:
-          return null;
+          // 如果直接匹配失败，尝试规范化后匹配（向后兼容）
+          const normalizedType = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+          switch (normalizedType) {
+            case 'Game':
+              return GameView;
+            case 'Software':
+              return SoftwareView;
+            case 'Image':
+              return ImageView;
+            case 'Singleimage':
+              return SingleImageView;
+            case 'Video':
+              return VideoView;
+            case 'Anime':
+              return VideoAnimeSeriesView;
+            case 'Novel':
+              return NovelView;
+            case 'Website':
+              return WebsiteView;
+            case 'Audio':
+              return AudioView;
+            case 'Other':
+              return OtherView;
+            default:
+              return null;
+          }
       }
     });
 

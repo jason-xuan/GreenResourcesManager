@@ -44,11 +44,13 @@ export default {
   setup(props) {
     const layoutStyles = computed(() => {
       const s = props.scale
+      const scaledWidth = Math.max(100, Math.round(280 * (s / 100)))
       return {
         '--card-scale': s / 100,
         '--show-stats': s < 30 ? 'none' : 'flex',
         '--show-icon': s < 20 ? 'none' : 'block',
-        'grid-template-columns': `repeat(auto-fill, minmax(calc(280px * ${s / 100}), 1fr))`
+        'grid-template-columns': `repeat(auto-fill, ${scaledWidth}px)`,
+        'justify-content': 'start'
       }
     })
     return { layoutStyles }
@@ -61,7 +63,7 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
-  padding: 20px;
+  padding: 10px 0;
 }
 
 /* 响应式设计 */

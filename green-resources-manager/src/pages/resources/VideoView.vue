@@ -2382,7 +2382,7 @@ export default {
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: var(--spacing-xl);
   margin-bottom: var(--spacing-3xl);
-  padding: var(--spacing-xl);
+  padding: 10px 0;
 }
 
 .video-card {

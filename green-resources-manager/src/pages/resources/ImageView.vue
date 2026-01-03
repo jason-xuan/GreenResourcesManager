@@ -1518,7 +1518,7 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--spacing-xl);
-  padding: var(--spacing-xl);
+  padding: 10px 0;
 }
 
 .album-card {

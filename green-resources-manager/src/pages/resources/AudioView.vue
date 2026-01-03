@@ -32,11 +32,11 @@
       
       <!-- 主要内容区域 -->
       <div class="audio-main-content">
-        <!-scale="scale"
-          :- 音频列表 -->
+        <!-- 音频列表 -->
         <AudioGrid
           :audios="paginatedAudios"
           :isElectronEnvironment="true"
+          :scale="scale"
           @audio-click="showAudioDetail"
           @audio-contextmenu="(event, audio) => ($refs.baseView as any).showContextMenuHandler(event, audio)"
           @audio-action="playAudio"

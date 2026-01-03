@@ -1925,7 +1925,7 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: var(--spacing-xl);
+  padding: 10px 0;
   height: 100%;
   overflow-y: auto;
   position: relative;

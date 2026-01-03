@@ -38,22 +38,15 @@ export default {
     scale: {
       type: Number,
       default: 100
+    },
+    layoutStyles: {
+      type: Object,
+      required: true
     }
   },
   emits: ['audio-click', 'audio-contextmenu', 'audio-action'],
   setup(props) {
-    const layoutStyles = computed(() => {
-      const s = props.scale
-      const scaledWidth = Math.max(100, Math.round(280 * (s / 100)))
-      return {
-        '--card-scale': s / 100,
-        '--show-stats': s < 30 ? 'none' : 'flex',
-        '--show-icon': s < 20 ? 'none' : 'block',
-        'grid-template-columns': `repeat(auto-fill, ${scaledWidth}px)`,
-        'justify-content': 'start'
-      }
-    })
-    return { layoutStyles }
+    return {}
   }
 }
 </script>

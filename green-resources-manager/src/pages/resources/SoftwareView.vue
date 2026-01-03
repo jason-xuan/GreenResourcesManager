@@ -17,6 +17,7 @@
         :games="paginatedGames"
         :is-game-running="isGameRunning"
         :is-electron-environment="isElectronEnvironment"
+        :layout-styles="layoutStyles"
         @game-click="showGameDetail"
         @game-contextmenu="handleGameContextMenu"
         @game-action="launchGame"
@@ -1925,7 +1926,6 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 10px 0;
   height: 100%;
   overflow-y: auto;
   position: relative;

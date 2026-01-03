@@ -37,6 +37,7 @@
           :audios="paginatedAudios"
           :isElectronEnvironment="true"
           :scale="scale"
+          :layout-styles="layoutStyles"
           @audio-click="showAudioDetail"
           @audio-contextmenu="(event, audio) => ($refs.baseView as any).showContextMenuHandler(event, audio)"
           @audio-action="playAudio"

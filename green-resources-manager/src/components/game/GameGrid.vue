@@ -43,22 +43,15 @@ export default defineComponent({
     scale: {
       type: Number,
       default: 100
+    },
+    layoutStyles: {
+      type: Object,
+      required: true
     }
   },
   emits: ['game-click', 'game-contextmenu', 'game-action'],
   setup(props) {
-    const layoutStyles = computed(() => {
-      const s = props.scale
-      const scaledWidth = Math.max(100, Math.round(280 * (s / 100)))
-      return {
-        '--card-scale': s / 100,
-        '--show-stats': s < 30 ? 'none' : 'flex',
-        '--show-icon': s < 20 ? 'none' : 'block',
-        'grid-template-columns': `repeat(auto-fill, ${scaledWidth}px)`,
-        'justify-content': 'start'
-      }
-    })
-    return { layoutStyles }
+    return {}
   }
 })
 </script>
@@ -68,7 +61,7 @@ export default defineComponent({
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 20px;
-  padding: 10px 0;
+  padding: 10px 20px;
 }
 
 /* 响应式设计 */

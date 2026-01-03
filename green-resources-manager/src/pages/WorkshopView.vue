@@ -7,6 +7,10 @@
         <p>管理和启用插件（目前仅作为展示，功能还在开发中）</p>
       </div>
       <div class="toolbar-right">
+        <button class="btn btn-secondary" @click="openModsFolder">
+          <span class="btn-icon">📁</span>
+          打开mods文件夹
+        </button>
         <button class="btn btn-primary" @click="refreshPlugins">
           <span class="btn-icon">🔄</span>
           刷新
@@ -150,6 +154,67 @@ export default {
           this.$parent.$refs.toastNotification.show('error', '操作失败', '无法更改插件状态')
         }
       }
+    },
+    async openModsFolder() {
+      try {
+        if (!window.electronAPI || !window.electronAPI.openFolder) {
+          // 显示错误通知
+          if (this.$parent && this.$parent.$refs && this.$parent.$refs.toastNotification) {
+            this.$parent.$refs.toastNotification.show('error', '操作失败', '无法打开文件夹（Electron API 不可用）')
+          }
+          return
+        }
+
+        // 获取应用根路径
+        let appRootPath = ''
+        if (window.electronAPI.getAppRootPath) {
+          try {
+            const rootResult = await window.electronAPI.getAppRootPath() as any
+            if (rootResult && (rootResult.success || typeof rootResult === 'string')) {
+              appRootPath = typeof rootResult === 'string' ? rootResult : (rootResult.path || '')
+            }
+          } catch (error) {
+            console.warn('获取应用根路径失败:', error)
+          }
+        }
+
+        // 构建 mods 目录路径
+        const modsPath = appRootPath ? `${appRootPath}/mods` : 'mods'
+
+        // 确保目录存在
+        if (window.electronAPI.ensureDirectory) {
+          try {
+            const ensureResult = await window.electronAPI.ensureDirectory(modsPath)
+            if (ensureResult.success) {
+              console.log('mods 目录已确保存在:', modsPath)
+            }
+          } catch (error) {
+            console.warn('创建 mods 目录失败:', error)
+          }
+        }
+
+        // 打开文件夹
+        const result = await window.electronAPI.openFolder(modsPath)
+        if (result.success) {
+          console.log('mods 文件夹已打开:', modsPath)
+          // 显示成功通知
+          if (this.$parent && this.$parent.$refs && this.$parent.$refs.toastNotification) {
+            this.$parent.$refs.toastNotification.show('success', '文件夹已打开', `已打开 mods 文件夹`)
+          }
+        } else {
+          console.error('打开 mods 文件夹失败:', result.error)
+          // 显示错误通知
+          if (this.$parent && this.$parent.$refs && this.$parent.$refs.toastNotification) {
+            this.$parent.$refs.toastNotification.show('error', '打开失败', `无法打开 mods 文件夹: ${result.error}`)
+          }
+        }
+      } catch (error) {
+        console.error('打开 mods 文件夹失败:', error)
+        // 显示错误通知
+        if (this.$parent && this.$parent.$refs && this.$parent.$refs.toastNotification) {
+          this.$parent.$refs.toastNotification.show('error', '打开失败', `打开 mods 文件夹时发生错误: ${error.message}`)
+        }
+      }
     }
   }
 }
@@ -189,6 +254,12 @@ export default {
   font-size: 14px;
 }
 
+.toolbar-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -209,6 +280,17 @@ export default {
 
 .btn-primary:hover {
   background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-secondary);
   transform: translateY(-1px);
 }
 

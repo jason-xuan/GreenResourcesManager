@@ -7,7 +7,7 @@
 ```
 mods/
 ├── README.md                    # 本文件
-├── example-plugin/              # 示例插件
+├── calendar-manager/              # 示例插件
 │   ├── manifest.json           # 插件元信息
 │   ├── index.js                # 主脚本
 │   └── README.md               # 插件说明
@@ -25,7 +25,7 @@ mods/
 
 ## 开发插件
 
-请参考 `example-plugin` 目录下的示例代码。
+请参考 `calendar-manager` 目录下的示例代码。
 
 ### 必需文件
 
@@ -54,8 +54,6 @@ mods/
   "version": "1.0.0",
   "description": "插件描述",
   "author": "作者名",
-  "apiVersion": "1.0.0",
-  "permissions": ["permission1", "permission2"],
   "entry": "index.js"
 }
 ```

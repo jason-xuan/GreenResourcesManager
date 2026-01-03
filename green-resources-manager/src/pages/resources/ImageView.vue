@@ -335,8 +335,20 @@ export default {
       dragDropHandleDrop: dragDropHandleDrop,
       // 图片缓存相关
       ...imageCacheComposable,
-      // 详情页图片分页相关
-      ...imagePagesComposable,
+      // 详情页图片分页相关（排除 loadImageSettings，重命名为 loadImagePagesSettings 避免与方法冲突）
+      loadImagePagesSettings: imagePagesComposable.loadImageSettings,
+      detailCurrentPage: imagePagesComposable.detailCurrentPage,
+      detailPageSize: imagePagesComposable.detailPageSize,
+      detailTotalPages: imagePagesComposable.detailTotalPages,
+      jumpToPageInput: imagePagesComposable.jumpToPageInput,
+      paginatedPages: imagePagesComposable.paginatedPages,
+      detailCurrentPageStartIndex: imagePagesComposable.detailCurrentPageStartIndex,
+      nextPageGroup: imagePagesComposable.nextPageGroup,
+      previousPageGroup: imagePagesComposable.previousPageGroup,
+      jumpToPageGroup: imagePagesComposable.jumpToPageGroup,
+      resetPagination: imagePagesComposable.resetPagination,
+      updatePageSize: imagePagesComposable.updatePageSize,
+      updateTotalPages: imagePagesComposable.updateTotalPages,
       // 封面管理相关（新专辑）
       ...imageCoverNewComposable,
       // 封面管理相关（编辑专辑）- 需要重命名避免冲突
@@ -402,11 +414,7 @@ export default {
       ],
       // 漫画阅读器相关（showComicViewer 已在 setup() 中定义）
       currentPageIndex: 0,
-      // 分页相关（详情页内图片分页，避免与 composable 的变量名冲突）
-      detailCurrentPage: 1,
-      detailPageSize: 50, // 默认值，将从设置中加载
-      detailTotalPages: 0,
-      jumpToPageInput: 1,
+      // 分页相关（详情页内图片分页）已移至 useImagePages composable
       // 漫画列表分页相关已移至 usePagination composable
       // 空状态配置
       albumEmptyStateConfig: {
@@ -473,17 +481,8 @@ export default {
         { label: '最后查看', value: this.formatDate(this.currentAlbum.lastViewed) }
       ]
     },
-    // 分页显示的图片（详情页内图片分页）
-    paginatedPages() {
-      if (!this.pages || this.pages.length === 0) return []
-      const start = (this.detailCurrentPage - 1) * this.detailPageSize
-      const end = start + this.detailPageSize
-      return this.pages.slice(start, end)
-    },
-    // 当前页的起始索引（详情页内图片分页）
-    detailCurrentPageStartIndex() {
-      return (this.detailCurrentPage - 1) * this.detailPageSize
-    },
+    // 分页显示的图片（详情页内图片分页）已移至 useImagePages composable (paginatedPages)
+    // 当前页的起始索引（详情页内图片分页）已移至 useImagePages composable (detailCurrentPageStartIndex)
     // 分页显示的漫画列表（使用 composable 的 paginatedItems）
     paginatedAlbums() {
       // 使用 composable 的 paginatedItems，它基于 filteredAlbumsRef
@@ -832,9 +831,8 @@ export default {
         this.currentAlbum = album
         this.showDetailModal = true
         this.pages = []
-        // 重置分页状态
+        // 重置分页状态（使用 composable 的方法）
         this.resetPagination()
-        this.detailCurrentPage = 1
         
         // 确保pageSize已从设置中加载
         await this.loadImageSettings()
@@ -845,6 +843,7 @@ export default {
           if (resp.success) files = resp.files || []
         }
         this.pages = files
+        // 更新总页数（使用 composable 的方法）
         this.updateTotalPages()
         album.pagesCount = files.length
         
@@ -1058,13 +1057,13 @@ export default {
       }
     },
     handlePageClick(index) {
-      // 计算实际索引（考虑分页）
+      // 计算实际索引（考虑分页，使用 composable 的 detailCurrentPageStartIndex）
       const actualIndex = this.detailCurrentPageStartIndex + index
       this.viewPage(actualIndex)
     },
     
     async viewPage(index) {
-      // 打开漫画阅读器，index是当前分页中的相对索引
+      // 打开漫画阅读器，index是当前分页中的相对索引（使用 composable 的 detailCurrentPageStartIndex）
       const actualIndex = this.detailCurrentPageStartIndex + index
       this.currentPageIndex = actualIndex
       
@@ -1207,7 +1206,7 @@ export default {
          }
          
          this.pages = files
-        this.detailTotalPages = Math.ceil(files.length / this.detailPageSize)
+        // 总页数会通过 composable 的 watch 自动更新（当 pages 变化时）
          
          console.log('页面信息更新:', {
            pagesCount: this.pages.length,
@@ -1317,8 +1316,8 @@ export default {
         const settings = await saveManager.loadSettings()
         
         // 使用 composable 的方法加载图片分页设置
-        if (this.loadImageSettings) {
-          await this.loadImageSettings()
+        if (this.loadImagePagesSettings) {
+          await this.loadImagePagesSettings()
         }
         
         if (settings && settings.image) {
@@ -1342,8 +1341,7 @@ export default {
         }
       } catch (error) {
         console.error('加载图片设置失败:', error)
-        // 使用默认值
-        this.detailPageSize = 50
+        // 详情页分页设置已移至 useImagePages composable，通过其 loadImageSettings 方法加载
         // albumPageSize 已移至 composable，通过 loadPaginationSettings 加载
       }
     },

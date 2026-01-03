@@ -186,7 +186,34 @@ export default {
     // 使用截图 composable
     const screenshotComposable = useGameScreenshot(
       isElectronEnvironment,
-      () => getRunningGamesFn()
+      () => getRunningGamesFn(),
+      // 截图成功后的回调：如果游戏没有封面图，自动设置为截图
+      async (result) => {
+        if (!result.gameId || !result.filepath) return
+        
+        // 在 games 数组中查找对应的游戏
+        const game = games.value.find((g: any) => g.id === result.gameId)
+        if (!game) {
+          console.log('未找到对应的游戏，无法设置封面图')
+          return
+        }
+        
+        // 检查游戏是否已有封面图
+        if (!game.image || game.image.trim() === '') {
+          try {
+            // 更新游戏封面图
+            await managementComposable.updateGame(game.id, { image: result.filepath })
+            console.log(`✅ 已自动将截图设置为游戏 "${game.name}" 的封面图`)
+            
+            // 显示提示（可选）
+            notify.toast('success', '封面已更新', `已自动将截图设置为 "${game.name}" 的封面图`)
+          } catch (error: any) {
+            console.error('设置封面图失败:', error)
+          }
+        } else {
+          console.log(`游戏 "${game.name}" 已有封面图，跳过自动设置`)
+        }
+      }
     )
 
     // 使用运行状态 composable

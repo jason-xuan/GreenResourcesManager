@@ -283,30 +283,18 @@ export default {
           return
         }
 
-        const settings = await saveManager.loadSettings()
-
-        let baseScreenshotsPath = ''
-        if (settings.screenshotLocation === 'default') {
-          baseScreenshotsPath = `${saveManager.dataDirectory}/Game/Screenshots`
-        } else if (settings.screenshotLocation === 'custom') {
-          baseScreenshotsPath = settings.screenshotsPath || ''
-        } else {
-          baseScreenshotsPath = settings.screenshotsPath || `${saveManager.dataDirectory}/Game/Screenshots`
+        if (!this.formData.id) {
+          await alertService.warning('游戏ID不存在，无法打开截图文件夹', '提示')
+          return
         }
 
-        if (!baseScreenshotsPath || baseScreenshotsPath.trim() === '') {
-          baseScreenshotsPath = `${saveManager.dataDirectory}/Game/Screenshots`
-        }
-
-        let gameFolderName = 'Screenshots'
-        if (this.formData.name && this.formData.name !== 'Screenshot') {
-          gameFolderName = this.formData.name.replace(/[<>:"/\\|?*]/g, '_').trim()
-          if (!gameFolderName) {
-            gameFolderName = 'Screenshots'
-          }
-        }
-
-        const gameScreenshotPath = `${baseScreenshotsPath}/${gameFolderName}`.replace(/\\/g, '/')
+        // 使用公共函数获取截图文件夹路径
+        const { getGameScreenshotFolderPath } = await import('../../composables/game/useGameScreenshot')
+        const gameScreenshotPath = await getGameScreenshotFolderPath(
+          this.formData.id,
+          this.formData.name,
+          this.isElectronEnvironment
+        )
 
         if (this.isElectronEnvironment && window.electronAPI && window.electronAPI.ensureDirectory) {
           try {

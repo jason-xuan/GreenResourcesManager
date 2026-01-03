@@ -3,11 +3,77 @@ import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
 
 /**
+ * 获取游戏截图文件夹路径（查找以ID开头的文件夹，找不到则返回期望路径）
+ * 这是一个独立的工具函数，可以在任何地方使用
+ * @param gameId - 游戏ID
+ * @param gameName - 游戏名称
+ * @param isElectronEnvironment - 是否为 Electron 环境
+ * @returns 截图文件夹路径
+ */
+export async function getGameScreenshotFolderPath(
+  gameId: string,
+  gameName: string,
+  isElectronEnvironment: boolean = typeof window !== 'undefined' && !!(window as any).electronAPI
+): Promise<string> {
+  const settings = await saveManager.loadSettings()
+
+  // 确定基础截图路径
+  let baseScreenshotsPath = ''
+  if (settings.screenshotLocation === 'default') {
+    baseScreenshotsPath = `${saveManager.dataDirectory}/Game/Screenshots`
+  } else if (settings.screenshotLocation === 'custom') {
+    baseScreenshotsPath = settings.screenshotsPath || ''
+  } else {
+    baseScreenshotsPath = settings.screenshotsPath || `${saveManager.dataDirectory}/Game/Screenshots`
+  }
+
+  if (!baseScreenshotsPath || baseScreenshotsPath.trim() === '') {
+    baseScreenshotsPath = `${saveManager.dataDirectory}/Game/Screenshots`
+  }
+
+  // 永远寻找以ID开头的文件夹，找不到则创建新的
+  const cleanGameId = gameId.replace(/[<>:"/\\|?*]/g, '_').trim()
+  const cleanGameName = gameName.replace(/[<>:"/\\|?*]/g, '_').trim()
+  const expectedFolderName = `${cleanGameId}_${cleanGameName}`
+  let gameScreenshotPath = `${baseScreenshotsPath}/${expectedFolderName}`
+
+  // 查找以 gameId_ 开头的文件夹
+  if (isElectronEnvironment && window.electronAPI && window.electronAPI.listFiles) {
+    try {
+      const filesResult = await window.electronAPI.listFiles(baseScreenshotsPath)
+      if (filesResult.success && filesResult.files) {
+        // 查找所有以 gameId_ 开头的文件夹
+        const matchingFolder = filesResult.files.find((folder: string) => {
+          return folder.startsWith(`${cleanGameId}_`)
+        })
+        
+        if (matchingFolder) {
+          gameScreenshotPath = `${baseScreenshotsPath}/${matchingFolder}`
+          console.log(`找到以ID开头的截图文件夹: ${matchingFolder}`)
+          
+          // 如果找到的文件夹名称与期望的不一致，记录日志
+          if (matchingFolder !== expectedFolderName) {
+            console.log(`ℹ️ 检测到文件夹名称不匹配: "${matchingFolder}" != "${expectedFolderName}"，将在下次保存截图时自动重命名`)
+          }
+        } else {
+          console.log(`未找到现有文件夹，将使用: ${expectedFolderName}`)
+        }
+      }
+    } catch (error) {
+      console.warn('查找截图文件夹失败:', error)
+    }
+  }
+
+  return gameScreenshotPath
+}
+
+/**
  * 游戏截图功能的 composable
  */
 export function useGameScreenshot(
   isElectronEnvironment: Ref<boolean>,
-  getRunningGames: () => Map<string, any> // 获取运行中游戏的函数
+  getRunningGames: () => Map<string, any>, // 获取运行中游戏的函数
+  onScreenshotSuccess?: (result: { gameId?: string; filepath: string }) => void // 截图成功后的回调
 ) {
   const isScreenshotInProgress = ref(false)
   const lastScreenshotTime = ref(0)
@@ -135,6 +201,18 @@ export function useGameScreenshot(
           // 播放截图音效
           playScreenshotSound()
 
+          // 调用截图成功回调（用于更新封面图等）
+          if (onScreenshotSuccess && result.gameId) {
+            try {
+              onScreenshotSuccess({
+                gameId: result.gameId,
+                filepath: result.filepath
+              })
+            } catch (error) {
+              console.warn('执行截图成功回调失败:', error)
+            }
+          }
+
           if (settings.showNotification) {
             setTimeout(() => {
               const folderInfo = result.matchedGame
@@ -188,34 +266,14 @@ export function useGameScreenshot(
   /**
    * 打开游戏截图文件夹
    */
-  async function openGameScreenshotFolder(game: { name: string; executablePath?: string }) {
+  async function openGameScreenshotFolder(game: { id?: string; name: string; executablePath?: string }) {
     try {
-      const settings = await saveManager.loadSettings()
-
-      // 确定基础截图路径
-      let baseScreenshotsPath = ''
-      if (settings.screenshotLocation === 'default') {
-        baseScreenshotsPath = `${saveManager.dataDirectory}/Game/Screenshots`
-      } else if (settings.screenshotLocation === 'custom') {
-        baseScreenshotsPath = settings.screenshotsPath || ''
-      } else {
-        baseScreenshotsPath = settings.screenshotsPath || `${saveManager.dataDirectory}/Game/Screenshots`
+      if (!game.id) {
+        throw new Error('游戏ID不存在，无法打开截图文件夹')
       }
 
-      if (!baseScreenshotsPath || baseScreenshotsPath.trim() === '') {
-        baseScreenshotsPath = `${saveManager.dataDirectory}/Game/Screenshots`
-      }
-
-      // 确定游戏文件夹名称
-      let gameFolderName = 'Screenshots'
-      if (game.name && game.name !== 'Screenshot') {
-        // 清理游戏名称，移除特殊字符
-        gameFolderName = game.name.replace(/[<>:"/\\|?*]/g, '').trim() || 'Screenshots'
-      } else {
-        gameFolderName = 'Screenshots'
-      }
-
-      const gameScreenshotPath = `${baseScreenshotsPath}/${gameFolderName}`
+      // 使用公共函数获取截图文件夹路径
+      const gameScreenshotPath = await getGameScreenshotFolderPath(game.id, game.name, isElectronEnvironment.value)
 
       console.log('尝试打开游戏截图文件夹:', gameScreenshotPath)
 

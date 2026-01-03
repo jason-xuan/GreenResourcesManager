@@ -362,16 +362,16 @@ async function takeScreenshot(customDirectory, format = 'png', quality = 90, run
     const { gameData, windowTitle, source: targetSource, isFocused } = targetGameWindow
     const matchedGameName = gameData.gameName || targetGameWindow.gameId
     const windowName = targetSource.name
-
-    const folderName = (matchedGameName || windowName || 'Screenshots').replace(/[<>:"/\\|?*]/g, '_').trim()
+    // 获取游戏ID（唯一标识符）
+    const gameId = targetGameWindow.gameId || gameData.id || 'unknown'
     const thumbnail = targetSource.thumbnail
 
     console.log('------------------------------')
     console.log('最终选择截图窗口:')
+    console.log('  游戏ID:', gameId)
     console.log('  游戏名称:', matchedGameName)
     console.log('  窗口标题:', windowName)
     console.log('  是否聚焦:', isFocused)
-    console.log('  保存文件夹:', folderName)
     console.log('------------------------------')
 
     // 确定截图保存目录
@@ -382,17 +382,71 @@ async function takeScreenshot(customDirectory, format = 'png', quality = 90, run
       baseScreenshotsDir = path.join(appInstance.getPath('documents'), 'Butter Manager', 'Screenshots')
     }
 
-    const gameFolderName = folderName
-    const screenshotsDir = path.join(baseScreenshotsDir, gameFolderName)
+    // 使用 "ID_游戏名" 格式作为文件夹名，既保证唯一性又方便识别
+    // 清理非法字符
+    const cleanGameId = gameId.replace(/[<>:"/\\|?*]/g, '_').trim()
+    const cleanGameName = (matchedGameName || windowName || 'Screenshots').replace(/[<>:"/\\|?*]/g, '_').trim()
+    const expectedFolderName = `${cleanGameId}_${cleanGameName}`
+    const expectedScreenshotsDir = path.join(baseScreenshotsDir, expectedFolderName)
 
-    // 创建截图保存目录
-    if (!fs.existsSync(screenshotsDir)) {
-      fs.mkdirSync(screenshotsDir, { recursive: true })
-      console.log('创建游戏截图文件夹:', screenshotsDir)
+    // 查找以 gameId_ 开头的文件夹
+    let screenshotsDir = expectedScreenshotsDir
+    let foundExistingFolder = false
+
+    try {
+      if (fs.existsSync(baseScreenshotsDir)) {
+        const files = fs.readdirSync(baseScreenshotsDir)
+        // 查找所有以 gameId_ 开头的文件夹
+        const matchingFolder = files.find(folder => {
+          const folderPath = path.join(baseScreenshotsDir, folder)
+          const stats = fs.statSync(folderPath)
+          return stats.isDirectory() && folder.startsWith(`${cleanGameId}_`)
+        })
+
+        if (matchingFolder) {
+          const existingFolderPath = path.join(baseScreenshotsDir, matchingFolder)
+          console.log(`找到以ID开头的截图文件夹: ${matchingFolder}`)
+          
+          // 如果找到的文件夹名称与期望的不一致，重命名它
+          if (matchingFolder !== expectedFolderName) {
+            try {
+              fs.renameSync(existingFolderPath, expectedScreenshotsDir)
+              console.log(`✅ 已重命名截图文件夹: "${matchingFolder}" -> "${expectedFolderName}"`)
+              screenshotsDir = expectedScreenshotsDir
+            } catch (renameError) {
+              console.warn(`⚠️ 重命名截图文件夹失败:`, renameError.message)
+              // 重命名失败，使用现有文件夹
+              screenshotsDir = existingFolderPath
+            }
+          } else {
+            screenshotsDir = existingFolderPath
+          }
+          foundExistingFolder = true
+        }
+      }
+    } catch (error) {
+      console.warn('查找截图文件夹失败:', error.message)
+    }
+
+    // 如果没找到现有文件夹，创建新文件夹
+    if (!foundExistingFolder) {
+      if (!fs.existsSync(screenshotsDir)) {
+        fs.mkdirSync(screenshotsDir, { recursive: true })
+        console.log('创建游戏截图文件夹:', screenshotsDir)
+      }
     }
 
     // 生成文件名，使用匹配的游戏名称或窗口名称
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    // 使用更易读的时间格式：YYYY-MM-DD_HH-MM-SS
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    const seconds = String(now.getSeconds()).padStart(2, '0')
+    const timestamp = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`
+    
     const fileNameBase = matchedGameName || windowName || 'Screenshot'
     const filename = `${fileNameBase.replace(/[<>:"/\\|?*]/g, '_')}_${timestamp}.${format}`
     const filepath = path.join(screenshotsDir, filename)
@@ -417,6 +471,9 @@ async function takeScreenshot(customDirectory, format = 'png', quality = 90, run
 
     console.log('截图已保存:', filepath, '窗口:', targetSource.name)
 
+    // 从 screenshotsDir 中提取文件夹名称
+    const gameFolderName = path.basename(screenshotsDir)
+
     return {
       success: true,
       filepath: filepath,
@@ -424,7 +481,8 @@ async function takeScreenshot(customDirectory, format = 'png', quality = 90, run
       windowName: windowName,
       gameFolder: gameFolderName,
       screenshotsDir: screenshotsDir,
-      matchedGame: matchedGameName || null
+      matchedGame: matchedGameName || null,
+      gameId: gameId || null // 返回游戏ID，用于更新封面图
     }
   } catch (error) {
     console.error('截图失败:', error)

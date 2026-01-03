@@ -12,7 +12,7 @@
         @error="handleImageError"
       >
       <!-- 动态徽章 -->
-      <div v-if="badgeText" class="media-badge">
+      <div v-if="badgeText && scale >= 30" class="media-badge">
         {{ badgeText }}
       </div>
       <!-- 左上角标识容器（文件丢失 + 压缩包） -->
@@ -41,14 +41,14 @@
       </div>
     </div>
     <div class="media-info">
-      <h3 class="media-title">
+      <h3 class="media-title" v-if="scale >= 30 || (type === 'game' && exeIcon && scale >= 20)">
         <img 
-          v-if="type === 'game' && exeIcon" 
+          v-if="type === 'game' && exeIcon && scale >= 20" 
           :src="exeIcon" 
           class="exe-icon"
           alt=""
         >
-        {{ displayName }}
+        <span v-if="scale >= 30" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">{{ displayName }}</span>
       </h3>
       
       <!-- 游戏特有信息 -->
@@ -56,7 +56,7 @@
         <p class="media-subtitle">{{ item.developer }}</p>
         <p class="media-tertiary" v-if="item.publisher && item.publisher !== '未知发行商'">{{ item.publisher }}</p>
         <p class="media-description" v-if="item.description">{{ item.description }}</p>
-        <div class="media-tags" v-if="displayTags.length > 0">
+        <div class="media-tags" v-if="displayTags.length > 0 && scale >= 30">
           <span 
             v-for="tag in displayTags.slice(0, 9)" 
             :key="tag" 
@@ -64,7 +64,7 @@
           >{{ tag }}</span>
           <span v-if="displayTags.length > 9" class="media-tag-more">+{{ displayTags.length - 9 }}</span>
         </div>
-        <div class="media-stats">
+        <div class="media-stats" v-if="scale >= 30">
           <span class="stat-item">
             <span class="play-time-label">总时长:</span>
             {{ formatPlayTime(item.playTime) }}
@@ -88,7 +88,7 @@
       <template v-if="type === 'image'">
         <p class="media-subtitle" v-if="item.author">{{ item.author }}</p>
         <p class="media-description" v-if="item.description">{{ item.description }}</p>
-        <div class="media-tags" v-if="displayTags.length > 0">
+        <div class="media-tags" v-if="displayTags.length > 0 && scale >= 30">
           <span 
             v-for="tag in displayTags.slice(0, 3)" 
             :key="tag" 
@@ -96,7 +96,7 @@
           >{{ tag }}</span>
           <span v-if="displayTags.length > 3" class="media-tag-more">+{{ displayTags.length - 3 }}</span>
         </div>
-        <div class="media-stats">
+        <div class="media-stats" v-if="scale >= 30">
           <span class="stat-item">{{ formatLastViewed(item.lastViewed) }}</span>
         </div>
       </template>
@@ -106,7 +106,7 @@
         <p class="media-subtitle" v-if="item.author">{{ item.author }}</p>
         <p class="media-tertiary" v-if="item.genre">{{ item.genre }}</p>
         <p class="media-description" v-if="item.description">{{ item.description }}</p>
-        <div class="media-tags" v-if="displayTags.length > 0">
+        <div class="media-tags" v-if="displayTags.length > 0 && scale >= 30">
           <span 
             v-for="tag in displayTags.slice(0, 3)" 
             :key="tag" 
@@ -114,7 +114,7 @@
           >{{ tag }}</span>
           <span v-if="displayTags.length > 3" class="media-tag-more">+{{ displayTags.length - 3 }}</span>
         </div>
-        <div class="media-stats">
+        <div class="media-stats" v-if="scale >= 30">
           <div class="progress-bar">
             <div class="progress-fill" :style="{ width: (item.readProgress || 0) + '%' }"></div>
           </div>
@@ -133,7 +133,7 @@
       <template v-if="type === 'video'">
         <p class="media-subtitle" v-if="item.series">{{ item.series }}</p>
         <p class="media-description" v-if="item.description">{{ item.description }}</p>
-        <div class="media-tags" v-if="displayTags.length > 0">
+        <div class="media-tags" v-if="displayTags.length > 0 && scale >= 30">
           <span 
             v-for="tag in displayTags.slice(0, 3)" 
             :key="tag" 
@@ -146,7 +146,7 @@
           <span class="actors-list">{{ item.actors.slice(0, 2).join(', ') }}</span>
           <span v-if="item.actors.length > 2" class="actors-more">等{{ item.actors.length }}人</span>
         </div>
-        <div class="media-stats">
+        <div class="media-stats" v-if="scale >= 30">
           <div class="stats-row">
             <span class="watch-count">观看 {{ item.watchCount || 0 }} 次</span>
             <span class="last-watched">{{ formatLastWatched(item.lastWatched) }}</span>
@@ -158,7 +158,7 @@
       <template v-if="type === 'audio'">
         <p class="media-subtitle" v-if="item.artist">{{ item.artist }}</p>
         <p class="media-description" v-if="item.notes">{{ item.notes }}</p>
-        <div class="media-tags" v-if="displayTags.length > 0">
+        <div class="media-tags" v-if="displayTags.length > 0 && scale >= 30">
           <span 
             v-for="tag in displayTags.slice(0, 3)" 
             :key="tag" 
@@ -171,7 +171,7 @@
           <span class="actors-list">{{ item.actors.slice(0, 2).join(', ') }}</span>
           <span v-if="item.actors.length > 2" class="actors-more">等{{ item.actors.length }}人</span>
         </div>
-        <div class="media-stats">
+        <div class="media-stats" v-if="scale >= 30">
           <div class="stats-row">
             <span class="play-count">播放 {{ item.playCount || 0 }} 次</span>
             <span class="last-played">{{ formatLastPlayed(item.lastPlayed) }}</span>
@@ -183,7 +183,7 @@
       <template v-if="type === 'folder'">
         <p class="media-subtitle" v-if="item.series">{{ item.series }}</p>
         <p class="media-description" v-if="item.description">{{ item.description }}</p>
-        <div class="media-tags" v-if="displayTags.length > 0">
+        <div class="media-tags" v-if="displayTags.length > 0 && scale >= 30">
           <span 
             v-for="tag in displayTags.slice(0, 3)" 
             :key="tag" 
@@ -196,7 +196,7 @@
           <span class="actors-list">{{ item.actors.slice(0, 2).join(', ') }}</span>
           <span v-if="item.actors.length > 2" class="actors-more">等{{ item.actors.length }}人</span>
         </div>
-        <div class="media-stats">
+        <div class="media-stats" v-if="scale >= 30">
           <div class="stats-row">
             <span class="stat-item">{{ item.videoCount || 0 }} 个视频</span>
             <span class="stat-item">{{ formatAddedDate(item.addedDate) }}</span>
@@ -236,6 +236,10 @@ export default {
     fileExists: {
       type: Boolean,
       default: true
+    },
+    scale: {
+      type: Number,
+      default: 100
     }
   },
   emits: ['click', 'contextmenu', 'action'],
@@ -1151,6 +1155,7 @@ $running-color-dark: #10b981;
   height: 20px;
   flex-shrink: 0;
   object-fit: contain;
+  display: var(--show-icon, block);
 }
 
 .media-subtitle {
@@ -1189,7 +1194,7 @@ $running-color-dark: #10b981;
 }
 
 .media-tags {
-  display: flex;
+  display: var(--show-stats, flex);
   flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 10px;
@@ -1217,7 +1222,7 @@ $running-color-dark: #10b981;
 }
 
 .media-stats {
-  display: flex;
+  display: var(--show-stats, flex);
   flex-direction: column;
   gap: 3px;
 }

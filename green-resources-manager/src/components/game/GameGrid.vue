@@ -1,5 +1,5 @@
 <template>
-  <div class="games-grid" v-if="games.length > 0">
+  <div class="games-grid" v-if="games.length > 0" :style="layoutStyles">
     <MediaCard 
       v-for="game in games" 
       :key="game.id" 
@@ -16,7 +16,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, type PropType } from 'vue'
+import { defineComponent, type PropType, computed } from 'vue'
 import MediaCard from '../MediaCard.vue'
 import type { Game } from '../../types/game'
 
@@ -38,9 +38,25 @@ export default defineComponent({
     isElectronEnvironment: {
       type: Boolean,
       default: false
+    },
+    scale: {
+      type: Number,
+      default: 100
     }
   },
-  emits: ['game-click', 'game-contextmenu', 'game-action']
+  emits: ['game-click', 'game-contextmenu', 'game-action'],
+  setup(props) {
+    const layoutStyles = computed(() => {
+      const s = props.scale
+      return {
+        '--card-scale': s / 100,
+        '--show-stats': s < 30 ? 'none' : 'flex',
+        '--show-icon': s < 20 ? 'none' : 'block',
+        'grid-template-columns': `repeat(auto-fill, minmax(calc(280px * ${s / 100}), 1fr))`
+      }
+    })
+    return { layoutStyles }
+  }
 })
 </script>
 

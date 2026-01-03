@@ -1,5 +1,5 @@
 <template>
-  <div class="audios-grid" v-if="audios.length > 0">
+  <div class="audios-grid" v-if="audios.length > 0" :style="layoutStyles">
     <MediaCard
       v-for="audio in audios" 
       :key="audio.id"
@@ -7,6 +7,7 @@
       type="audio"
       :isElectronEnvironment="isElectronEnvironment"
       :file-exists="audio.fileExists"
+      :scale="scale"
       @click="$emit('audio-click', audio)"
       @contextmenu="$emit('audio-contextmenu', $event, audio)"
       @action="$emit('audio-action', audio)"
@@ -15,6 +16,7 @@
 </template>
 
 <script lang="ts">
+import { computed } from 'vue'
 import MediaCard from '../MediaCard.vue'
 import type { Audio } from '../../types/audio'
 
@@ -32,9 +34,25 @@ export default {
     isElectronEnvironment: {
       type: Boolean,
       default: false
+    },
+    scale: {
+      type: Number,
+      default: 100
     }
   },
-  emits: ['audio-click', 'audio-contextmenu', 'audio-action']
+  emits: ['audio-click', 'audio-contextmenu', 'audio-action'],
+  setup(props) {
+    const layoutStyles = computed(() => {
+      const s = props.scale
+      return {
+        '--card-scale': s / 100,
+        '--show-stats': s < 30 ? 'none' : 'flex',
+        '--show-icon': s < 20 ? 'none' : 'block',
+        'grid-template-columns': `repeat(auto-fill, minmax(calc(280px * ${s / 100}), 1fr))`
+      }
+    })
+    return { layoutStyles }
+  }
 }
 </script>
 

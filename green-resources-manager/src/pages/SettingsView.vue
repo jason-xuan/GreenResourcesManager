@@ -124,6 +124,8 @@
 <script lang="ts">
 import saveManager from '../utils/SaveManager.ts'
 import notify from '../utils/NotificationService.ts'
+import alertService from '../utils/AlertService.ts'
+import confirmService from '../utils/ConfirmService.ts'
 import GeneralSettings from '../components/settings/GeneralSettings.vue'
 
 // 默认设置常量
@@ -475,9 +477,11 @@ export default {
       this.$emit('theme-changed', actualTheme)
     },
     async resetSettings() {
-      if (confirm('确定要重置所有设置吗？此操作不可撤销！')) {
-        try {
-          this.settings = {
+      const confirmed = await confirmService.confirm('确定要重置所有设置吗？此操作不可撤销！', '确认重置')
+      if (!confirmed) return
+      
+      try {
+        this.settings = {
             theme: 'auto',
             autoStart: false,
             minimizeToTray: true,
@@ -586,11 +590,11 @@ export default {
             this.showToastNotification('截图目录已更新', `已设置自定义截图目录: ${directory}`)
           }
         } else {
-          alert('当前环境不支持选择目录功能')
+          await alertService.warning('当前环境不支持选择目录功能', '提示')
         }
       } catch (error) {
         console.error('选择截图目录失败:', error)
-        alert('选择目录失败: ' + error.message)
+        await alertService.error('选择目录失败: ' + error.message, '错误')
       }
     },
     
@@ -660,13 +664,13 @@ export default {
             console.log('用户取消了目录选择')
           }
         } else {
-          alert('当前环境不支持选择目录功能')
+          await alertService.warning('当前环境不支持选择目录功能', '提示')
         }
       } catch (error) {
         // 确保在出错时也恢复自动保存状态
         this.isAutoSaving = false
         console.error('选择存档目录失败:', error)
-        alert('选择目录失败: ' + error.message)
+        await alertService.error('选择目录失败: ' + error.message, '错误')
       }
     },
     async showNotification(title, message) {
@@ -840,7 +844,7 @@ export default {
         }
       } catch (error) {
         console.error('测试设置失败:', error)
-        alert('测试设置失败: ' + error.message)
+        await alertService.error('测试设置失败: ' + error.message, '错误')
       }
     },
     
@@ -878,11 +882,11 @@ export default {
           
           this.showToastNotification('图片设置测试完成', '图片设置已保存并验证，请查看控制台输出')
         } else {
-          alert('图片设置保存失败！')
+          await alertService.error('图片设置保存失败！', '错误')
         }
       } catch (error) {
         console.error('测试图片设置失败:', error)
-        alert('测试图片设置失败: ' + error.message)
+        await alertService.error('测试图片设置失败: ' + error.message, '错误')
       }
     },
 

@@ -114,6 +114,7 @@
 
 <script lang="ts">
 import notify from '../../utils/NotificationService'
+import alertService from '../../utils/AlertService.ts'
 import SettingToggle from './SettingToggle.vue'
 import SettingSelect from './SettingSelect.vue'
 import SettingSlider from './SettingSlider.vue'
@@ -172,12 +173,12 @@ export default {
             console.log('全局快捷键更新成功:', result.key)
           } else {
             console.error('全局快捷键更新失败:', result.error)
-            alert(`快捷键设置失败: ${result.error}\n将使用应用内快捷键。`)
+            await alertService.warning(`快捷键设置失败: ${result.error}\n将使用应用内快捷键。`, '快捷键设置失败')
           }
         }
       } catch (error: any) {
         console.error('更新全局快捷键失败:', error)
-        alert('更新快捷键失败: ' + error.message)
+        await alertService.error('更新快捷键失败: ' + error.message, '错误')
       }
     },
     

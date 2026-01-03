@@ -198,6 +198,8 @@ import PathUpdateDialog from '../../components/PathUpdateDialog.vue'
 
 import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
+import alertService from '../../utils/AlertService.ts'
+import confirmService from '../../utils/ConfirmService.ts'
 import { ref, watch, PropType } from 'vue'
 import { PageConfig } from '../../types/page.ts'
 import { usePagination } from '../../composables/usePagination.ts'
@@ -774,10 +776,11 @@ export default {
       
       // 如果视频数量较多，询问用户是否要批量更新
       if (videosToUpdate.length > 10) {
-        const shouldUpdate = confirm(
+        const shouldUpdate = await confirmService.confirm(
           `发现 ${videosToUpdate.length} 个视频需要更新时长。\n\n` +
           `这可能需要一些时间，是否要现在更新？\n\n` +
-          `点击"确定"开始更新，点击"取消"稍后手动更新。`
+          `点击"确定"开始更新，点击"取消"稍后手动更新。`,
+          '确认更新'
         )
         
         if (!shouldUpdate) {
@@ -1126,7 +1129,7 @@ export default {
         }
       }
       // 回退：显示文件夹路径
-      alert(`文件夹路径: ${folder.folderPath || '未设置'}`)
+      await alertService.info(`文件夹路径: ${folder.folderPath || '未设置'}`)
     },
 
     async openFile(file) {
@@ -1177,7 +1180,7 @@ export default {
         }
       }
       // 回退：显示文件路径
-      alert(`文件路径: ${file.filePath || '未设置'}`)
+      await alertService.info(`文件路径: ${file.filePath || '未设置'}`)
     },
 
     // 打开文件夹中的文件（已移除，不再需要）
@@ -1401,7 +1404,7 @@ export default {
      async randomizeThumbnail() {
        try {
          if (!this.editFileForm.filePath) {
-           alert('请先选择文件')
+           await alertService.warning('请先选择文件')
            return
          }
          
@@ -1503,7 +1506,7 @@ export default {
         }
       } catch (error: any) {
         console.error('更新星级失败:', error)
-        alert('更新星级失败: ' + error.message)
+        await alertService.error('更新星级失败: ' + error.message)
       }
     },
     async handleUpdateComment(comment, video) {
@@ -1528,7 +1531,7 @@ export default {
         }
       } catch (error: any) {
         console.error('更新评论失败:', error)
-        alert('更新评论失败: ' + error.message)
+        await alertService.error('更新评论失败: ' + error.message)
       }
     },
     async handleToggleFavorite(video) {
@@ -1552,12 +1555,13 @@ export default {
         }
       } catch (error: any) {
         console.error('切换收藏状态失败:', error)
-        alert('切换收藏状态失败: ' + error.message)
+        await alertService.error('切换收藏状态失败: ' + error.message)
       }
     },
 
     async deleteFile(file) {
-      if (!confirm(`确定要删除文件 "${file.name}" 吗？`)) return
+      const confirmed = await confirmService.confirm(`确定要删除文件 "${file.name}" 吗？`, '确认删除')
+      if (!confirmed) return
       
       try {
         // 使用文件管理器的 deleteFile 方法
@@ -1652,7 +1656,7 @@ export default {
     async selectFromFolderCovers() {
       try {
         if (!this.editFolderForm.folderPath) {
-          alert('请先选择文件夹路径')
+          await alertService.warning('请先选择文件夹路径')
           return
         }
 
@@ -1703,7 +1707,7 @@ export default {
             console.log('⚠️ 用户取消了选择')
           }
         } else {
-          alert('当前环境不支持选择图片功能')
+          await alertService.warning('当前环境不支持选择图片功能')
         }
       } catch (error) {
         console.error('❌ 从文件夹选择封面失败:', error)
@@ -1715,7 +1719,7 @@ export default {
     async selectFromNewFolderCovers() {
       try {
         if (!this.newFolder.folderPath) {
-          alert('请先选择文件夹路径')
+          await alertService.warning('请先选择文件夹路径')
           return
         }
 
@@ -1766,7 +1770,7 @@ export default {
             console.log('⚠️ 用户取消了选择')
           }
         } else {
-          alert('当前环境不支持选择图片功能')
+          await alertService.warning('当前环境不支持选择图片功能')
         }
       } catch (error) {
         console.error('❌ 从文件夹选择封面失败:', error)
@@ -1803,7 +1807,8 @@ export default {
     },
 
     async deleteFolder(folder) {
-      if (!confirm(`确定要删除文件夹 "${folder.name}" 吗？`)) return
+      const confirmed = await confirmService.confirm(`确定要删除文件夹 "${folder.name}" 吗？`, '确认删除')
+      if (!confirmed) return
       
       try {
         // 使用 composable 的 deleteFolder 方法
@@ -1979,7 +1984,7 @@ export default {
           }
         } else {
           // 降级处理：在浏览器中显示路径
-          alert(`文件位置:\n${file.filePath}`)
+          await alertService.info(`文件位置:\n${file.filePath}`)
         }
       } catch (error) {
         console.error('打开文件文件夹失败:', error)
@@ -2036,10 +2041,11 @@ export default {
         return
       }
       
-      const shouldUpdate = confirm(
+      const shouldUpdate = await confirmService.confirm(
         `发现 ${videosToUpdate.length} 个视频需要更新时长。\n\n` +
         `这可能需要一些时间，是否要开始更新？\n\n` +
-        `点击"确定"开始更新，点击"取消"取消操作。`
+        `点击"确定"开始更新，点击"取消"取消操作。`,
+        '确认更新'
       )
       
       if (!shouldUpdate) {

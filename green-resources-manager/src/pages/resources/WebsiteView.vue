@@ -181,6 +181,7 @@ import DetailPanel from '../../components/DetailPanel.vue'
 
 import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
+import confirmService from '../../utils/ConfirmService.ts'
 import { useWebsiteManagement } from '../../composables/website/useWebsiteManagement'
 import { useWebsiteFilter } from '../../composables/website/useWebsiteFilter'
 import { usePagination } from '../../composables/usePagination'
@@ -518,7 +519,8 @@ export default {
     },
     
     async deleteWebsite(website) {
-      if (!confirm(`确定要删除网站 "${website.name}" 吗？`)) return
+      const confirmed = await confirmService.confirm(`确定要删除网站 "${website.name}" 吗？`, '确认删除')
+      if (!confirmed) return
       
       try {
         await this.deleteWebsiteFromManager(website.id)

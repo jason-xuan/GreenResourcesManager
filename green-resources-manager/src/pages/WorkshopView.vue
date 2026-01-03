@@ -4,7 +4,7 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <h3>创意工坊</h3>
-        <p>管理和启用插件</p>
+        <p>管理和启用插件（目前仅作为展示，功能还在开发中）</p>
       </div>
       <div class="toolbar-right">
         <button class="btn btn-primary" @click="refreshPlugins">

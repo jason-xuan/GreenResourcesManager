@@ -105,6 +105,8 @@ import { formatPlayTime, formatLastPlayed, formatDateTime, formatDate, formatFir
 
 import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
+import alertService from '../../utils/AlertService.ts'
+import confirmService from '../../utils/ConfirmService.ts'
 import { ref, toRefs, PropType } from 'vue'
 import { PageConfig } from '../../types/page'
 import { useGameFilter } from '../../composables/game/useGameFilter'
@@ -587,7 +589,7 @@ export default {
         }
       } catch (error: any) {
         console.error('更新星级失败:', error)
-        alert('更新星级失败: ' + error.message)
+        alertService.error('更新星级失败: ' + error.message)
       }
     },
     async handleUpdateComment(comment, game) {
@@ -603,7 +605,7 @@ export default {
         }
       } catch (error: any) {
         console.error('更新评论失败:', error)
-        alert('更新评论失败: ' + error.message)
+        alertService.error('更新评论失败: ' + error.message)
       }
     },
     async handleToggleFavorite(game) {
@@ -620,7 +622,7 @@ export default {
         }
       } catch (error: any) {
         console.error('切换收藏状态失败:', error)
-        alert('切换收藏状态失败: ' + error.message)
+        alertService.error('切换收藏状态失败: ' + error.message)
       }
     },
     editGame(game) {
@@ -649,11 +651,11 @@ export default {
         this.closeEditGameDialog()
       } catch (error: any) {
         console.error('保存编辑失败:', error)
-        alert('保存编辑失败: ' + error.message)
+        alertService.error('保存编辑失败: ' + error.message)
       }
     },
     async handleRemoveGame(game) {
-      if (!confirm(`确定要删除游戏 "${game.name}" 吗？`)) return
+      if (!(await confirmService.confirm(`确定要删除游戏 "${game.name}" 吗？`))) return
 
       try {
         // 调用 composable 的 removeGame 方法（接收 gameId）
@@ -1024,7 +1026,7 @@ export default {
     async openGameFolder(game) {
       try {
         if (!game.executablePath) {
-          alert('游戏文件路径不存在')
+          alertService.warning('游戏文件路径不存在')
           return
         }
 
@@ -1035,15 +1037,15 @@ export default {
 
           } else {
             console.error('打开文件夹失败:', result.error)
-            alert(`打开文件夹失败: ${result.error}`)
+            alertService.error(`打开文件夹失败: ${result.error}`)
           }
         } else {
           // 降级处理：在浏览器中显示路径
-          alert(`游戏文件位置:\n${game.executablePath}`)
+          alertService.info(`游戏文件位置:\n${game.executablePath}`)
         }
       } catch (error) {
         console.error('打开游戏文件夹失败:', error)
-        alert(`打开文件夹失败: ${error.message}`)
+        alertService.error(`打开文件夹失败: ${error.message}`)
       }
     },
     // openGameScreenshotFolder 已移至 useGameScreenshot composable
@@ -1145,7 +1147,7 @@ export default {
         
         // 确认是否解压到当前目录的子文件夹
         const confirmMessage = `确定要将 ${game.name} 解压到当前目录吗？\n\n解压位置: ${outputDir}\n\n注意：将在压缩包所在目录创建同名子文件夹。`
-        if (!confirm(confirmMessage)) {
+        if (!(await confirmService.confirm(confirmMessage))) {
           return
         }
 
@@ -1235,7 +1237,7 @@ export default {
 
         // 确认压缩
         const confirmMessage = `确定要压缩 ${game.name} 的文件夹吗？\n\n压缩包保存位置: ${archivePath}`
-        if (!confirm(confirmMessage)) {
+        if (!(await confirmService.confirm(confirmMessage))) {
           return
         }
 
@@ -1315,7 +1317,7 @@ export default {
 
         // 确认压缩
         const confirmMessage = `确定要将 ${game.name} 的文件夹压缩到当前目录吗？\n\n压缩包保存位置: ${archivePath}`
-        if (!confirm(confirmMessage)) {
+        if (!(await confirmService.confirm(confirmMessage))) {
           return
         }
 
@@ -1861,7 +1863,7 @@ export default {
         console.error('Flash 播放器错误:', data)
         if (data.type === 'no-path') {
           // 未指定路径，使用 alert
-          alert(data.message)
+          alertService.warning(data.message)
         } else {
           // 其他错误，使用 toast
           notify.toast('error', 'Flash 播放器错误', data.message)

@@ -133,6 +133,8 @@
 <script lang="ts">
 import { computed, defineComponent, onMounted, ref } from 'vue'
 import customPageManager from '../../utils/CustomPageManager'
+import alertService from '../../utils/AlertService.ts'
+import confirmService from '../../utils/ConfirmService.ts'
 import { PageConfig } from '../../types/page'
 
 const TYPE_NAME_MAP: Record<string, string> = {
@@ -261,16 +263,20 @@ export default defineComponent({
         emit('pages-updated')
       } catch (error) {
         console.error('保存页面失败:', error)
-        alert('保存失败: ' + error)
+        await alertService.error('保存失败: ' + error, '错误')
       }
     }
 
     const deletePage = async (page: PageConfig) => {
       if (page.isDefault) {
-        alert('系统默认页面无法删除')
+        await alertService.warning('系统默认页面无法删除', '提示')
         return
       }
-      if (!confirm(`确定要删除页面 "${page.name}" 吗？\n该页面下的数据文件将被保留，但页面入口将被移除。`)) {
+      const confirmed = await confirmService.confirm(
+        `确定要删除页面 "${page.name}" 吗？\n该页面下的数据文件将被保留，但页面入口将被移除。`,
+        '确认删除'
+      )
+      if (!confirmed) {
         return
       }
 
@@ -280,7 +286,7 @@ export default defineComponent({
         emit('pages-updated')
       } catch (error) {
         console.error('删除页面失败:', error)
-        alert('删除失败: ' + error)
+        await alertService.error('删除失败: ' + error, '错误')
       }
     }
 

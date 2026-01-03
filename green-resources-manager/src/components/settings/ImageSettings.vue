@@ -105,6 +105,7 @@
 <script lang="ts">
 import saveManager from '../../utils/SaveManager'
 import notify from '../../utils/NotificationService'
+import alertService from '../../utils/AlertService.ts'
 import SettingToggle from './SettingToggle.vue'
 import SettingSelect from './SettingSelect.vue'
 import SettingSlider from './SettingSlider.vue'
@@ -171,11 +172,11 @@ export default {
           
           notify.success('图片设置测试完成', '图片设置已保存并验证，请查看控制台输出')
         } else {
-          alert('图片设置保存失败！')
+          await alertService.error('图片设置保存失败！', '错误')
         }
       } catch (error: any) {
         console.error('测试图片设置失败:', error)
-        alert('测试图片设置失败: ' + error.message)
+        await alertService.error('测试图片设置失败: ' + error.message, '错误')
       }
     }
   }

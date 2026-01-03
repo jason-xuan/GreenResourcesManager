@@ -220,6 +220,8 @@ import PathUpdateDialog from '../../components/PathUpdateDialog.vue'
 
 import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
+import alertService from '../../utils/AlertService.ts'
+import confirmService from '../../utils/ConfirmService.ts'
 import { useAudioDuration } from '../../composables/audio/useAudioDuration'
 import { useAudioDragDrop } from '../../composables/audio/useAudioDragDrop'
 import { useAudioManagement } from '../../composables/audio/useAudioManagement'
@@ -553,7 +555,8 @@ export default {
     // playAudio, addToPlaylist, openAudioFolder 已移至 useAudioPlayback composable
     
     async deleteAudio(audio) {
-      if (!confirm(`确定要删除音频 "${audio.name}" 吗？`)) return
+      const confirmed = await confirmService.confirm(`确定要删除音频 "${audio.name}" 吗？`, '确认删除')
+      if (!confirmed) return
       
       try {
         await this.deleteAudioFromManager(audio.id)
@@ -760,11 +763,11 @@ export default {
             this.editAudioForm.thumbnailPath = filePath
           }
         } else {
-          alert('当前环境不支持文件选择功能')
+          await alertService.warning('当前环境不支持文件选择功能', '提示')
         }
       } catch (error) {
         console.error('选择缩略图文件失败:', error)
-        alert('选择缩略图文件失败: ' + error.message)
+        await alertService.error('选择缩略图文件失败: ' + error.message, '错误')
       }
     },
     
@@ -781,12 +784,12 @@ export default {
     async saveEditedAudio() {
       try {
         if (!this.editAudioForm.name.trim()) {
-          alert('请输入音频名称')
+          await alertService.warning('请输入音频名称', '提示')
           return
         }
         
         if (!this.editAudioForm.filePath.trim()) {
-          alert('请选择音频文件')
+          await alertService.warning('请选择音频文件', '提示')
           return
         }
         
@@ -811,7 +814,7 @@ export default {
         notify.native('音频更新成功', `已更新音频: ${audioData.name}`)
       } catch (error) {
         console.error('更新音频失败:', error)
-        alert('更新音频失败: ' + error.message)
+        await alertService.error('更新音频失败: ' + error.message, '错误')
       }
     },
     async handleToggleFavorite(audio) {
@@ -828,7 +831,7 @@ export default {
         }
       } catch (error: any) {
         console.error('切换收藏状态失败:', error)
-        alert('切换收藏状态失败: ' + error.message)
+        await alertService.error('切换收藏状态失败: ' + error.message, '错误')
       }
     },
     
@@ -848,7 +851,7 @@ export default {
     async updateAudioDuration(audio) {
       try {
         if (!audio.filePath) {
-          alert('音频文件路径不存在')
+          await alertService.warning('音频文件路径不存在', '提示')
           return
         }
         
@@ -873,11 +876,11 @@ export default {
           console.log('✅ 音频时长更新成功:', duration, '秒')
           notify.native('时长更新成功', `音频时长已更新为: ${this.formatDuration(duration)}`)
         } else {
-          alert('无法获取音频时长，请检查文件是否有效')
+          await alertService.warning('无法获取音频时长，请检查文件是否有效', '提示')
         }
       } catch (error) {
         console.error('更新音频时长失败:', error)
-        alert('更新音频时长失败: ' + error.message)
+        await alertService.error('更新音频时长失败: ' + error.message, '错误')
       }
     },
 

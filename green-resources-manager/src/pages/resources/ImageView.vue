@@ -167,6 +167,8 @@ import AlbumFormDialog from '../../components/image/AlbumFormDialog.vue'
 import AlbumPagesGrid from '../../components/image/AlbumPagesGrid.vue'
 
 import notify from '../../utils/NotificationService.ts'
+import alertService from '../../utils/AlertService.ts'
+import confirmService from '../../utils/ConfirmService.ts'
 import { unlockAchievement } from '../user/AchievementView.vue'
 import { ref, computed, toRefs, watch, PropType } from 'vue'
 import { PageConfig } from '../../types/page'
@@ -733,11 +735,11 @@ export default {
           }
         } else {
           console.error('Electron API 不可用')
-          alert('当前环境不支持文件夹选择功能')
+          alertService.warning('当前环境不支持文件夹选择功能')
         }
       } catch (e) {
         console.error('选择文件夹失败:', e)
-        alert('选择文件夹失败: ' + e.message)
+        alertService.error('选择文件夹失败: ' + e.message)
       }
     },
     handleAddAlbumSubmit(formData) {
@@ -912,15 +914,15 @@ export default {
       try {
         if (window.electronAPI && window.electronAPI.openFolder) {
           const result = await window.electronAPI.openFolder(album.folderPath)
-          if (!result.success) alert('打开文件夹失败: ' + (result.error || '未知错误'))
+          if (!result.success) alertService.error('打开文件夹失败: ' + (result.error || '未知错误'))
         }
       } catch (e) {
         console.error('打开文件夹失败:', e)
-        alert('打开文件夹失败: ' + e.message)
+        alertService.error('打开文件夹失败: ' + e.message)
       }
     },
     async removeAlbum(album) {
-      if (!confirm(`确定要删除漫画 "${album.name}" 吗？`)) return
+      if (!(await confirmService.confirm(`确定要删除漫画 "${album.name}" 吗？`))) return
       
       try {
         await this.removeAlbumById(album.id)
@@ -972,7 +974,7 @@ export default {
         }
       } catch (e) {
         console.error('选择文件夹失败:', e)
-        alert('选择文件夹失败: ' + e.message)
+        alertService.error('选择文件夹失败: ' + e.message)
       }
     },
     // 封面管理方法已移至 useImageCover composable
@@ -999,7 +1001,7 @@ export default {
         }
       } catch (error: any) {
         console.error('更新星级失败:', error)
-        alert('更新星级失败: ' + error.message)
+        alertService.error('更新星级失败: ' + error.message)
       }
     },
     async handleUpdateComment(comment, album) {
@@ -1015,7 +1017,7 @@ export default {
         }
       } catch (error: any) {
         console.error('更新评论失败:', error)
-        alert('更新评论失败: ' + error.message)
+        alertService.error('更新评论失败: ' + error.message)
       }
     },
     async handleToggleFavorite(album) {
@@ -1032,7 +1034,7 @@ export default {
         }
       } catch (error: any) {
         console.error('切换收藏状态失败:', error)
-        alert('切换收藏状态失败: ' + error.message)
+        alertService.error('切换收藏状态失败: ' + error.message)
       }
     },
     async saveEditedAlbum(formData) {

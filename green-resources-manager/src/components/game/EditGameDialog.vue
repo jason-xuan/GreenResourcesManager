@@ -109,6 +109,7 @@
 import FormField from '../FormField.vue'
 import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
+import alertService from '../../utils/AlertService.ts'
 import { detectGameEngine } from '../../utils/GameEngineDetector.ts'
 
 export default {
@@ -243,7 +244,7 @@ export default {
         }
       } catch (error) {
         console.error('选择可执行文件失败:', error)
-        alert(`选择文件失败: ${error.message}`)
+        await alertService.error(`选择文件失败: ${error.message}`, '错误')
       }
     },
     async handleBrowseImage() {
@@ -256,7 +257,7 @@ export default {
         }
       } catch (error) {
         console.error('选择图片文件失败:', error)
-        alert(`选择文件失败: ${error.message}`)
+        await alertService.error(`选择文件失败: ${error.message}`, '错误')
       }
     },
     extractGameNameFromPath(filePath) {
@@ -278,7 +279,7 @@ export default {
     async handleUseScreenshotAsCover() {
       try {
         if (!this.formData.name) {
-          alert('请先输入游戏名称')
+          await alertService.warning('请先输入游戏名称', '提示')
           return
         }
 
@@ -333,11 +334,11 @@ export default {
             }
           }
         } else {
-          alert('当前环境不支持选择图片功能')
+          await alertService.warning('当前环境不支持选择图片功能', '提示')
         }
       } catch (error) {
         console.error('选择截图作为封面失败:', error)
-        alert(`选择截图失败: ${error.message}`)
+        await alertService.error(`选择截图失败: ${error.message}`, '错误')
       }
     },
     handleClearCover() {

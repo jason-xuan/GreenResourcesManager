@@ -75,6 +75,21 @@
             <span class="nav-text">{{ viewConfig.search?.name || '搜索' }}</span>
           </div>
         </li>
+        
+        <!-- 插件注册的导航项 -->
+        <li 
+          v-for="navItem in pluginNavigationItems" 
+          :key="navItem.id"
+          class="nav-item-wrapper"
+        >
+          <div 
+            class="nav-item"
+            @click="handlePluginNavigation(navItem)"
+          >
+            <span class="nav-icon">{{ navItem.icon }}</span>
+            <span class="nav-text">{{ navItem.name }}</span>
+          </div>
+        </li>
       </ul>
 
       <!-- 底部按钮 -->
@@ -111,7 +126,17 @@
 
         <!-- 页面内容区域 -->
         <div class="page-content" :class="{ 'has-background': backgroundImageUrl }" :style="pageContentStyle">
+          <!-- 插件视图 -->
+          <div v-if="pluginView.visible" class="plugin-view-container">
+            <div class="plugin-view-header">
+              <h3>{{ pluginView.title }}</h3>
+              <button class="plugin-view-close" @click="closePluginView">✕</button>
+            </div>
+            <div class="plugin-view-body" ref="pluginViewBody" v-html="pluginView.content"></div>
+          </div>
+          <!-- 正常路由视图 -->
           <router-view 
+            v-else
             ref="routerView"
             @filter-data-updated="updateFilterData"
             @navigate="navigateTo"
@@ -126,20 +151,32 @@
     <!-- 全局通知组件 -->
     <ToastNotification ref="toastNotification" />
 
+    <!-- 全局 Alert 组件 -->
+    <Alert ref="alert" />
+
+    <!-- 全局 Confirm 组件 -->
+    <ConfirmDialog ref="confirm" />
+
   </div>
 </template>
 
 <script lang="ts">
 import GlobalAudioPlayer from './components/GlobalAudioPlayer.vue'
 import ToastNotification from './components/ToastNotification.vue'
+import Alert from './components/Alert.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 import FilterSidebar from './components/FilterSidebar.vue'
 import { updateDynamicRoutes } from './router/index'
 
 
 import notificationService from './utils/NotificationService.ts'
+import alertService from './utils/AlertService.ts'
+import confirmService from './utils/ConfirmService.ts'
 
 import saveManager from './utils/SaveManager.ts'
 import customPageManager from './utils/CustomPageManager.ts'
+import pluginManager from './utils/PluginManager.ts'
+import pluginNavigationManager from './utils/PluginNavigationManager.ts'
 import { unlockAchievement } from './pages/user/AchievementView.vue'
 
 
@@ -148,6 +185,8 @@ export default {
   components: {
     GlobalAudioPlayer,
     ToastNotification,
+    Alert,
+    ConfirmDialog,
     FilterSidebar
   },
   data() {
@@ -196,6 +235,16 @@ export default {
       // 统一的页面配置
       pages: [], // 动态页面配置
       isHomeMenuExpanded: true, // 主页菜单是否展开（默认展开）
+      // 插件导航项
+      pluginNavigationItems: [], // 插件注册的导航项
+      handlePluginNavigationUpdate: null as (() => void) | null, // 插件导航项更新事件处理器
+      // 插件视图
+      pluginView: {
+        visible: false,
+        title: '',
+        content: '',
+        onMount: null as ((container: HTMLElement) => void) | null
+      },
       viewConfig: {
         // 固定页面
         home: {
@@ -444,6 +493,46 @@ export default {
           console.error('导航失败:', err)
         }
       })
+    },
+    // 处理插件导航项点击
+    handlePluginNavigation(navItem: any) {
+      try {
+        if (navItem.onClick && typeof navItem.onClick === 'function') {
+          navItem.onClick()
+        }
+      } catch (error) {
+        console.error(`执行插件导航项 ${navItem.id} 的 onClick 失败:`, error)
+      }
+    },
+    // 更新插件导航项列表
+    updatePluginNavigationItems() {
+      this.pluginNavigationItems = pluginNavigationManager.getNavigationItems()
+    },
+    // 显示插件视图
+    showPluginView(config: { title: string; content: string; onMount?: (container: HTMLElement) => void }) {
+      this.pluginView.visible = true
+      this.pluginView.title = config.title
+      this.pluginView.content = config.content
+      this.pluginView.onMount = config.onMount || null
+      
+      // 在下一个tick执行onMount回调
+      this.$nextTick(() => {
+        const bodyElement = this.$refs.pluginViewBody as HTMLElement
+        if (bodyElement && this.pluginView.onMount) {
+          try {
+            this.pluginView.onMount(bodyElement)
+          } catch (error) {
+            console.error('执行插件视图 onMount 回调失败:', error)
+          }
+        }
+      })
+    },
+    // 关闭插件视图
+    closePluginView() {
+      this.pluginView.visible = false
+      this.pluginView.title = ''
+      this.pluginView.content = ''
+      this.pluginView.onMount = null
     },
     // 切换主页菜单展开/折叠
     toggleHomeMenu() {
@@ -1120,6 +1209,11 @@ export default {
       () => this.$route,
       (route) => {
         if (route.name) {
+          // 路由变化时关闭插件视图
+          if (this.pluginView.visible) {
+            this.closePluginView()
+          }
+          
           const requiresFilter = route.meta?.requiresFilter === true
           this.showFilterSidebar = requiresFilter
           this.resetFilterData()
@@ -1161,6 +1255,20 @@ export default {
       notificationService.init(this.$refs.toastNotification)
     } catch (error) {
       console.error('通知服务初始化失败:', error)
+    }
+
+    // 初始化 Alert 服务
+    try {
+      alertService.init(this.$refs.alert)
+    } catch (error) {
+      console.error('Alert 服务初始化失败:', error)
+    }
+
+    // 初始化 Confirm 服务
+    try {
+      confirmService.init(this.$refs.confirm)
+    } catch (error) {
+      console.error('Confirm 服务初始化失败:', error)
     }
 
     // 然后从 SaveManager 加载设置（所有降级逻辑由 SaveManager 处理）
@@ -1215,6 +1323,32 @@ export default {
     
     // 检测 WinRAR 安装状态
     await this.checkWinRARInstallation()
+    
+    // 初始化插件系统
+    try {
+      console.log('正在初始化插件系统...')
+      await pluginManager.scanPlugins()
+      await pluginManager.loadEnabledPlugins()
+      console.log('✅ 插件系统初始化完成')
+      
+      // 更新插件导航项
+      this.updatePluginNavigationItems()
+    } catch (error) {
+      console.error('插件系统初始化失败:', error)
+    }
+    
+    // 监听插件导航项更新事件
+    this.handlePluginNavigationUpdate = () => {
+      this.updatePluginNavigationItems()
+    }
+    window.addEventListener('plugin-navigation-updated', this.handlePluginNavigationUpdate)
+    
+    // 监听插件自定义视图显示事件
+    const handlePluginShowCustomView = (event: CustomEvent) => {
+      const { title, content, onMount } = event.detail
+      this.showPluginView({ title, content, onMount })
+    }
+    window.addEventListener('plugin-show-custom-view', handlePluginShowCustomView as EventListener)
     
     // 监听自定义标题变化事件
     window.addEventListener('custom-app-title-changed', (event: CustomEvent) => {
@@ -1286,6 +1420,14 @@ export default {
     
     // 停止自动备份定时器
     this.stopAutoBackupTimer()
+    
+    // 移除插件导航项更新事件监听
+    if (this.handlePluginNavigationUpdate) {
+      window.removeEventListener('plugin-navigation-updated', this.handlePluginNavigationUpdate)
+    }
+    
+    // 关闭插件视图
+    this.closePluginView()
     
     // 禁用安全键（清理全局快捷键）
     if (window.electronAPI && window.electronAPI.setSafetyKey) {
@@ -1422,5 +1564,59 @@ export default {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* 插件视图样式 */
+.plugin-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.plugin-view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+}
+
+.plugin-view-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.plugin-view-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.plugin-view-close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.plugin-view-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 </style>

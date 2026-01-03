@@ -146,6 +146,8 @@ import FolderVideosGrid from '../../components/video/FolderVideosGrid.vue'
 
 import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
+import confirmService from '../../utils/ConfirmService.ts'
+import alertService from '../../utils/AlertService.ts'
 import { unlockAchievement } from '../user/AchievementView.vue'
 import { ref, watch, PropType } from 'vue'
 import { PageConfig } from '../../types/page'
@@ -272,14 +274,20 @@ export default {
       }
     }
 
+    // 解构 composable，重命名 deleteVideo 避免与 methods 冲突
+    const { deleteVideo: deleteVideoFromManager, ...restVideoManagement } = videoManagementComposable
+    const { deleteFolder: deleteFolderFromManager, ...restVideoFolder } = videoFolderComposable
+
     return {
       filteredVideosRef,
       showPathUpdateDialog,
       pathUpdateInfo,
-      // 视频管理相关
-      ...videoManagementComposable,
-      // 文件夹管理相关
-      ...videoFolderComposable,
+      // 视频管理相关（排除 deleteVideo，使用重命名版本）
+      ...restVideoManagement,
+      deleteVideoFromManager,
+      // 文件夹管理相关（排除 deleteFolder，使用重命名版本）
+      ...restVideoFolder,
+      deleteFolderFromManager,
       // 筛选相关
       ...videoFilterComposable,
       // 分页相关
@@ -666,10 +674,11 @@ export default {
       
       // 如果视频数量较多，询问用户是否要批量更新
       if (videosToUpdate.length > 10) {
-        const shouldUpdate = confirm(
+        const shouldUpdate = await confirmService.confirm(
           `发现 ${videosToUpdate.length} 个视频需要更新时长。\n\n` +
           `这可能需要一些时间，是否要现在更新？\n\n` +
-          `点击"确定"开始更新，点击"取消"稍后手动更新。`
+          `点击"确定"开始更新，点击"取消"稍后手动更新。`,
+          '确认更新'
         )
         
         if (!shouldUpdate) {
@@ -930,7 +939,7 @@ export default {
           }
         }
         if (!videoData.name || !videoData.name.trim()) {
-          alert('请至少选择一个视频文件或填写名称')
+          await alertService.warning('请至少选择一个视频文件或填写名称', '提示')
           return
         }
 
@@ -971,21 +980,21 @@ export default {
       const data = folderData || this.newFolder
       
       if (!data.name || !data.name.trim()) {
-        alert('请填写文件夹名称')
+        await alertService.warning('请填写文件夹名称', '提示')
         return
       }
       if (!data.folderPath || !data.folderPath.trim()) {
-        alert('请先选择文件夹路径')
+        await alertService.warning('请先选择文件夹路径', '提示')
         return
       }
 
       this.parseFolderActors()
       if (!this.newFolder.name || !this.newFolder.name.trim()) {
-        alert('请填写文件夹名称')
+        await alertService.warning('请填写文件夹名称', '提示')
         return
       }
       if (!this.newFolder.folderPath || !this.newFolder.folderPath.trim()) {
-        alert('请先选择文件夹路径')
+        await alertService.warning('请先选择文件夹路径', '提示')
         return
       }
 
@@ -1082,7 +1091,7 @@ export default {
         }
       }
       // 回退：显示文件夹路径
-      alert(`文件夹路径: ${folder.folderPath || '未设置'}`)
+      await alertService.info(`文件夹路径: ${folder.folderPath || '未设置'}`, '文件夹路径')
     },
 
     // 播放文件夹中的视频
@@ -1326,7 +1335,7 @@ export default {
      async randomizeThumbnail() {
        try {
          if (!this.editVideoForm.filePath) {
-           alert('请先选择视频文件')
+           await alertService.warning('请先选择视频文件', '提示')
            return
          }
          
@@ -1440,7 +1449,7 @@ export default {
         }
       } catch (error: any) {
         console.error('更新星级失败:', error)
-        alert('更新星级失败: ' + error.message)
+        await alertService.error('更新星级失败: ' + error.message, '错误')
       }
     },
     async handleUpdateComment(comment, video) {
@@ -1465,7 +1474,7 @@ export default {
         }
       } catch (error: any) {
         console.error('更新评论失败:', error)
-        alert('更新评论失败: ' + error.message)
+        await alertService.error('更新评论失败: ' + error.message, '错误')
       }
     },
     async handleToggleFavorite(video) {
@@ -1489,16 +1498,17 @@ export default {
         }
       } catch (error: any) {
         console.error('切换收藏状态失败:', error)
-        alert('切换收藏状态失败: ' + error.message)
+        await alertService.error('切换收藏状态失败: ' + error.message, '错误')
       }
     },
 
     async deleteVideo(video) {
-      if (!confirm(`确定要删除视频 "${video.name}" 吗？`)) return
+      const confirmed = await confirmService.confirm(`确定要删除视频 "${video.name}" 吗？`, '确认删除')
+      if (!confirmed) return
       
       try {
-        // 使用 composable 的 deleteVideo 方法
-        await this.deleteVideo(video.id)
+        // 使用 composable 的 deleteVideoFromManager 方法（重命名以避免递归调用）
+        await this.deleteVideoFromManager(video.id)
         
         // 从所有文件夹中移除该视频的引用（使用 composable 的方法）
         await this.removeVideoFromFolders(video.id)
@@ -1588,7 +1598,7 @@ export default {
     async selectFromFolderCovers() {
       try {
         if (!this.editFolderForm.folderPath) {
-          alert('请先选择文件夹路径')
+          await alertService.warning('请先选择文件夹路径', '提示')
           return
         }
 
@@ -1639,7 +1649,7 @@ export default {
             console.log('⚠️ 用户取消了选择')
           }
         } else {
-          alert('当前环境不支持选择图片功能')
+          await alertService.warning('当前环境不支持选择图片功能', '提示')
         }
       } catch (error) {
         console.error('❌ 从文件夹选择封面失败:', error)
@@ -1651,7 +1661,7 @@ export default {
     async selectFromNewFolderCovers() {
       try {
         if (!this.newFolder.folderPath) {
-          alert('请先选择文件夹路径')
+          await alertService.warning('请先选择文件夹路径', '提示')
           return
         }
 
@@ -1702,7 +1712,7 @@ export default {
             console.log('⚠️ 用户取消了选择')
           }
         } else {
-          alert('当前环境不支持选择图片功能')
+          await alertService.warning('当前环境不支持选择图片功能', '提示')
         }
       } catch (error) {
         console.error('❌ 从文件夹选择封面失败:', error)
@@ -1739,11 +1749,12 @@ export default {
     },
 
     async deleteFolder(folder) {
-      if (!confirm(`确定要删除文件夹 "${folder.name}" 吗？`)) return
+      const confirmed = await confirmService.confirm(`确定要删除文件夹 "${folder.name}" 吗？`, '确认删除')
+      if (!confirmed) return
       
       try {
-        // 使用 composable 的 deleteFolder 方法
-        const success = await this.deleteFolder(folder.id)
+        // 使用 composable 的 deleteFolderFromManager 方法（重命名以避免递归调用）
+        const success = await this.deleteFolderFromManager(folder.id)
         if (success) {
           // 更新筛选器数据
           this.updateFilterData()
@@ -1901,7 +1912,7 @@ export default {
     async openVideoFolder(video) {
       try {
         if (!video.filePath) {
-          alert('视频文件路径不存在')
+          await alertService.warning('视频文件路径不存在', '提示')
           return
         }
         
@@ -1911,15 +1922,15 @@ export default {
             console.log('已打开视频文件夹:', result.folderPath)
           } else {
             console.error('打开文件夹失败:', result.error)
-            alert(`打开文件夹失败: ${result.error}`)
+            await alertService.error(`打开文件夹失败: ${result.error}`, '错误')
           }
         } else {
           // 降级处理：在浏览器中显示路径
-          alert(`视频文件位置:\n${video.filePath}`)
+          await alertService.info(`视频文件位置:\n${video.filePath}`, '文件位置')
         }
       } catch (error) {
         console.error('打开视频文件夹失败:', error)
-        alert(`打开文件夹失败: ${error.message}`)
+        await alertService.error(`打开文件夹失败: ${error.message}`, '错误')
       }
     },
 
@@ -1972,10 +1983,11 @@ export default {
         return
       }
       
-      const shouldUpdate = confirm(
+      const shouldUpdate = await confirmService.confirm(
         `发现 ${videosToUpdate.length} 个视频需要更新时长。\n\n` +
         `这可能需要一些时间，是否要开始更新？\n\n` +
-        `点击"确定"开始更新，点击"取消"取消操作。`
+        `点击"确定"开始更新，点击"取消"取消操作。`,
+        '确认更新'
       )
       
       if (!shouldUpdate) {

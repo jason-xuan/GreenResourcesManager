@@ -293,6 +293,8 @@ import { PageConfig } from '../../types/page'
 import { EpubParser } from '../../utils/EpubParser'
 
 import notify from '../../utils/NotificationService.ts'
+import alertService from '../../utils/AlertService.ts'
+import confirmService from '../../utils/ConfirmService.ts'
 
 
 export default {
@@ -573,7 +575,7 @@ export default {
         }
       } catch (error) {
         console.error('选择小说文件失败:', error)
-        alert(`选择文件失败: ${error.message}`)
+        alertService.error(`选择文件失败: ${error.message}`)
       }
     },
     async browseForCoverImage() {
@@ -591,7 +593,7 @@ export default {
         }
       } catch (error) {
         console.error('选择图片文件失败:', error)
-        alert(`选择文件失败: ${error.message}`)
+        alertService.error(`选择文件失败: ${error.message}`)
       }
     },
     showFileInput(type) {
@@ -745,7 +747,7 @@ export default {
         notify.native('添加成功', `小说 "${novel?.name || '未知'}" 已添加`)
       } catch (error) {
         console.error('添加小说失败:', error)
-        alert(`添加小说失败: ${error.message}`)
+        alertService.error(`添加小说失败: ${error.message}`)
       }
     },
     showNovelDetail(novel) {
@@ -865,7 +867,7 @@ export default {
         this.closeEditNovelDialog()
       } catch (error: any) {
         console.error('保存编辑失败:', error)
-        alert('保存编辑失败: ' + error.message)
+        alertService.error('保存编辑失败: ' + error.message)
       }
     },
     async handleToggleFavorite(novel) {
@@ -882,11 +884,11 @@ export default {
         }
       } catch (error: any) {
         console.error('切换收藏状态失败:', error)
-        alert('切换收藏状态失败: ' + error.message)
+        alertService.error('切换收藏状态失败: ' + error.message)
       }
     },
     async removeNovel(novel) {
-      if (!confirm(`确定要删除小说 "${novel.name}" 吗？`)) return
+      if (!(await confirmService.confirm(`确定要删除小说 "${novel.name}" 吗？`))) return
       
       try {
         await this.deleteNovelFromManager(novel.id)
@@ -905,7 +907,7 @@ export default {
     async openNovelReader(novel) {
       try {
         if (!novel.filePath) {
-          alert('小说文件路径不存在')
+          alertService.warning('小说文件路径不存在')
           return
         }
         
@@ -934,7 +936,7 @@ export default {
       } catch (error) {
         console.error('❌ 打开小说阅读器失败:', error)
         console.error('错误详情:', error.stack)
-        alert(`打开小说失败: ${error.message}`)
+        alertService.error(`打开小说失败: ${error.message}`)
       }
     },
     async openNovelWithExternalApp(novel) {
@@ -955,12 +957,12 @@ export default {
           await this.updateReadingStats(novel)
         } else {
           console.error('❌ 打开小说文件失败:', result.error)
-          alert(`打开小说文件失败: ${result.error}`)
+          alertService.error(`打开小说文件失败: ${result.error}`)
         }
       } else {
         console.log('❌ Electron API 不可用，使用降级处理')
         // 降级处理：在浏览器中显示文件路径
-        alert(`小说文件位置:\n${novel.filePath}\n\n请手动打开此文件进行阅读`)
+        alertService.info(`小说文件位置:\n${novel.filePath}\n\n请手动打开此文件进行阅读`)
       }
     },
     async openNovelWithInternalReader(novel) {
@@ -979,13 +981,13 @@ export default {
         notify.native('开始阅读', `"${novel.name}" 已在应用内打开`)
       } catch (error) {
         console.error('打开应用内阅读器失败:', error)
-        alert(`打开应用内阅读器失败: ${error.message}`)
+        alertService.error(`打开应用内阅读器失败: ${error.message}`)
       }
     },
     async openNovelFolder(novel) {
       try {
         if (!novel.filePath) {
-          alert('小说文件路径不存在')
+          alertService.warning('小说文件路径不存在')
           return
         }
         
@@ -995,14 +997,14 @@ export default {
             console.log('已打开小说文件夹:', result.folderPath)
           } else {
             console.error('打开文件夹失败:', result.error)
-            alert(`打开文件夹失败: ${result.error}`)
+            alertService.error(`打开文件夹失败: ${result.error}`)
           }
         } else {
-          alert(`小说文件位置:\n${novel.filePath}`)
+          alertService.info(`小说文件位置:\n${novel.filePath}`)
         }
       } catch (error) {
         console.error('打开小说文件夹失败:', error)
-        alert(`打开文件夹失败: ${error.message}`)
+        alertService.error(`打开文件夹失败: ${error.message}`)
       }
     },
     formatReadTime(minutes) {
@@ -1167,7 +1169,7 @@ export default {
         }
       } catch (error) {
         console.error('处理小说点击失败:', error)
-        alert(`打开小说失败: ${error.message}`)
+        alertService.error(`打开小说失败: ${error.message}`)
       }
     },
     
@@ -1210,7 +1212,7 @@ export default {
         await this.updateReadingStats(novel)
       } catch (error) {
         console.error('选择小说失败:', error)
-        alert(`选择小说失败: ${error.message}`)
+        alertService.error(`选择小说失败: ${error.message}`)
       }
     },
     closeReader() {

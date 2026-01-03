@@ -14,6 +14,7 @@
         />
         
         <FormField
+          v-if="fieldMode !== 'anime'"
           label="系列名"
           type="text"
           v-model="localFormData.series"
@@ -21,11 +22,30 @@
         />
 
         <FormField
+          v-if="fieldMode !== 'anime'"
           label="演员"
           type="text"
           v-model="localActorsInput"
           placeholder="用逗号分隔多个演员"
           @blur="parseActors"
+        />
+
+        <FormField
+          v-if="fieldMode === 'anime'"
+          label="声优"
+          type="text"
+          v-model="localVoiceActorsInput"
+          placeholder="用逗号分隔多个声优"
+          @blur="parseVoiceActors"
+        />
+
+        <FormField
+          v-if="fieldMode === 'anime'"
+          label="制作组"
+          type="text"
+          v-model="localProductionTeamInput"
+          placeholder="用逗号分隔多个制作组"
+          @blur="parseProductionTeam"
         />
 
         <FormField
@@ -140,13 +160,28 @@ export default {
     handleThumbnailPreviewLoad: {
       type: Function,
       default: () => {}
+    },
+    fieldMode: {
+      type: String as () => 'default' | 'anime',
+      default: 'default',
+      validator: (value: string) => ['default', 'anime'].includes(value)
+    },
+    voiceActorsInput: {
+      type: String,
+      default: ''
+    },
+    productionTeamInput: {
+      type: String,
+      default: ''
     }
   },
-  emits: ['update:visible', 'update:formData', 'update:actorsInput', 'update:tagsInput', 'submit', 'close', 'browse-folder', 'select-from-covers', 'browse-thumbnail-file', 'parse-actors', 'add-tag', 'remove-tag'],
+  emits: ['update:visible', 'update:formData', 'update:actorsInput', 'update:tagsInput', 'update:voiceActorsInput', 'update:productionTeamInput', 'submit', 'close', 'browse-folder', 'select-from-covers', 'browse-thumbnail-file', 'parse-actors', 'parse-voice-actors', 'parse-production-team', 'add-tag', 'remove-tag'],
   setup(props, { emit }) {
     const localFormData = ref({ ...props.formData })
     const localActorsInput = ref(props.actorsInput)
     const localTagsInput = ref(props.tagsInput)
+    const localVoiceActorsInput = ref(props.voiceActorsInput)
+    const localProductionTeamInput = ref(props.productionTeamInput)
 
     // 只在 visible 变化时初始化数据，避免双向绑定导致的递归更新
     watch(() => props.visible, (newVal) => {
@@ -155,6 +190,8 @@ export default {
         localFormData.value = { ...props.formData }
         localActorsInput.value = props.actorsInput
         localTagsInput.value = props.tagsInput
+        localVoiceActorsInput.value = props.voiceActorsInput
+        localProductionTeamInput.value = props.productionTeamInput
       }
     })
 
@@ -175,6 +212,18 @@ export default {
     watch(() => props.tagsInput, (newVal) => {
       if (props.visible) {
         localTagsInput.value = newVal
+      }
+    })
+
+    watch(() => props.voiceActorsInput, (newVal) => {
+      if (props.visible) {
+        localVoiceActorsInput.value = newVal
+      }
+    })
+
+    watch(() => props.productionTeamInput, (newVal) => {
+      if (props.visible) {
+        localProductionTeamInput.value = newVal
       }
     })
 
@@ -202,14 +251,29 @@ export default {
 
     const handleSubmit = () => {
       if (canSubmit.value) {
-        // 提交时使用本地数据，并确保 actors 已解析
+        // 提交时使用本地数据，并确保相关字段已解析
         const submitData = { ...localFormData.value }
         
-        // 如果 localActorsInput 有值，解析为数组
-        if (localActorsInput.value && localActorsInput.value.trim()) {
-          submitData.actors = localActorsInput.value.split(',').map(s => s.trim()).filter(Boolean)
-        } else if (!submitData.actors || !Array.isArray(submitData.actors)) {
-          submitData.actors = []
+        if (props.fieldMode === 'anime') {
+          // 番剧模式：解析声优和制作组
+          if (localVoiceActorsInput.value && localVoiceActorsInput.value.trim()) {
+            submitData.voiceActors = localVoiceActorsInput.value.split(',').map(s => s.trim()).filter(Boolean)
+          } else if (!submitData.voiceActors || !Array.isArray(submitData.voiceActors)) {
+            submitData.voiceActors = []
+          }
+          
+          if (localProductionTeamInput.value && localProductionTeamInput.value.trim()) {
+            submitData.productionTeam = localProductionTeamInput.value.split(',').map(s => s.trim()).filter(Boolean)
+          } else if (!submitData.productionTeam || !Array.isArray(submitData.productionTeam)) {
+            submitData.productionTeam = []
+          }
+        } else {
+          // 默认模式：解析演员
+          if (localActorsInput.value && localActorsInput.value.trim()) {
+            submitData.actors = localActorsInput.value.split(',').map(s => s.trim()).filter(Boolean)
+          } else if (!submitData.actors || !Array.isArray(submitData.actors)) {
+            submitData.actors = []
+          }
         }
         
         emit('submit', submitData)
@@ -218,6 +282,14 @@ export default {
 
     const parseActors = () => {
       emit('parse-actors')
+    }
+
+    const parseVoiceActors = () => {
+      emit('parse-voice-actors')
+    }
+
+    const parseProductionTeam = () => {
+      emit('parse-production-team')
     }
 
     const addTag = () => {
@@ -256,11 +328,15 @@ export default {
       localFormData,
       localActorsInput,
       localTagsInput,
+      localVoiceActorsInput,
+      localProductionTeamInput,
       canSubmit,
       handleClose,
       handleOverlayMouseDown,
       handleSubmit,
       parseActors,
+      parseVoiceActors,
+      parseProductionTeam,
       addTag,
       removeTag,
       handleBrowseFolder,

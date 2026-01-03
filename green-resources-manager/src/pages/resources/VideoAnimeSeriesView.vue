@@ -74,6 +74,9 @@
       :form-data="showFolderDialog ? newFolder : editFolderForm"
       :actors-input="showFolderDialog ? folderActorsInput : editFolderActorsInput"
       :tags-input="showFolderDialog ? folderTagsInput : editFolderTagsInput"
+      :voice-actors-input="showFolderDialog ? folderVoiceActorsInput : editFolderVoiceActorsInput"
+      :production-team-input="showFolderDialog ? folderProductionTeamInput : editFolderProductionTeamInput"
+      field-mode="anime"
       :get-thumbnail-url="getThumbnailUrl"
       :handle-thumbnail-preview-error="handleThumbnailPreviewError"
       :handle-thumbnail-preview-load="handleThumbnailPreviewLoad"
@@ -84,6 +87,8 @@
       @select-from-covers="showFolderDialog ? selectFromNewFolderCovers() : selectFromFolderCovers()"
       @browse-thumbnail-file="showFolderDialog ? selectFolderThumbnailFile() : selectEditFolderThumbnailFile()"
       @parse-actors="showFolderDialog ? parseFolderActors() : parseEditFolderActors()"
+      @parse-voice-actors="showFolderDialog ? parseFolderVoiceActors() : parseEditFolderVoiceActors()"
+      @parse-production-team="showFolderDialog ? parseFolderProductionTeam() : parseEditFolderProductionTeam()"
       @add-tag="showFolderDialog ? addFolderTag() : addEditFolderTag()"
       @remove-tag="showFolderDialog ? removeFolderTag($event) : removeEditFolderTag($event)"
     />
@@ -146,7 +151,7 @@ import FolderVideosGrid from '../../components/video/FolderVideosGrid.vue'
 import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
 import { unlockAchievement } from '../user/AchievementView.vue'
-import { ref, watch, PropType } from 'vue'
+import { ref, watch, computed, PropType } from 'vue'
 import { PageConfig } from '../../types/page.ts'
 import { usePagination } from '../../composables/usePagination.ts'
 import { useVideoFilter } from '../../composables/video/useVideoFilter.ts'
@@ -196,11 +201,6 @@ export default {
     
     // 创建一个 ref 用于存储筛选后的视频列表（用于分页）
     const filteredVideosRef = ref([])
-    
-    // 监听筛选结果变化，更新 filteredVideosRef
-    watch(videoFilterComposable.filteredVideos, (newValue) => {
-      filteredVideosRef.value = newValue
-    }, { immediate: true })
 
     // 使用分页 composable（番剧列表分页）
     const videoPaginationComposable = usePagination(
@@ -268,6 +268,131 @@ export default {
       }
     }
 
+    // 番剧页专用：声优和制作组筛选状态
+    const selectedVoiceActors = ref<string[]>([])
+    const excludedVoiceActors = ref<string[]>([])
+    const selectedProductionTeams = ref<string[]>([])
+    const excludedProductionTeams = ref<string[]>([])
+
+    // 提取所有声优（带统计）
+    const allVoiceActors = computed(() => {
+      const voiceActorCount: Record<string, number> = {}
+      
+      const allItems = [...videoManagementComposable.videos.value, ...videoFolderComposable.folders.value]
+      allItems.forEach(item => {
+        if (item.voiceActors && Array.isArray(item.voiceActors)) {
+          item.voiceActors.forEach(voiceActor => {
+            voiceActorCount[voiceActor] = (voiceActorCount[voiceActor] || 0) + 1
+          })
+        }
+      })
+      
+      return Object.entries(voiceActorCount)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    })
+
+    // 提取所有制作组（带统计）
+    const allProductionTeams = computed(() => {
+      const productionTeamCount: Record<string, number> = {}
+      
+      const allItems = [...videoManagementComposable.videos.value, ...videoFolderComposable.folders.value]
+      allItems.forEach(item => {
+        if (item.productionTeam && Array.isArray(item.productionTeam)) {
+          item.productionTeam.forEach(team => {
+            productionTeamCount[team] = (productionTeamCount[team] || 0) + 1
+          })
+        }
+      })
+      
+      return Object.entries(productionTeamCount)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    })
+
+    // 重写筛选逻辑，添加声优和制作组筛选
+    const filteredVideosWithAnimeFilters = computed(() => {
+      let filtered = videoFilterComposable.allItems.value.filter(item => {
+        // 使用原有的筛选逻辑
+        const matchesSearch = !videoFilterComposable.searchQuery.value || (
+          item.name.toLowerCase().includes(videoFilterComposable.searchQuery.value.toLowerCase()) ||
+          (item.description && item.description.toLowerCase().includes(videoFilterComposable.searchQuery.value.toLowerCase())) ||
+          (item.tags && item.tags.some(tag => tag.toLowerCase().includes(videoFilterComposable.searchQuery.value.toLowerCase()))) ||
+          (item.voiceActors && item.voiceActors.some(va => va.toLowerCase().includes(videoFilterComposable.searchQuery.value.toLowerCase()))) ||
+          (item.productionTeam && item.productionTeam.some(pt => pt.toLowerCase().includes(videoFilterComposable.searchQuery.value.toLowerCase())))
+        )
+        
+        // 标签筛选
+        const matchesTag = videoFilterComposable.selectedTags.value.length === 0 || (item.tags && videoFilterComposable.selectedTags.value.every(tag => item.tags!.includes(tag)))
+        const notExcludedTag = videoFilterComposable.excludedTags.value.length === 0 || !(item.tags && videoFilterComposable.excludedTags.value.some(tag => item.tags!.includes(tag)))
+        
+        // 声优筛选
+        const matchesVoiceActor = selectedVoiceActors.value.length === 0 || (item.voiceActors && selectedVoiceActors.value.some(va => item.voiceActors!.includes(va)))
+        const notExcludedVoiceActor = excludedVoiceActors.value.length === 0 || !(item.voiceActors && excludedVoiceActors.value.some(va => item.voiceActors!.includes(va)))
+        
+        // 制作组筛选
+        const matchesProductionTeam = selectedProductionTeams.value.length === 0 || (item.productionTeam && selectedProductionTeams.value.some(pt => item.productionTeam!.includes(pt)))
+        const notExcludedProductionTeam = excludedProductionTeams.value.length === 0 || !(item.productionTeam && excludedProductionTeams.value.some(pt => item.productionTeam!.includes(pt)))
+        
+        // 其他筛选
+        let matchesOther = true
+        if (videoFilterComposable.selectedOthers.value.length > 0) {
+          matchesOther = videoFilterComposable.selectedOthers.value.some(other => {
+            if (other === '丢失的资源') {
+              return item.fileExists === false
+            }
+            return false
+          })
+        }
+        const notExcludedOther = videoFilterComposable.excludedOthers.value.length === 0 || 
+          !videoFilterComposable.excludedOthers.value.some(other => {
+            if (other === '丢失的资源') {
+              return item.fileExists === false
+            }
+            return false
+          })
+        
+        return matchesSearch && matchesTag && notExcludedTag && matchesVoiceActor && notExcludedVoiceActor && matchesProductionTeam && notExcludedProductionTeam && matchesOther && notExcludedOther
+      })
+
+      // 排序（使用原有的排序逻辑）
+      filtered.sort((a, b) => {
+        switch (videoFilterComposable.sortBy.value) {
+          case 'name':
+            return a.name.localeCompare(b.name)
+          case 'lastWatched':
+            const aLastWatched = a.lastWatched || a.lastOpened || ''
+            const bLastWatched = b.lastWatched || b.lastOpened || ''
+            if (!aLastWatched && !bLastWatched) return 0
+            if (!aLastWatched) return 1
+            if (!bLastWatched) return -1
+            return new Date(bLastWatched).getTime() - new Date(aLastWatched).getTime()
+          case 'watchCount':
+            const aCount = a.watchCount || a.openCount || 0
+            const bCount = b.watchCount || b.openCount || 0
+            return bCount - aCount
+          case 'added':
+            const aAdded = a.addedDate || ''
+            const bAdded = b.addedDate || ''
+            if (!aAdded && !bAdded) return 0
+            if (!aAdded) return 1
+            if (!bAdded) return -1
+            return new Date(bAdded).getTime() - new Date(aAdded).getTime()
+          default:
+            return 0
+        }
+      })
+
+      return filtered
+    })
+
+    // 监听新的筛选结果，更新 filteredVideosRef
+    watch(filteredVideosWithAnimeFilters, (newValue) => {
+      filteredVideosRef.value = newValue
+    }, { immediate: true })
+
+    // 注意：不需要额外的 watch，因为 computed 属性会自动响应依赖变化
+
     return {
       filteredVideosRef,
       showPathUpdateDialog,
@@ -291,7 +416,15 @@ export default {
       ...videoPlaybackComposable,
       // 统一的资源更新函数
       updateVideoResource,
-      selectedVideoRef
+      selectedVideoRef,
+      // 声优和制作组筛选相关
+      selectedVoiceActors,
+      excludedVoiceActors,
+      selectedProductionTeams,
+      excludedProductionTeams,
+      allVoiceActors,
+      allProductionTeams,
+      filteredVideosWithAnimeFilters
     }
   },
   data() {
@@ -324,11 +457,15 @@ export default {
         tags: [],
         actors: [],
         series: '',
+        voiceActors: [],
+        productionTeam: [],
         folderPath: '',
         thumbnail: ''
       },
       folderActorsInput: '',
       folderTagsInput: '',
+      folderVoiceActorsInput: '',
+      folderProductionTeamInput: '',
       // 编辑相关
       showEditDialog: false,
       editVideoForm: {
@@ -353,11 +490,17 @@ export default {
         tags: [],
         actors: [],
         series: '',
+        voiceActors: [],
+        productionTeam: [],
         folderPath: '',
         thumbnail: ''
       },
       editFolderActorsInput: '',
       editFolderTagsInput: '',
+      editFolderVoiceActorsInput: '',
+      editFolderProductionTeamInput: '',
+      // 防抖标志，避免 updateFilterData 无限循环
+      isUpdatingFilterData: false,
       // thumbnailUrlCache 已移至 useVideoThumbnail composable
       // 排序选项
       videoSortOptions: [
@@ -414,7 +557,7 @@ export default {
       return (this as any).allItems || []
     },
     // allItems, filteredVideos 已移至 useVideoFilter composable
-    // 使用 composable 的 filteredVideos
+    // 使用新的筛选结果（包含声优和制作组筛选）
     filteredVideos() {
       return this.filteredVideosRef || []
     },
@@ -434,8 +577,16 @@ export default {
       if (!this.selectedVideo) return []
       
       const videoCount = this.selectedVideo.folderVideos ? this.selectedVideo.folderVideos.length : 0
+      const voiceActors = this.selectedVideo.voiceActors && Array.isArray(this.selectedVideo.voiceActors) && this.selectedVideo.voiceActors.length > 0
+        ? this.selectedVideo.voiceActors.join('、')
+        : '未设置'
+      const productionTeam = this.selectedVideo.productionTeam && Array.isArray(this.selectedVideo.productionTeam) && this.selectedVideo.productionTeam.length > 0
+        ? this.selectedVideo.productionTeam.join('、')
+        : '未设置'
+      
       return [
-        { label: '系列', value: this.selectedVideo.series || '未知' },
+        { label: '声优', value: voiceActors },
+        { label: '制作组', value: productionTeam },
         { label: '番剧数量', value: `${videoCount} 个` },
         { label: '文件夹路径', value: this.getFolderPath(this.selectedVideo) },
         { label: '添加时间', value: this.formatAddedDate(this.selectedVideo.addedDate) }
@@ -893,16 +1044,34 @@ export default {
         tags: [],
         actors: [],
         series: '',
+        voiceActors: [],
+        productionTeam: [],
         folderPath: '',
         thumbnail: ''
       }
       this.folderActorsInput = ''
       this.folderTagsInput = ''
+      this.folderVoiceActorsInput = ''
+      this.folderProductionTeamInput = ''
     },
 
     parseFolderActors() {
       if (this.folderActorsInput.trim()) {
         this.newFolder.actors = this.folderActorsInput.split(',').map(actor => actor.trim()).filter(actor => actor)
+      }
+    },
+    parseFolderVoiceActors() {
+      if (this.folderVoiceActorsInput.trim()) {
+        this.newFolder.voiceActors = this.folderVoiceActorsInput.split(',').map(actor => actor.trim()).filter(actor => actor)
+      } else {
+        this.newFolder.voiceActors = []
+      }
+    },
+    parseFolderProductionTeam() {
+      if (this.folderProductionTeamInput.trim()) {
+        this.newFolder.productionTeam = this.folderProductionTeamInput.split(',').map(team => team.trim()).filter(team => team)
+      } else {
+        this.newFolder.productionTeam = []
       }
     },
 
@@ -1025,6 +1194,8 @@ export default {
       this.parseFolderActors()
 
       try {
+        this.parseFolderVoiceActors()
+        this.parseFolderProductionTeam()
         const folder = {
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           name: this.newFolder.name,
@@ -1032,6 +1203,8 @@ export default {
           tags: this.newFolder.tags,
           actors: this.newFolder.actors,
           series: this.newFolder.series,
+          voiceActors: this.newFolder.voiceActors || [],
+          productionTeam: this.newFolder.productionTeam || [],
           folderPath: this.newFolder.folderPath,
           thumbnail: this.newFolder.thumbnail,
           addedDate: new Date().toISOString()
@@ -1541,11 +1714,15 @@ export default {
         tags: Array.isArray(folder.tags) ? [...folder.tags] : [],
         actors: Array.isArray(folder.actors) ? [...folder.actors] : [],
         series: folder.series || '',
+        voiceActors: Array.isArray(folder.voiceActors) ? [...folder.voiceActors] : [],
+        productionTeam: Array.isArray(folder.productionTeam) ? [...folder.productionTeam] : [],
         folderPath: folder.folderPath || '',
         thumbnail: folder.thumbnail || ''
       }
       this.editFolderActorsInput = (this.editFolderForm.actors || []).join(', ')
       this.editFolderTagsInput = ''
+      this.editFolderVoiceActorsInput = (this.editFolderForm.voiceActors || []).join(', ')
+      this.editFolderProductionTeamInput = (this.editFolderForm.productionTeam || []).join(', ')
       this.showEditFolderDialog = true
     },
 
@@ -1558,6 +1735,20 @@ export default {
         this.editFolderForm.actors = this.editFolderActorsInput.split(',').map(s => s.trim()).filter(Boolean)
       } else {
         this.editFolderForm.actors = []
+      }
+    },
+    parseEditFolderVoiceActors() {
+      if (this.editFolderVoiceActorsInput && this.editFolderVoiceActorsInput.trim()) {
+        this.editFolderForm.voiceActors = this.editFolderVoiceActorsInput.split(',').map(s => s.trim()).filter(Boolean)
+      } else {
+        this.editFolderForm.voiceActors = []
+      }
+    },
+    parseEditFolderProductionTeam() {
+      if (this.editFolderProductionTeamInput && this.editFolderProductionTeamInput.trim()) {
+        this.editFolderForm.productionTeam = this.editFolderProductionTeamInput.split(',').map(s => s.trim()).filter(Boolean)
+      } else {
+        this.editFolderForm.productionTeam = []
       }
     },
 
@@ -1728,12 +1919,16 @@ export default {
         // 如果没有传入 folderData，使用 editFolderForm
         const data = folderData || this.editFolderForm
         this.parseEditFolderActors()
+        this.parseEditFolderVoiceActors()
+        this.parseEditFolderProductionTeam()
         const payload = {
           name: (data.name || '').trim(),
           description: (data.description || '').trim(),
           tags: data.tags || this.editFolderForm.tags,
           actors: data.actors || this.editFolderForm.actors,
           series: (data.series || '').trim(),
+          voiceActors: data.voiceActors || this.editFolderForm.voiceActors || [],
+          productionTeam: data.productionTeam || this.editFolderForm.productionTeam || [],
           folderPath: (data.folderPath || '').trim(),
           thumbnail: (data.thumbnail || '').trim()
         }
@@ -2160,10 +2355,10 @@ export default {
         case 'filter-select':
           if (data.filterKey === 'tags') {
             this.filterByTag(data.itemName)
-          } else if (data.filterKey === 'actors') {
-            this.filterByActor(data.itemName)
-          } else if (data.filterKey === 'series') {
-            this.filterBySeries(data.itemName)
+          } else if (data.filterKey === 'voiceActors') {
+            this.filterByVoiceActor(data.itemName)
+          } else if (data.filterKey === 'productionTeams') {
+            this.filterByProductionTeam(data.itemName)
           } else if (data.filterKey === 'others') {
             this.filterByOther(data.itemName)
           }
@@ -2171,10 +2366,10 @@ export default {
         case 'filter-exclude':
           if (data.filterKey === 'tags') {
             this.excludeByTag(data.itemName)
-          } else if (data.filterKey === 'actors') {
-            this.excludeByActor(data.itemName)
-          } else if (data.filterKey === 'series') {
-            this.excludeBySeries(data.itemName)
+          } else if (data.filterKey === 'voiceActors') {
+            this.excludeByVoiceActor(data.itemName)
+          } else if (data.filterKey === 'productionTeams') {
+            this.excludeByProductionTeam(data.itemName)
           } else if (data.filterKey === 'others') {
             this.excludeByOther(data.itemName)
           }
@@ -2182,10 +2377,10 @@ export default {
         case 'filter-clear':
           if (data === 'tags') {
             this.clearTagFilter()
-          } else if (data === 'actors') {
-            this.clearActorFilter()
-          } else if (data === 'series') {
-            this.clearSeriesFilter()
+          } else if (data === 'voiceActors') {
+            this.clearVoiceActorFilter()
+          } else if (data === 'productionTeams') {
+            this.clearProductionTeamFilter()
           } else if (data === 'others') {
             this.clearOtherFilter()
           }
@@ -2195,11 +2390,123 @@ export default {
       this.updateFilterData()
     },
     
-    // 更新筛选器数据到 App.vue（使用 composable 的 getFilterData）
-    updateFilterData() {
-      if (this.getFilterData) {
-        this.$emit('filter-data-updated', this.getFilterData())
+    // 声优筛选方法
+    filterByVoiceActor(voiceActor: string) {
+      if (!this.selectedVoiceActors.includes(voiceActor)) {
+        this.selectedVoiceActors.push(voiceActor)
+        // 如果该声优在排除列表中，移除它
+        const excludeIndex = this.excludedVoiceActors.indexOf(voiceActor)
+        if (excludeIndex > -1) {
+          this.excludedVoiceActors.splice(excludeIndex, 1)
+        }
       }
+    },
+    excludeByVoiceActor(voiceActor: string) {
+      if (!this.excludedVoiceActors.includes(voiceActor)) {
+        this.excludedVoiceActors.push(voiceActor)
+        // 如果该声优在选中列表中，移除它
+        const selectIndex = this.selectedVoiceActors.indexOf(voiceActor)
+        if (selectIndex > -1) {
+          this.selectedVoiceActors.splice(selectIndex, 1)
+        }
+      }
+    },
+    clearVoiceActorFilter() {
+      this.selectedVoiceActors = []
+      this.excludedVoiceActors = []
+    },
+    
+    // 制作组筛选方法
+    filterByProductionTeam(productionTeam: string) {
+      if (!this.selectedProductionTeams.includes(productionTeam)) {
+        this.selectedProductionTeams.push(productionTeam)
+        // 如果该制作组在排除列表中，移除它
+        const excludeIndex = this.excludedProductionTeams.indexOf(productionTeam)
+        if (excludeIndex > -1) {
+          this.excludedProductionTeams.splice(excludeIndex, 1)
+        }
+      }
+    },
+    excludeByProductionTeam(productionTeam: string) {
+      if (!this.excludedProductionTeams.includes(productionTeam)) {
+        this.excludedProductionTeams.push(productionTeam)
+        // 如果该制作组在选中列表中，移除它
+        const selectIndex = this.selectedProductionTeams.indexOf(productionTeam)
+        if (selectIndex > -1) {
+          this.selectedProductionTeams.splice(selectIndex, 1)
+        }
+      }
+    },
+    clearProductionTeamFilter() {
+      this.selectedProductionTeams = []
+      this.excludedProductionTeams = []
+    },
+    
+    // 更新筛选器数据到 App.vue（重写以返回番剧页专用的筛选器数据）
+    updateFilterData() {
+      // 防止重复调用
+      if (this.isUpdatingFilterData) {
+        return
+      }
+      
+      this.isUpdatingFilterData = true
+      
+      // 使用 setTimeout 延迟执行，避免响应式循环
+      setTimeout(() => {
+        try {
+          // 获取完整的筛选器数据
+          const fullFilterData = (this as any).getFilterData ? (this as any).getFilterData() : { filters: [] }
+          
+          // 获取标签筛选器
+          const tagsFilter = fullFilterData.filters?.find((f: any) => f.key === 'tags')
+          
+          // 获取其他筛选器
+          const othersFilter = fullFilterData.filters?.find((f: any) => f.key === 'others')
+          
+          // 获取声优和制作组数据（直接访问，避免响应式触发）
+          const allVoiceActors = (this as any).allVoiceActors
+          const selectedVoiceActors = (this as any).selectedVoiceActors
+          const excludedVoiceActors = (this as any).excludedVoiceActors
+          const allProductionTeams = (this as any).allProductionTeams
+          const selectedProductionTeams = (this as any).selectedProductionTeams
+          const excludedProductionTeams = (this as any).excludedProductionTeams
+          
+          // 构建番剧页专用的筛选器数据（移除演员和系列，添加声优和制作组）
+          const animeFilterData = {
+            filters: [
+              // 保留标签筛选
+              tagsFilter,
+              // 添加声优筛选
+              {
+                key: 'voiceActors',
+                title: '声优筛选',
+                items: Array.isArray(allVoiceActors) ? allVoiceActors : [],
+                selected: Array.isArray(selectedVoiceActors) ? selectedVoiceActors : [],
+                excluded: Array.isArray(excludedVoiceActors) ? excludedVoiceActors : []
+              },
+              // 添加制作组筛选
+              {
+                key: 'productionTeams',
+                title: '制作组筛选',
+                items: Array.isArray(allProductionTeams) ? allProductionTeams : [],
+                selected: Array.isArray(selectedProductionTeams) ? selectedProductionTeams : [],
+                excluded: Array.isArray(excludedProductionTeams) ? excludedProductionTeams : []
+              },
+              // 保留其他筛选
+              othersFilter
+            ].filter(Boolean) // 移除 undefined 项
+          }
+          
+          this.$emit('filter-data-updated', animeFilterData)
+        } catch (error) {
+          console.error('更新筛选器数据失败:', error)
+          // 如果出错，发送空的筛选器数据，避免无限加载
+          this.$emit('filter-data-updated', { filters: [] })
+        } finally {
+          // 重置标志
+          this.isUpdatingFilterData = false
+        }
+      }, 0)
     },
     async handleSortChanged({ pageType, sortBy }) {
       try {

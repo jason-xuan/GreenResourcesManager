@@ -25,6 +25,25 @@
           placeholder="输入发行商名称" 
         />
         <FormField 
+          label="游戏引擎" 
+          type="select" 
+          v-model="formData.engine" 
+          :options="engineOptions"
+          placeholder="请选择游戏引擎" 
+        />
+        <div class="engine-auto-detect">
+          <button 
+            type="button" 
+            class="btn-auto-detect" 
+            @click="handleAutoDetectEngine"
+            :disabled="!formData.executablePath || !isElectronEnvironment"
+            :title="!formData.executablePath ? '请先选择游戏文件' : ''"
+          >
+            <span class="btn-icon">🔍</span>
+            自动识别引擎
+          </button>
+        </div>
+        <FormField 
           label="游戏简介" 
           type="textarea" 
           v-model="formData.description" 
@@ -90,6 +109,7 @@
 import FormField from '../FormField.vue'
 import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
+import { detectGameEngine } from '../../utils/GameEngineDetector.ts'
 
 export default {
   name: 'EditGameDialog',
@@ -118,12 +138,40 @@ export default {
         name: '',
         developer: '',
         publisher: '',
+        engine: '',
         description: '',
         tags: [],
         executablePath: '',
         imagePath: ''
       },
-      tagInput: ''
+      tagInput: '',
+      engineOptions: [
+        { value: 'Unity', label: 'Unity' },
+        { value: 'Unreal Engine', label: 'Unreal Engine' },
+        { value: 'Godot', label: 'Godot' },
+        { value: 'GameMaker Studio', label: 'GameMaker Studio' },
+        { value: 'RPG Maker VX Ace', label: 'RPG Maker VX Ace' },
+        { value: 'RPG Maker MV', label: 'RPG Maker MV' },
+        { value: 'RPG Maker MZ', label: 'RPG Maker MZ' },
+        { value: 'CryEngine', label: 'CryEngine' },
+        { value: 'Source Engine', label: 'Source Engine' },
+        { value: 'Construct', label: 'Construct' },
+        { value: 'Clickteam Fusion', label: 'Clickteam Fusion' },
+        { value: "Ren'Py", label: "Ren'Py" },
+        { value: 'TyranoBuilder', label: 'TyranoBuilder' },
+        { value: 'Twine', label: 'Twine' },
+        { value: 'Scratch', label: 'Scratch' },
+        { value: 'Cocos2d', label: 'Cocos2d' },
+        { value: 'Defold', label: 'Defold' },
+        { value: 'Phaser', label: 'Phaser' },
+        { value: 'Love2D', label: 'Love2D' },
+        { value: 'MonoGame', label: 'MonoGame' },
+        { value: 'XNA', label: 'XNA' },
+        { value: 'Flash/ActionScript', label: 'Flash/ActionScript' },
+        { value: 'Java', label: 'Java' },
+        { value: 'Python/Pygame', label: 'Python/Pygame' },
+        { value: '其他', label: '其他' }
+      ]
     }
   },
   watch: {
@@ -149,6 +197,7 @@ export default {
         name: this.game.name || '',
         developer: this.game.developer || '',
         publisher: this.game.publisher || '',
+        engine: this.game.engine || '',
         description: this.game.description || '',
         tags: Array.isArray(this.game.tags) ? [...this.game.tags] : [],
         executablePath: this.game.executablePath || '',
@@ -294,12 +343,41 @@ export default {
     handleClearCover() {
       this.formData.imagePath = ''
     },
+    async handleAutoDetectEngine() {
+      if (!this.formData.executablePath) {
+        notify.toast('warning', '无法识别', '请先选择游戏文件')
+        return
+      }
+
+      if (!this.isElectronEnvironment || !window.electronAPI || !window.electronAPI.listFiles) {
+        notify.toast('warning', '无法识别', '当前环境不支持自动识别功能')
+        return
+      }
+
+      try {
+        notify.toast('info', '正在识别', '正在分析游戏目录结构...')
+        
+        const gamePath = this.formData.executablePath.trim()
+        const detectedEngine = await detectGameEngine(gamePath)
+        
+        if (detectedEngine) {
+          this.formData.engine = detectedEngine
+          notify.toast('success', '识别成功', `已识别为 ${detectedEngine}`)
+        } else {
+          notify.toast('warning', '识别失败', '无法自动识别游戏引擎，请手动选择')
+        }
+      } catch (error) {
+        console.error('自动识别引擎失败:', error)
+        notify.toast('error', '识别失败', `识别过程中发生错误: ${error.message}`)
+      }
+    },
     handleConfirm() {
       const updatedGame = {
         id: this.formData.id,
         name: this.formData.name.trim() || this.game.name,
         developer: (this.formData.developer || '').trim(),
         publisher: (this.formData.publisher || '').trim(),
+        engine: (this.formData.engine || '').trim(),
         description: (this.formData.description || '').trim(),
         tags: [...this.formData.tags],
         executablePath: this.formData.executablePath.trim() || this.game.executablePath,
@@ -512,6 +590,41 @@ export default {
 
 .btn-confirm:hover:not(:disabled) {
   background: var(--accent-hover);
+}
+
+.engine-auto-detect {
+  margin-bottom: 1rem;
+}
+
+.btn-auto-detect {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-auto-detect:hover:not(:disabled) {
+  background: var(--bg-secondary);
+  border-color: var(--accent-color);
+}
+
+.btn-auto-detect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-auto-detect .btn-icon {
+  font-size: 1rem;
 }
 
 /* 响应式设计 */

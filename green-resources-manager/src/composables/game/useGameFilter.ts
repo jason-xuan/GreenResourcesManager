@@ -12,6 +12,8 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
   const excludedDevelopers = ref<string[]>([])
   const selectedPublishers = ref<string[]>([])
   const excludedPublishers = ref<string[]>([])
+  const selectedEngines = ref<string[]>([])
+  const excludedEngines = ref<string[]>([])
   const selectedOthers = ref<string[]>([])
   const excludedOthers = ref<string[]>([])
 
@@ -19,15 +21,17 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
   const allTags = ref<FilterItem[]>([])
   const allDevelopers = ref<FilterItem[]>([])
   const allPublishers = ref<FilterItem[]>([])
+  const allEngines = ref<FilterItem[]>([])
   const allOthers = ref<FilterItem[]>([])
 
   /**
-   * 从所有游戏中提取标签、开发商和发行商
+   * 从所有游戏中提取标签、开发商、发行商和引擎
    */
   function extractAllTags() {
     const tagCount: Record<string, number> = {}
     const developerCount: Record<string, number> = {}
     const publisherCount: Record<string, number> = {}
+    const engineCount: Record<string, number> = {}
     let missingResourcesCount = 0
 
     games.value.forEach(game => {
@@ -46,6 +50,11 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
       // 提取发行商
       if (game.publisher) {
         publisherCount[game.publisher] = (publisherCount[game.publisher] || 0) + 1
+      }
+
+      // 提取引擎
+      if (game.engine) {
+        engineCount[game.engine] = (engineCount[game.engine] || 0) + 1
       }
 
       // 统计丢失的资源
@@ -67,6 +76,10 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => a.name.localeCompare(b.name))
 
+    allEngines.value = Object.entries(engineCount)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
     // 其他筛选选项
     allOthers.value = []
     if (missingResourcesCount > 0) {
@@ -85,7 +98,8 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
       // 搜索筛选
       const matchesSearch = game.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
         (game.developer && game.developer.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
-        (game.publisher && game.publisher.toLowerCase().includes(searchQuery.value.toLowerCase()))
+        (game.publisher && game.publisher.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
+        (game.engine && game.engine.toLowerCase().includes(searchQuery.value.toLowerCase()))
 
       // 标签筛选 - 必须包含所有选中的标签（AND逻辑）
       const matchesTag = selectedTags.value.length === 0 || 
@@ -105,6 +119,12 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
       const notExcludedPublisher = excludedPublishers.value.length === 0 || 
         !excludedPublishers.value.includes(game.publisher || '')
 
+      // 引擎筛选 - 引擎是"或"逻辑（一个游戏只能有一个引擎）
+      const matchesEngine = selectedEngines.value.length === 0 || 
+        selectedEngines.value.includes(game.engine || '')
+      const notExcludedEngine = excludedEngines.value.length === 0 || 
+        !excludedEngines.value.includes(game.engine || '')
+
       // 其他筛选
       let matchesOther = true
       if (selectedOthers.value.length > 0) {
@@ -123,7 +143,7 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
           return false
         })
 
-      return matchesSearch && matchesTag && notExcludedTag && matchesDeveloper && notExcludedDeveloper && matchesPublisher && notExcludedPublisher && matchesOther && notExcludedOther
+      return matchesSearch && matchesTag && notExcludedTag && matchesDeveloper && notExcludedDeveloper && matchesPublisher && notExcludedPublisher && matchesEngine && notExcludedEngine && matchesOther && notExcludedOther
     })
 
     // 排序
@@ -276,6 +296,48 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
   }
 
   /**
+   * 引擎筛选方法
+   */
+  function filterByEngine(engineName: string) {
+    if (selectedEngines.value.includes(engineName)) {
+      // 如果当前是选中状态，则取消选择
+      selectedEngines.value = selectedEngines.value.filter(eng => eng !== engineName)
+    } else if (excludedEngines.value.includes(engineName)) {
+      // 如果当前是排除状态，则切换为选中状态
+      excludedEngines.value = excludedEngines.value.filter(eng => eng !== engineName)
+      selectedEngines.value = [...selectedEngines.value, engineName]
+    } else {
+      // 否则直接设置为选中状态
+      selectedEngines.value = [...selectedEngines.value, engineName]
+    }
+  }
+
+  /**
+   * 排除引擎
+   */
+  function excludeByEngine(engineName: string) {
+    if (excludedEngines.value.includes(engineName)) {
+      // 如果已经是排除状态，则取消排除
+      excludedEngines.value = excludedEngines.value.filter(eng => eng !== engineName)
+    } else if (selectedEngines.value.includes(engineName)) {
+      // 如果当前是选中状态，则切换为排除状态
+      selectedEngines.value = selectedEngines.value.filter(eng => eng !== engineName)
+      excludedEngines.value = [...excludedEngines.value, engineName]
+    } else {
+      // 否则直接设置为排除状态
+      excludedEngines.value = [...excludedEngines.value, engineName]
+    }
+  }
+
+  /**
+   * 清除引擎筛选
+   */
+  function clearEngineFilter() {
+    selectedEngines.value = []
+    excludedEngines.value = []
+  }
+
+  /**
    * 其他筛选方法
    */
   function filterByOther(otherName: string) {
@@ -345,6 +407,13 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
           excluded: excludedPublishers.value
         },
         {
+          key: 'engines',
+          title: '引擎筛选',
+          items: allEngines.value,
+          selected: selectedEngines.value,
+          excluded: excludedEngines.value
+        },
+        {
           key: 'others',
           title: '其他筛选',
           items: allOthers.value,
@@ -363,11 +432,14 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
     excludedDevelopers,
     selectedPublishers,
     excludedPublishers,
+    selectedEngines,
+    excludedEngines,
     selectedOthers,
     excludedOthers,
     allTags,
     allDevelopers,
     allPublishers,
+    allEngines,
     allOthers,
     
     // 计算属性
@@ -384,6 +456,9 @@ export function useGameFilter(games: Ref<Game[]>, searchQuery: Ref<string>, sort
     filterByPublisher,
     excludeByPublisher,
     clearPublisherFilter,
+    filterByEngine,
+    excludeByEngine,
+    clearEngineFilter,
     filterByOther,
     excludeByOther,
     clearOtherFilter,

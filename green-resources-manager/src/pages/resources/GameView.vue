@@ -640,6 +640,7 @@ export default {
           name: updatedGame.name,
           developer: updatedGame.developer,
           publisher: updatedGame.publisher,
+          engine: updatedGame.engine,
           description: updatedGame.description,
           tags: updatedGame.tags,
           executablePath: updatedGame.executablePath,
@@ -792,6 +793,18 @@ export default {
       this.clearPublisherFilter()
       this.updateFilterData()
     },
+    handleFilterByEngine(engineName: string) {
+      this.filterByEngine(engineName)
+      this.updateFilterData()
+    },
+    handleExcludeByEngine(engineName: string) {
+      this.excludeByEngine(engineName)
+      this.updateFilterData()
+    },
+    handleClearEngineFilter() {
+      this.clearEngineFilter()
+      this.updateFilterData()
+    },
     handleFilterByOther(otherName: string) {
       this.filterByOther(otherName)
       this.updateFilterData()
@@ -815,6 +828,8 @@ export default {
             this.handleFilterByDeveloper(data.itemName)
           } else if (data.filterKey === 'publishers') {
             this.handleFilterByPublisher(data.itemName)
+          } else if (data.filterKey === 'engines') {
+            this.handleFilterByEngine(data.itemName)
           } else if (data.filterKey === 'others') {
             this.handleFilterByOther(data.itemName)
           }
@@ -826,6 +841,8 @@ export default {
             this.handleExcludeByDeveloper(data.itemName)
           } else if (data.filterKey === 'publishers') {
             this.handleExcludeByPublisher(data.itemName)
+          } else if (data.filterKey === 'engines') {
+            this.handleExcludeByEngine(data.itemName)
           } else if (data.filterKey === 'others') {
             this.handleExcludeByOther(data.itemName)
           }
@@ -837,6 +854,8 @@ export default {
             this.handleClearDeveloperFilter()
           } else if (data === 'publishers') {
             this.handleClearPublisherFilter()
+          } else if (data === 'engines') {
+            this.handleClearEngineFilter()
           } else if (data === 'others') {
             this.handleClearOtherFilter()
           }

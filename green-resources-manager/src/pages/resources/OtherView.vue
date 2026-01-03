@@ -2238,7 +2238,13 @@ export default {
     // 更新筛选器数据到 App.vue（使用 composable 的 getFilterData）
     updateFilterData() {
       if ((this as any).getFilterData) {
-        this.$emit('filter-data-updated', (this as any).getFilterData())
+        // 获取完整的筛选器数据
+        const fullFilterData = (this as any).getFilterData()
+        // 只保留标签筛选器
+        const filteredData = {
+          filters: fullFilterData.filters.filter((filter: any) => filter.key === 'tags')
+        }
+        this.$emit('filter-data-updated', filteredData)
       }
     },
     async handleSortChanged({ pageType, sortBy }) {

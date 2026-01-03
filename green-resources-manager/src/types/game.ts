@@ -10,6 +10,7 @@ export interface Game {
   name: string
   developer?: string
   publisher?: string
+  engine?: string
   description?: string
   tags?: string[]
   executablePath?: string
@@ -31,6 +32,7 @@ export interface GameForm {
   name: string
   developer?: string
   publisher?: string
+  engine?: string
   description?: string
   tags?: string[]
   executablePath?: string
@@ -70,6 +72,8 @@ export interface GameFilterOptions {
   excludedDevelopers: string[]
   selectedPublishers: string[]
   excludedPublishers: string[]
+  selectedEngines: string[]
+  excludedEngines: string[]
   selectedOthers: string[]
   excludedOthers: string[]
 }
@@ -115,6 +119,7 @@ export interface GameFilterData {
   allTags: FilterItem[]
   allDevelopers: FilterItem[]
   allPublishers: FilterItem[]
+  allEngines: FilterItem[]
   allOthers: FilterItem[]
   selectedTags: string[]
   excludedTags: string[]
@@ -122,6 +127,8 @@ export interface GameFilterData {
   excludedDevelopers: string[]
   selectedPublishers: string[]
   excludedPublishers: string[]
+  selectedEngines: string[]
+  excludedEngines: string[]
   selectedOthers: string[]
   excludedOthers: string[]
 }

@@ -37,6 +37,8 @@ export interface VideoFolder {
   tags?: string[]
   actors?: string[]
   series?: string
+  voiceActors?: string[] // 声优
+  productionTeam?: string[] // 制作组
   folderPath?: string
   thumbnail?: string
   addedDate?: string
@@ -81,6 +83,8 @@ export interface FolderForm {
   tags?: string[]
   actors?: string[]
   series?: string
+  voiceActors?: string[] // 声优
+  productionTeam?: string[] // 制作组
   folderPath?: string
   thumbnail?: string
 }

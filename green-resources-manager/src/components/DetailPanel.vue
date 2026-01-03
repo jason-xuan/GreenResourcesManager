@@ -84,6 +84,11 @@
             {{ item.url }}
           </p>
           
+          <!-- 游戏引擎信息（仅游戏类型显示） -->
+          <p class="detail-engine" v-if="type === 'game' && item.engine">
+            <span class="engine-label">引擎：</span>{{ item.engine }}
+          </p>
+          
           <!-- 描述信息 -->
           <div class="detail-description" v-if="item.description">
             <h4 class="description-title">{{ descriptionTitle }}</h4>
@@ -745,6 +750,18 @@ export default {
   margin: 0 0 15px 0;
   font-style: italic;
   transition: color 0.3s ease;
+}
+
+.detail-engine {
+  color: var(--text-tertiary);
+  font-size: 0.95rem;
+  margin: 0 0 15px 0;
+  transition: color 0.3s ease;
+}
+
+.detail-engine .engine-label {
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 .detail-folder {

@@ -39,8 +39,6 @@
             v-model:tagInput="tagInput"
             @add-tag="handleAddTag"
             @remove-tag="handleRemoveTag"
-            @tag-input-focus="handleTagInputFocus"
-            @tag-input-blur="handleTagInputBlur"
           />
           <FormField
             label="小说文件"
@@ -64,20 +62,12 @@
         </div>
       </div>
       <!-- Tag 选择面板 -->
-      <div 
-        v-if="showTagPanel" 
-        class="tag-panel" 
-        @mousedown.stop
-        @mouseenter="handleTagPanelMouseEnter"
-        @mouseleave="handleTagPanelMouseLeave"
-      >
-        <div class="tag-panel-header">
-          <h4>Tag选择面板</h4>
-        </div>
-        <div class="tag-panel-body">
-          <!-- 面板内容将在后续实现 -->
-        </div>
-      </div>
+      <TagSelectionPanel
+        :visible="visible"
+        :current-tags="formData.tags"
+        :available-tags="availableTags"
+        @select-tag="handleSelectTag"
+      />
     </div>
   </div>
 </template>
@@ -98,6 +88,10 @@ export default {
     isElectronEnvironment: {
       type: Boolean,
       default: false
+    },
+    availableTags: {
+      type: Array as () => (string | { name: string; count?: number })[],
+      default: () => []
     }
   },
   emits: ['close', 'confirm', 'browse-novel-file', 'browse-cover-image'],
@@ -112,10 +106,7 @@ export default {
         filePath: '',
         coverImage: ''
       },
-      tagInput: '',
-      showTagPanel: false,
-      tagPanelBlurTimer: null as ReturnType<typeof setTimeout> | null,
-      isTagPanelHovered: false
+      tagInput: ''
     }
   },
   computed: {
@@ -167,32 +158,17 @@ export default {
     handleRemoveTag(index: number) {
       this.formData.tags.splice(index, 1)
     },
-    handleTagInputFocus() {
-      if (this.tagPanelBlurTimer) {
-        clearTimeout(this.tagPanelBlurTimer)
-        this.tagPanelBlurTimer = null
+    handleSelectTag(tag: string) {
+      if (!tag) return
+      
+      const index = this.formData.tags.indexOf(tag)
+      if (index > -1) {
+        // 如果标签已存在，则移除
+        this.formData.tags.splice(index, 1)
+      } else {
+        // 如果标签不存在，则添加
+        this.formData.tags.push(tag)
       }
-      this.showTagPanel = true
-    },
-    handleTagInputBlur() {
-      this.tagPanelBlurTimer = setTimeout(() => {
-        if (!this.isTagPanelHovered) {
-          this.showTagPanel = false
-        }
-      }, 200)
-    },
-    handleTagPanelMouseEnter() {
-      this.isTagPanelHovered = true
-      if (this.tagPanelBlurTimer) {
-        clearTimeout(this.tagPanelBlurTimer)
-        this.tagPanelBlurTimer = null
-      }
-    },
-    handleTagPanelMouseLeave() {
-      this.isTagPanelHovered = false
-      this.tagPanelBlurTimer = setTimeout(() => {
-        this.showTagPanel = false
-      }, 200)
     },
     handleConfirm() {
       this.$emit('confirm', { ...this.formData })

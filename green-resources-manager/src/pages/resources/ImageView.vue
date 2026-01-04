@@ -54,6 +54,7 @@
       :formData="newAlbum"
       :cover="newAlbumCover"
       :tagInput="tagInput"
+      :available-tags="allTags"
       :resolveCoverImage="resolveCoverImage"
       :getImageFileName="getImageFileName"
       :handleImageError="handleImageError"
@@ -107,6 +108,7 @@
       :formData="editAlbumForm"
       :cover="editAlbumCover"
       :tagInput="editTagInput"
+      :available-tags="allTags"
       :resolveCoverImage="resolveCoverImage"
       :getImageFileName="getImageFileName"
       :handleImageError="handleImageError"
@@ -337,6 +339,7 @@ export default {
       removeAlbumById: removeAlbum,
       // 筛选相关
       ...imageFilterComposable,
+      allTags: imageFilterComposable.allTags,
       // 分页相关
       ...albumPaginationComposable,
       // 拖拽相关（排除 handleDrop，使用重命名版本）

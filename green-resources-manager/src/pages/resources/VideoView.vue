@@ -55,6 +55,7 @@
       :form-data="showAddDialog ? newVideoForm : editVideoForm"
       :actors-input="showAddDialog ? videoActorsInput : editActorsInput"
       :tags-input="showAddDialog ? videoTagsInput : editTagsInput"
+      :available-tags="allTags"
       :get-thumbnail-url="getThumbnailUrl"
       :handle-thumbnail-preview-error="handleThumbnailPreviewError"
       :handle-thumbnail-preview-load="handleThumbnailPreviewLoad"
@@ -79,6 +80,7 @@
       :form-data="showFolderDialog ? newFolder : editFolderForm"
       :actors-input="showFolderDialog ? folderActorsInput : editFolderActorsInput"
       :tags-input="showFolderDialog ? folderTagsInput : editFolderTagsInput"
+      :available-tags="allTags"
       :get-thumbnail-url="getThumbnailUrl"
       :handle-thumbnail-preview-error="handleThumbnailPreviewError"
       :handle-thumbnail-preview-load="handleThumbnailPreviewLoad"
@@ -298,6 +300,7 @@ export default {
       deleteFolderFromManager,
       // 筛选相关
       ...videoFilterComposable,
+      allTags: videoFilterComposable.allTags,
       // 分页相关
       ...videoPaginationComposable,
       // 拖拽相关

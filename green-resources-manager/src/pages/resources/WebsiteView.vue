@@ -76,6 +76,7 @@
     <EditWebsiteDialog
       :visible="showEditDialog"
       :website="editWebsiteData"
+      :available-tags="allTags"
       @close="closeEditDialog"
       @confirm="handleEditWebsiteConfirm"
     />

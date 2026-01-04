@@ -24,27 +24,29 @@
       />
 
 
-      <!-- 添加游戏对话框 -->
-      <AddGameDialog 
+      <!-- 添加软件对话框 -->
+      <AddSoftwareDialog 
         :visible="showAddDialog" 
         :is-electron-environment="isElectronEnvironment"
+        :available-tags="allTags"
         @close="closeAddGameDialog"
         @confirm="handleAddGameConfirm"
       />
 
-      <!-- 编辑游戏对话框 -->
-      <EditGameDialog 
+      <!-- 编辑软件对话框 -->
+      <EditSoftwareDialog 
         :visible="showEditDialog" 
-        :game="currentGame"
+        :software="currentGame"
         :is-electron-environment="isElectronEnvironment"
+        :available-tags="allTags"
         @close="closeEditGameDialog"
         @confirm="handleEditGameConfirm"
       />
 
-      <!-- 游戏详情页面 -->
-      <GameDetailPanel 
+      <!-- 软件详情页面 -->
+      <SoftwareDetailPanel 
         :visible="showDetailModal" 
-        :game="currentGame"
+        :software="currentGame"
         :is-running="currentGame ? isGameRunning(currentGame) : false"
         @close="closeGameDetail"
         @action="handleDetailAction"
@@ -100,9 +102,9 @@ import MediaCard from '../../components/MediaCard.vue'
 import FormField from '../../components/FormField.vue'
 import PathUpdateDialog from '../../components/PathUpdateDialog.vue'
 import PasswordInputDialog from '../../components/PasswordInputDialog.vue'
-import AddGameDialog from '../../components/game/AddGameDialog.vue'
-import EditGameDialog from '../../components/game/EditGameDialog.vue'
-import GameDetailPanel from '../../components/game/GameDetailPanel.vue'
+import AddSoftwareDialog from '../../components/software/AddSoftwareDialog.vue'
+import EditSoftwareDialog from '../../components/software/EditSoftwareDialog.vue'
+import SoftwareDetailPanel from '../../components/software/SoftwareDetailPanel.vue'
 import GameGrid from '../../components/game/GameGrid.vue'
 import { formatPlayTime, formatLastPlayed, formatDateTime, formatDate, formatFirstPlayed } from '../../utils/formatters'
 
@@ -130,9 +132,9 @@ export default {
     MediaCard,
     FormField,
     PathUpdateDialog,
-    AddGameDialog,
-    EditGameDialog,
-    GameDetailPanel,
+    AddSoftwareDialog,
+    EditSoftwareDialog,
+    SoftwareDetailPanel,
     GameGrid
   },
   props: {
@@ -210,6 +212,20 @@ export default {
     // 使用拖拽 composable（延迟初始化，因为需要访问组件方法）
     const dragDropComposable = ref<ReturnType<typeof useGameDragAndDrop> | null>(null)
 
+    // 保存原始的 getFilterData 方法（用于软件筛选器覆盖）
+    const originalGetFilterData = filterComposable.getFilterData
+    
+    // 覆盖 getFilterData 方法，只返回软件需要的筛选器（不包含发行商和引擎）
+    const getFilterData = () => {
+      const fullFilterData = originalGetFilterData()
+      // 只返回软件需要的筛选器：tags, developers, others
+      return {
+        filters: fullFilterData.filters.filter((filter: any) => 
+          filter.key === 'tags' || filter.key === 'developers' || filter.key === 'others'
+        )
+      }
+    }
+
     return {
       // 数据
       games,
@@ -219,6 +235,8 @@ export default {
       // 筛选相关
       ...toRefs(filterComposable),
       ...filterComposable,
+      // 覆盖 getFilterData 方法（在展开 filterComposable 之后，所以会覆盖原来的方法）
+      getFilterData,
       // 管理相关
       // 显示布局相关
       ...displayLayoutComposable,

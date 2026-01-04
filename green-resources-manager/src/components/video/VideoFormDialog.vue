@@ -36,8 +36,6 @@
           v-model:tagInput="localTagsInput"
           @add-tag="addTag"
           @remove-tag="removeTag"
-          @tag-input-focus="handleTagInputFocus"
-          @tag-input-blur="handleTagInputBlur"
         />
 
         <FormField
@@ -101,20 +99,12 @@
       </div>
       </div>
       <!-- Tag 选择面板 -->
-      <div 
-        v-if="showTagPanel" 
-        class="tag-panel" 
-        @mousedown.stop
-        @mouseenter="handleTagPanelMouseEnter"
-        @mouseleave="handleTagPanelMouseLeave"
-      >
-        <div class="tag-panel-header">
-          <h4>Tag选择面板</h4>
-        </div>
-        <div class="tag-panel-body">
-          <!-- 面板内容将在后续实现 -->
-        </div>
-      </div>
+      <TagSelectionPanel
+        :visible="visible"
+        :current-tags="localFormData.tags"
+        :available-tags="availableTags"
+        @select-tag="handleSelectTag"
+      />
     </div>
   </div>
 </template>
@@ -122,12 +112,14 @@
 <script lang="ts">
 import { ref, computed, watch } from 'vue'
 import FormField from '../FormField.vue'
+import TagSelectionPanel from '../TagSelectionPanel.vue'
 import type { VideoForm } from '../../types/video'
 
 export default {
   name: 'VideoFormDialog',
   components: {
-    FormField
+    FormField,
+    TagSelectionPanel
   },
   props: {
     visible: {
@@ -174,6 +166,10 @@ export default {
     generateThumbnail: {
       type: Function,
       required: true
+    },
+    availableTags: {
+      type: Array as () => (string | { name: string; count?: number })[],
+      default: () => []
     }
   },
   emits: ['update:visible', 'update:formData', 'update:actorsInput', 'update:tagsInput', 'submit', 'close', 'browse-video-file', 'browse-thumbnail-file', 'randomize-thumbnail', 'parse-actors', 'add-tag', 'remove-tag'],
@@ -181,9 +177,6 @@ export default {
     const localFormData = ref({ ...props.formData })
     const localActorsInput = ref(props.actorsInput)
     const localTagsInput = ref(props.tagsInput)
-    const showTagPanel = ref(false)
-    let tagPanelBlurTimer: ReturnType<typeof setTimeout> | null = null
-    const isTagPanelHovered = ref(false)
 
     // 只在 visible 变化时初始化数据，避免双向绑定导致的递归更新
     watch(() => props.visible, (newVal) => {
@@ -292,48 +285,23 @@ export default {
       emit('randomize-thumbnail')
     }
 
-    const handleTagInputFocus = () => {
-      // 清除可能存在的延迟隐藏定时器
-      if (tagPanelBlurTimer) {
-        clearTimeout(tagPanelBlurTimer)
-        tagPanelBlurTimer = null
+    const handleSelectTag = (tag: string) => {
+      if (!tag) return
+      
+      const index = localFormData.value.tags.indexOf(tag)
+      if (index > -1) {
+        // 如果标签已存在，则移除
+        localFormData.value.tags.splice(index, 1)
+      } else {
+        // 如果标签不存在，则添加
+        localFormData.value.tags.push(tag)
       }
-      // 显示面板
-      showTagPanel.value = true
-    }
-
-    const handleTagInputBlur = () => {
-      // 延迟隐藏面板，以便用户可以点击面板内容
-      // 如果鼠标在面板上，则不隐藏
-      tagPanelBlurTimer = setTimeout(() => {
-        if (!isTagPanelHovered.value) {
-          showTagPanel.value = false
-        }
-      }, 200)
-    }
-
-    const handleTagPanelMouseEnter = () => {
-      isTagPanelHovered.value = true
-      // 清除隐藏定时器
-      if (tagPanelBlurTimer) {
-        clearTimeout(tagPanelBlurTimer)
-        tagPanelBlurTimer = null
-      }
-    }
-
-    const handleTagPanelMouseLeave = () => {
-      isTagPanelHovered.value = false
-      // 延迟隐藏面板
-      tagPanelBlurTimer = setTimeout(() => {
-        showTagPanel.value = false
-      }, 200)
     }
 
     return {
       localFormData,
       localActorsInput,
       localTagsInput,
-      showTagPanel,
       canSubmit,
       handleClose,
       handleOverlayMouseDown,
@@ -344,10 +312,7 @@ export default {
       handleBrowseVideoFile,
       handleBrowseThumbnailFile,
       handleRandomizeThumbnail,
-      handleTagInputFocus,
-      handleTagInputBlur,
-      handleTagPanelMouseEnter,
-      handleTagPanelMouseLeave
+      handleSelectTag
     }
   }
 }

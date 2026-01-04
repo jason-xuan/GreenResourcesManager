@@ -48,7 +48,9 @@ Green Resources Manager 是一款专为"仓鼠症"用户设计的全能多媒体
 - **🔍 强大的筛选系统**：支持标签、作者、系列等多维度筛选和实时搜索
 - **📱 内置播放器/阅读器**：内置游戏启动器、漫画阅读器、视频播放器、音频播放器和小说阅读器
 - **💾 强大的数据记录功能**：记录游戏时长、漫画阅读次数、视频观看进度等数据，还可以像steam一样轻松在游戏内截图
-- **🎮 游戏化体验**：成就系统等游戏化功能，让资源管理更有趣
+- **⚡ Flash游戏支持**：一键启动Flash游戏，无需额外配置，轻松重温经典
+- **📦 智能解压功能**：自动查找密码解压压缩包，支持常用密码库，让资源提取更便捷
+- **🎮 游戏化体验**：软件内包含成就系统、桌宠、放置养成游戏等游戏化功能，让资源管理更有趣！
 
 ### 技术栈
 
@@ -59,13 +61,6 @@ Green Resources Manager 是一款专为"仓鼠症"用户设计的全能多媒体
 - **桌面框架**: Electron
 - **开发语言**: TypeScript
 - **样式预处理**: SCSS
-
-宣传视频
-
-- **视频制作框架**: Motion Canvas
-- **构建工具**: Vite
-- **开发语言**: TypeScript
-- **视频渲染**: FFmpeg
 
 ### 截图
 
@@ -116,48 +111,12 @@ npm run electron-dev
 npm run electron-build
 ```
 
-### 宣传视频的构建
-
-没错产品的宣传视频也是用代码写的
-
-#### 1. 进入目录
-
-```shell
-cd green-resources-video
-```
-
-#### 2. 安装依赖
-
-```bash
-npm install
-```
-
-#### 3. 打开视频预览网页
-
-1. 先运行命令
-
-   ```
-   npm run start
-   ```
-2. 再打开 http://localhost:9000/
-
-#### 4. 渲染视频
-
-直接在网页里面点击RENDER
-
 ## 第三方软件/代码声明
 
 - 本项目使用了 [Ruffle](https://ruffle.rs)来运行flash游戏。
 - 本项目的epub阅读器的设计参考了 [vue-epub-reader](https://github.com/lyh-create/vue-epub-reader)
 
 ## 🚀 未来规划
-
-- [X] **资源处理**
-  - [X] 自动解压rar和zip
-  - [X] 自动将文件的拓展名修改为rar
-  - [X] 自定义解压码
-  - [ ] 自带常用解压码
-  - [ ] 一键安装常见的运行环境
 - [ ] **游戏化功能**
   - [ ] 游戏剧情和主线
   - [ ] 时间表和每日任务
@@ -173,7 +132,7 @@ npm install
   - [ ] 游戏攻略
   - [ ] 游戏修改器
   - [ ] 游戏修改教程
-- [X] flash游戏支持
+
 
 ## 🤝 加入我们
 
@@ -183,10 +142,8 @@ npm install
 
 <img src="image/qrcode_1767085224573.jpg" alt="qrcode_1767085224573" style="zoom:25%;" />
 
-
-
 <div align="center">
   <img src="image/hat-soft.png" alt="HAT-SOFT" />
 </div>
 <div align="center">Made by YanChenXiang ❤️</div>
-[⬆ 回到顶部](#)
+[回到顶部](#green-resources-manager绿色资源管理器)

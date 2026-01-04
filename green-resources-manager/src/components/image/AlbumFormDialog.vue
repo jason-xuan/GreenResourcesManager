@@ -33,8 +33,6 @@
           v-model:tagInput="localTagInput"
           @add-tag="handleAddTag"
           @remove-tag="handleRemoveTag"
-          @tag-input-focus="handleTagInputFocus"
-          @tag-input-blur="handleTagInputBlur"
         />
         <!-- 添加模式：选择添加类型（文件夹或单个图片） -->
         <div v-if="mode === 'add' && allowSingleImage && !singleImageOnly" class="add-type-selector">
@@ -94,20 +92,12 @@
       </div>
       </div>
       <!-- Tag 选择面板 -->
-      <div 
-        v-if="showTagPanel" 
-        class="tag-panel" 
-        @mousedown.stop
-        @mouseenter="handleTagPanelMouseEnter"
-        @mouseleave="handleTagPanelMouseLeave"
-      >
-        <div class="tag-panel-header">
-          <h4>Tag选择面板</h4>
-        </div>
-        <div class="tag-panel-body">
-          <!-- 面板内容将在后续实现 -->
-        </div>
-      </div>
+      <TagSelectionPanel
+        :visible="visible"
+        :current-tags="formData.tags"
+        :available-tags="availableTags"
+        @select-tag="handleSelectTag"
+      />
     </div>
   </div>
 </template>
@@ -115,6 +105,7 @@
 <script lang="ts">
 import { ref, computed, watch } from 'vue'
 import FormField from '../FormField.vue'
+import TagSelectionPanel from '../TagSelectionPanel.vue'
 import CoverSelector from './CoverSelector.vue'
 import type { AlbumForm } from '../../types/image'
 
@@ -122,6 +113,7 @@ export default {
   name: 'AlbumFormDialog',
   components: {
     FormField,
+    TagSelectionPanel,
     CoverSelector
   },
   props: {
@@ -181,15 +173,16 @@ export default {
     singleImageOnly: {
       type: Boolean,
       default: false
+    },
+    availableTags: {
+      type: Array as () => (string | { name: string; count?: number })[],
+      default: () => []
     }
   },
   emits: ['update:visible', 'update:formData', 'update:cover', 'update:tagInput', 'submit', 'close', 'browse-folder', 'browse-image-file', 'add-tag', 'remove-tag'],
   setup(props, { emit }) {
     const localTagInput = ref(props.tagInput)
     const addType = ref<'folder' | 'single'>(props.singleImageOnly ? 'single' : 'folder')
-    const showTagPanel = ref(false)
-    let tagPanelBlurTimer: ReturnType<typeof setTimeout> | null = null
-    const isTagPanelHovered = ref(false)
 
     // 监听 visible 变化
     watch(() => props.visible, () => {
@@ -277,47 +270,25 @@ export default {
       }
     }
 
-    const handleTagInputFocus = () => {
-      // 清除可能存在的延迟隐藏定时器
-      if (tagPanelBlurTimer) {
-        clearTimeout(tagPanelBlurTimer)
-        tagPanelBlurTimer = null
+    const handleSelectTag = (tag: string) => {
+      if (!tag) return
+      
+      const index = props.formData.tags.indexOf(tag)
+      if (index > -1) {
+        // 如果标签已存在，则移除
+        const updatedTags = [...props.formData.tags]
+        updatedTags.splice(index, 1)
+        emit('update:formData', { ...props.formData, tags: updatedTags })
+      } else {
+        // 如果标签不存在，则添加
+        const updatedTags = [...props.formData.tags, tag]
+        emit('update:formData', { ...props.formData, tags: updatedTags })
       }
-      // 显示面板
-      showTagPanel.value = true
-    }
-
-    const handleTagInputBlur = () => {
-      // 延迟隐藏面板，以便用户可以点击面板内容
-      // 如果鼠标在面板上，则不隐藏
-      tagPanelBlurTimer = setTimeout(() => {
-        if (!isTagPanelHovered.value) {
-          showTagPanel.value = false
-        }
-      }, 200)
-    }
-
-    const handleTagPanelMouseEnter = () => {
-      isTagPanelHovered.value = true
-      // 清除隐藏定时器
-      if (tagPanelBlurTimer) {
-        clearTimeout(tagPanelBlurTimer)
-        tagPanelBlurTimer = null
-      }
-    }
-
-    const handleTagPanelMouseLeave = () => {
-      isTagPanelHovered.value = false
-      // 延迟隐藏面板
-      tagPanelBlurTimer = setTimeout(() => {
-        showTagPanel.value = false
-      }, 200)
     }
 
     return {
       localTagInput,
       addType,
-      showTagPanel,
       canSubmit,
       handleClose,
       handleOverlayMouseDown,
@@ -331,10 +302,7 @@ export default {
       handleBrowseImage,
       handleClearCover,
       getTitle,
-      handleTagInputFocus,
-      handleTagInputBlur,
-      handleTagPanelMouseEnter,
-      handleTagPanelMouseLeave
+      handleSelectTag
     }
   }
 }

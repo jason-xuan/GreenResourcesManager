@@ -167,7 +167,7 @@ export default {
     type: {
       type: String,
       required: true,
-      validator: value => ['game', 'image', 'album', 'video', 'audio', 'novel', 'website', 'file', 'folder'].includes(value)
+      validator: value => ['game', 'software', 'image', 'album', 'video', 'audio', 'novel', 'website', 'file', 'folder'].includes(value)
     },
     isRunning: {
       type: Boolean,
@@ -197,6 +197,7 @@ export default {
     descriptionTitle() {
       const titles = {
         game: '游戏简介',
+        software: '软件简介',
         image: '漫画简介',
         album: '漫画简介',
         video: '视频简介',
@@ -209,6 +210,7 @@ export default {
     tagsTitle() {
       const titles = {
         game: '游戏标签',
+        software: '软件标签',
         image: '漫画标签',
         album: '漫画标签',
         video: '视频标签',
@@ -232,6 +234,14 @@ export default {
           { label: '运行次数', value: `${this.item?.playCount || 0} 次` },
           { label: '最后游玩', value: this.formatLastPlayed(this.item?.lastPlayed) },
           { label: '第一次游玩', value: this.formatFirstPlayed(this.item?.firstPlayed) },
+          { label: '添加时间', value: this.formatDate(this.item?.addedDate) }
+        )
+      } else if (this.type === 'software') {
+        defaultStats.push(
+          { label: '总运行时长', value: this.formatPlayTime(this.item?.playTime) },
+          { label: '运行次数', value: `${this.item?.playCount || 0} 次` },
+          { label: '最后运行', value: this.formatLastPlayed(this.item?.lastPlayed) },
+          { label: '第一次运行', value: this.formatFirstPlayed(this.item?.firstPlayed) },
           { label: '添加时间', value: this.formatDate(this.item?.addedDate) }
         )
       } else if (this.type === 'image' || this.type === 'album') {
@@ -287,6 +297,32 @@ export default {
             { key: 'folder', icon: '📁', label: '打开文件夹', class: 'btn-open-folder' },
             { key: 'edit', icon: '✏️', label: '编辑信息', class: 'btn-edit' },
             { key: 'remove', icon: '🗑️', label: '删除游戏', class: 'btn-remove' }
+          )
+        }
+      } else if (this.type === 'software') {
+        // 检查是否为压缩包
+        const isArchive = this.item?.isArchive || (this.item?.executablePath && this.isArchiveFile(this.item.executablePath))
+        
+        // 如果软件正在运行，显示"结束软件"按钮，否则显示"启动软件"按钮
+        // 压缩包不能运行，所以不显示启动按钮
+        if (this.isRunning) {
+          defaultActions.push(
+            { key: 'terminate', icon: '⏹️', label: '结束软件', class: 'btn-stop-software' },
+            { key: 'folder', icon: '📁', label: '打开文件夹', class: 'btn-open-folder' },
+            { key: 'edit', icon: '✏️', label: '编辑信息', class: 'btn-edit' },
+            { key: 'remove', icon: '🗑️', label: '删除软件', class: 'btn-remove' }
+          )
+        } else {
+          // 压缩包不显示启动按钮
+          if (!isArchive) {
+            defaultActions.push(
+              { key: 'launch', icon: '▶️', label: '启动软件', class: 'btn-play' }
+            )
+          }
+          defaultActions.push(
+            { key: 'folder', icon: '📁', label: '打开文件夹', class: 'btn-open-folder' },
+            { key: 'edit', icon: '✏️', label: '编辑信息', class: 'btn-edit' },
+            { key: 'remove', icon: '🗑️', label: '删除软件', class: 'btn-remove' }
           )
         }
       } else if (this.type === 'image' || this.type === 'album') {
@@ -463,6 +499,7 @@ export default {
       if (!imagePath || (typeof imagePath === 'string' && imagePath.trim() === '')) {
         const defaultImages = {
           game: './default-game.png',
+          software: './default-game.png',
           image: './default-image.png',
           album: './default-image.png',
           video: './default-video.png',
@@ -542,6 +579,7 @@ export default {
     handleImageError(event) {
       const defaultImages = {
         game: './default-game.png',
+        software: './default-game.png',
         image: './default-image.png',
         album: './default-image.png',
         video: './default-video.png',

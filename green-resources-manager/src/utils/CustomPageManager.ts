@@ -136,8 +136,8 @@ class CustomPageManager {
       { id: 'single-image', name: '单图', icon: '🖼️', type: 'SingleImage', description: '可以管理单一图片文件', isDefault: true, order: 4, createdAt: now, updatedAt: now },
       { id: 'videos', name: '电影', icon: '🎬', type: 'Video', description: '可以管理电影等单一的视频', isDefault: true, order: 5, createdAt: now, updatedAt: now },
       { id: 'anime-series', name: '番剧', icon: '📺', type: 'Anime', description: '可以管理番剧和电视剧', isDefault: true, order: 6, createdAt: now, updatedAt: now },
-      { id: 'novels', name: '小说', icon: '📚', type: 'Novel', description: '可以管理txt文件，暂不支持其余格式', isDefault: true, order: 7, createdAt: now, updatedAt: now },
-      { id: 'websites', name: '网站', icon: '🌐', type: 'Website', description: '需要手动传入网址', isDefault: true, order: 8, createdAt: now, updatedAt: now },
+      { id: 'novels', name: '小说', icon: '📚', type: 'Novel', description: '可以管理txt、pdf、epub文件，', isDefault: true, order: 7, createdAt: now, updatedAt: now },
+      { id: 'websites', name: '网站', icon: '🌐', type: 'Website', description: '可以管理网站，需要手动传入网址，也可以拖拽收藏夹进来', isDefault: true, order: 8, createdAt: now, updatedAt: now },
       { id: 'audio', name: '声音', icon: '🎵', type: 'Audio', description: '可以管理mp3、wav等常见音频文件', isDefault: true, order: 9, createdAt: now, updatedAt: now },
       { id: 'other', name: '其它', icon: '📦', type: 'Other', description: '可以管理任何类型的文件和文件夹', isDefault: true, order: 10, createdAt: now, updatedAt: now },
     ];

@@ -58,8 +58,6 @@
           v-model:tagInput="tagInput"
           @add-tag="handleAddTag" 
           @remove-tag="handleRemoveTag"
-          @tag-input-focus="handleTagInputFocus"
-          @tag-input-blur="handleTagInputBlur"
         />
         <FormField 
           label="游戏文件" 
@@ -111,26 +109,19 @@
       </div>
       </div>
       <!-- Tag 选择面板 -->
-      <div 
-        v-if="showTagPanel" 
-        class="tag-panel" 
-        @mousedown.stop
-        @mouseenter="handleTagPanelMouseEnter"
-        @mouseleave="handleTagPanelMouseLeave"
-      >
-        <div class="tag-panel-header">
-          <h4>Tag选择面板</h4>
-        </div>
-        <div class="tag-panel-body">
-          <!-- 面板内容将在后续实现 -->
-        </div>
-      </div>
+      <TagSelectionPanel
+        :visible="visible"
+        :current-tags="formData.tags"
+        :available-tags="availableTags"
+        @select-tag="handleSelectTag"
+      />
     </div>
   </div>
 </template>
 
 <script lang="ts">
 import FormField from '../FormField.vue'
+import TagSelectionPanel from '../TagSelectionPanel.vue'
 import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
 import alertService from '../../utils/AlertService.ts'
@@ -139,7 +130,8 @@ import { detectGameEngine } from '../../utils/GameEngineDetector.ts'
 export default {
   name: 'AddGameDialog',
   components: {
-    FormField
+    FormField,
+    TagSelectionPanel
   },
   props: {
     visible: {
@@ -149,6 +141,10 @@ export default {
     isElectronEnvironment: {
       type: Boolean,
       default: false
+    },
+    availableTags: {
+      type: Array as () => (string | { name: string; count?: number })[],
+      default: () => []
     }
   },
   emits: ['close', 'confirm'],
@@ -165,9 +161,6 @@ export default {
         imagePath: ''
       },
       tagInput: '',
-      showTagPanel: false,
-      tagPanelBlurTimer: null,
-      isTagPanelHovered: false,
       engineOptions: [
         { value: 'Unity', label: 'Unity' },
         { value: 'Unreal Engine', label: 'Unreal Engine' },
@@ -524,38 +517,17 @@ export default {
       const archiveExtensions = ['.zip', '.rar', '.7z', '.tar', '.gz', '.tar.gz', '.bz2', '.tar.bz2', '.xz', '.tar.xz']
       return archiveExtensions.some(ext => fileName.endsWith(ext))
     },
-    handleTagInputFocus() {
-      // 清除可能存在的延迟隐藏定时器
-      if (this.tagPanelBlurTimer) {
-        clearTimeout(this.tagPanelBlurTimer)
-        this.tagPanelBlurTimer = null
+    handleSelectTag(tag: string) {
+      if (!tag) return
+      
+      const index = this.formData.tags.indexOf(tag)
+      if (index > -1) {
+        // 如果标签已存在，则移除
+        this.formData.tags.splice(index, 1)
+      } else {
+        // 如果标签不存在，则添加
+        this.formData.tags.push(tag)
       }
-      // 显示面板
-      this.showTagPanel = true
-    },
-    handleTagInputBlur() {
-      // 延迟隐藏面板，以便用户可以点击面板内容
-      // 如果鼠标在面板上，则不隐藏
-      this.tagPanelBlurTimer = setTimeout(() => {
-        if (!this.isTagPanelHovered) {
-          this.showTagPanel = false
-        }
-      }, 200)
-    },
-    handleTagPanelMouseEnter() {
-      this.isTagPanelHovered = true
-      // 清除隐藏定时器
-      if (this.tagPanelBlurTimer) {
-        clearTimeout(this.tagPanelBlurTimer)
-        this.tagPanelBlurTimer = null
-      }
-    },
-    handleTagPanelMouseLeave() {
-      this.isTagPanelHovered = false
-      // 延迟隐藏面板
-      this.tagPanelBlurTimer = setTimeout(() => {
-        this.showTagPanel = false
-      }, 200)
     }
   }
 }

@@ -44,8 +44,6 @@
             v-model:tagInput="tagInput"
             @add-tag="handleAddTag"
             @remove-tag="handleRemoveTag"
-            @tag-input-focus="handleTagInputFocus"
-            @tag-input-blur="handleTagInputBlur"
             tag-placeholder="输入标签后按回车或逗号添加"
           />
           
@@ -65,12 +63,10 @@
       </div>
       <!-- Tag 选择面板 -->
       <TagSelectionPanel
-        :visible="showTagPanel"
+        :visible="visible"
         :current-tags="formData.tags"
         :available-tags="availableTags"
         @select-tag="handleSelectTag"
-        @mouse-enter="handleTagPanelMouseEnter"
-        @mouse-leave="handleTagPanelMouseLeave"
       />
     </div>
   </div>
@@ -79,7 +75,6 @@
 <script lang="ts">
 import FormField from '../FormField.vue'
 import TagSelectionPanel from '../TagSelectionPanel.vue'
-import { useTagPanel } from '../../composables/useTagPanel'
 
 export default {
   name: 'AddAudioDialog',
@@ -107,15 +102,13 @@ export default {
     initialDuration: {
       type: Number,
       default: 0
+    },
+    availableTags: {
+      type: Array as () => (string | { name: string; count?: number })[],
+      default: () => []
     }
   },
   emits: ['close', 'confirm', 'browse-audio-file'],
-  setup() {
-    const tagPanel = useTagPanel()
-    return {
-      ...tagPanel
-    }
-  },
   data() {
     return {
       formData: {
@@ -187,7 +180,14 @@ export default {
       this.formData.tags.splice(index, 1)
     },
     handleSelectTag(tag: string) {
-      if (tag && !this.formData.tags.includes(tag)) {
+      if (!tag) return
+      
+      const index = this.formData.tags.indexOf(tag)
+      if (index > -1) {
+        // 如果标签已存在，则移除
+        this.formData.tags.splice(index, 1)
+      } else {
+        // 如果标签不存在，则添加
         this.formData.tags.push(tag)
       }
     },

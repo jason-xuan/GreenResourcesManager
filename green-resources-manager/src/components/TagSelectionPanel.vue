@@ -3,8 +3,6 @@
     v-if="visible"
     class="tag-selection-panel"
     @mousedown.stop
-    @mouseenter="handleMouseEnter"
-    @mouseleave="handleMouseLeave"
   >
     <div class="tag-panel-header">
       <h4>{{ title || '标签选择' }}</h4>
@@ -21,18 +19,22 @@
       </div>
 
       <!-- 常用标签列表 -->
-      <div v-if="availableTags && availableTags.length > 0" class="tag-list-section">
-        <div class="tag-list-title">常用标签</div>
+      <div v-if="filteredAvailableTags && filteredAvailableTags.length > 0" class="tag-list-section">
+        <div class="tag-list-title">
+          <span>{{ title || '标签选择' }}</span>
+          <span class="tag-count-badge">{{ filteredAvailableTags.length }}</span>
+        </div>
         <div class="tag-list">
           <button
-            v-for="tag in filteredAvailableTags"
-            :key="tag"
+            v-for="tagItem in filteredAvailableTags"
+            :key="getTagName(tagItem)"
             class="tag-item-btn"
-            :class="{ 'tag-item-selected': currentTags.includes(tag) }"
-            @click="handleTagClick(tag)"
+            :class="{ 'tag-item-selected': isTagSelected(tagItem) }"
+            @click="handleTagClick(tagItem)"
           >
-            {{ tag }}
-            <span v-if="currentTags.includes(tag)" class="tag-check">✓</span>
+            <span class="tag-name">{{ getTagName(tagItem) }}</span>
+            <span v-if="getTagCount(tagItem)" class="tag-count">{{ getTagCount(tagItem) }}</span>
+            <span v-if="isTagSelected(tagItem)" class="tag-check">✓</span>
           </button>
         </div>
       </div>
@@ -40,6 +42,12 @@
       <!-- 空状态 -->
       <div v-else class="tag-empty-state">
         <p>{{ emptyMessage || '暂无可用标签' }}</p>
+        <p v-if="availableTags && availableTags.length === 0" class="debug-info" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 8px;">
+          调试：availableTags 为空数组
+        </p>
+        <p v-else-if="!availableTags" class="debug-info" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 8px;">
+          调试：availableTags 未定义
+        </p>
       </div>
     </div>
   </div>
@@ -64,7 +72,7 @@ export default {
       default: () => []
     },
     availableTags: {
-      type: Array as () => string[],
+      type: Array as () => (string | { name: string; count?: number })[],
       default: () => []
     },
     showSearch: {
@@ -80,12 +88,17 @@ export default {
       default: '暂无可用标签'
     }
   },
-  emits: ['select-tag', 'mouse-enter', 'mouse-leave'],
+  emits: ['select-tag'],
   setup(props, { emit }) {
     const searchQuery = ref('')
 
     // 过滤可用标签
     const filteredAvailableTags = computed(() => {
+      // 调试：检查 availableTags
+      console.log('TagSelectionPanel - availableTags:', props.availableTags)
+      console.log('TagSelectionPanel - availableTags type:', typeof props.availableTags)
+      console.log('TagSelectionPanel - availableTags length:', props.availableTags?.length)
+      
       if (!props.availableTags || props.availableTags.length === 0) {
         return []
       }
@@ -93,32 +106,42 @@ export default {
         return props.availableTags
       }
       const query = searchQuery.value.toLowerCase().trim()
-      return props.availableTags.filter(tag =>
-        tag.toLowerCase().includes(query)
-      )
+      return props.availableTags.filter((tag: string | { name: string; count?: number }) => {
+        const tagName = typeof tag === 'string' ? tag : tag.name
+        return tagName.toLowerCase().includes(query)
+      })
     })
 
+    // 获取标签名称
+    const getTagName = (tag: string | { name: string; count?: number }): string => {
+      return typeof tag === 'string' ? tag : tag.name
+    }
+
+    // 获取标签数量
+    const getTagCount = (tag: string | { name: string; count?: number }): number | null => {
+      return typeof tag === 'object' && tag.count !== undefined ? tag.count : null
+    }
+
+    // 检查标签是否已选中
+    const isTagSelected = (tag: string | { name: string; count?: number }): boolean => {
+      const tagName = getTagName(tag)
+      return props.currentTags.includes(tagName)
+    }
+
     // 处理标签点击
-    const handleTagClick = (tag: string) => {
-      emit('select-tag', tag)
+    const handleTagClick = (tag: string | { name: string; count?: number }) => {
+      const tagName = getTagName(tag)
+      emit('select-tag', tagName)
     }
 
-    // 处理鼠标进入
-    const handleMouseEnter = () => {
-      emit('mouse-enter')
-    }
-
-    // 处理鼠标离开
-    const handleMouseLeave = () => {
-      emit('mouse-leave')
-    }
 
     return {
       searchQuery,
       filteredAvailableTags,
-      handleTagClick,
-      handleMouseEnter,
-      handleMouseLeave
+      getTagName,
+      getTagCount,
+      isTagSelected,
+      handleTagClick
     }
   }
 }
@@ -208,6 +231,22 @@ export default {
   gap: 8px;
 }
 
+.tag-list-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tag-count-badge {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
 .tag-item-btn {
   display: inline-flex;
   align-items: center;
@@ -220,6 +259,10 @@ export default {
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.tag-name {
+  flex: 1;
 }
 
 .tag-item-btn:hover {
@@ -238,9 +281,24 @@ export default {
   background: var(--accent-hover);
 }
 
+.tag-count {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.tag-item-selected .tag-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
 .tag-check {
   font-size: 0.75rem;
   font-weight: bold;
+  margin-left: 4px;
 }
 
 .tag-empty-state {

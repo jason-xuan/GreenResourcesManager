@@ -28,6 +28,7 @@
       <AddGameDialog 
         :visible="showAddDialog" 
         :is-electron-environment="isElectronEnvironment"
+        :available-tags="allTags"
         @close="closeAddGameDialog"
         @confirm="handleAddGameConfirm"
       />
@@ -37,6 +38,7 @@
         :visible="showEditDialog" 
         :game="currentGame"
         :is-electron-environment="isElectronEnvironment"
+        :available-tags="allTags"
         @close="closeEditGameDialog"
         @confirm="handleEditGameConfirm"
       />

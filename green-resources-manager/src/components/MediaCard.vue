@@ -11,6 +11,7 @@
       <img 
         :src="resolveImage(item.image || item.cover || item.thumbnail || item.thumbnailPath)" 
         :alt="item.name"
+        loading="lazy"
         @error="handleImageError"
       >
       <!-- 动态徽章 -->
@@ -49,6 +50,7 @@
           :src="exeIcon" 
           class="exe-icon"
           alt=""
+          loading="lazy"
         >
         <span v-if="scale >= 30" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">{{ displayName }}</span>
       </h3>

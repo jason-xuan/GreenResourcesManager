@@ -148,4 +148,4 @@ npm run electron-build
   <img src="image/hat-soft.png" alt="HAT-SOFT" />
 </div>
 <div align="center">Made by YanChenXiang ❤️</div>
-[回到顶部](#green-resources-manager绿色资源管理器)
+[⬆ 回到顶部](#-目录)

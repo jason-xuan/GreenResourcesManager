@@ -3,6 +3,7 @@ import App from './App.vue'
 import './main.scss'
 import { createAppRouter } from './router'
 import { pinia } from './stores'
+import FunUI from './fun-ui'
 
 async function initApp() {
   const router = await createAppRouter()
@@ -10,6 +11,7 @@ async function initApp() {
   
   app.use(pinia)
   app.use(router)
+  app.use(FunUI) // 注册 Fun UI 组件库
   app.mount('#app')
 }
 

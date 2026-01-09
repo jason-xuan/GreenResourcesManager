@@ -39,7 +39,7 @@
       <div class="showcase-header">
         <h2 class="showcase-title">关于开发者</h2>
       </div>
-      <BusinessCard />
+      <fun-business-card />
       <div class="personal-content">
         <p class="personal-description">
           独立游戏制作人。擅长实验性叙事游戏设计、unity开发、RPGMakerMV开发、Godot开发、WEB开发、作曲、2D美术、游戏理论研究。
@@ -60,7 +60,6 @@
 
 <script setup lang="ts">
 import HelpSection from '../HelpSection.vue'
-import BusinessCard from '../BusinessCard.vue'
 import { useHelpUtils } from '../../../composables/useHelpUtils'
 
 const { openExternalLink } = useHelpUtils()

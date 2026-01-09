@@ -29,35 +29,13 @@
           <!-- 玩家评价区域 -->
           <div class="detail-rating">
             <h4 class="rating-title">玩家评价</h4>
-            <div class="rating-content">
-              <!-- 星级显示 -->
-              <div class="rating-stars" @mouseleave="handleStarMouseLeave">
-                <span 
-                  v-for="star in 5" 
-                  :key="star"
-                  class="star"
-                  :class="{ 'star-filled': star <= currentRating }"
-                  @mouseenter="handleStarMouseEnter(star)"
-                  @click="handleStarClick(star)"
-                >
-                  ★
-                </span>
-                <span class="rating-text" :class="{ 'no-rating': currentRating === 0 }">
-                  {{ currentRating > 0 ? getRatingText(currentRating) : '未评价' }}
-                </span>
-              </div>
-              <!-- 评论输入框 -->
-              <div class="rating-comment">
-                <textarea
-                  class="comment-input"
-                  :value="item.comment || item.notes || ''"
-                  @input="handleCommentInput"
-                  @blur="handleCommentBlur"
-                  placeholder="在此输入你的评价..."
-                  rows="4"
-                ></textarea>
-              </div>
-            </div>
+            <fun-rate
+              :model-value="item.rating || 0"
+              :comment="item.comment || item.notes || ''"
+              show-comment
+              @update:model-value="handleRatingChange"
+              @update:comment="handleCommentChange"
+            />
           </div>
         </div>
         <div class="detail-info">
@@ -190,7 +168,6 @@ export default {
   emits: ['close', 'action', 'update-rating', 'update-comment', 'toggle-favorite'],
   data() {
     return {
-      hoverRating: 0 // hover 时的星级
     }
   },
   computed: {
@@ -341,22 +318,6 @@ export default {
       // 判断是否有评价数据（有星级或评论）
       return (this.item?.rating && this.item.rating > 0) || this.item?.comment || this.item?.notes
     },
-    ratingText() {
-      // 根据星级返回对应的文字
-      const rating = this.item?.rating || 0
-      const ratingMap = {
-        1: '劣作',
-        2: '庸作',
-        3: '良作',
-        4: '佳作',
-        5: '神作'
-      }
-      return ratingMap[rating] || ''
-    },
-    currentRating() {
-      // 优先显示 hover 的星级，否则显示实际星级
-      return this.hoverRating > 0 ? this.hoverRating : (this.item?.rating || 0)
-    },
     showFileError() {
       // 检查文件是否存在，对于支持文件存在性检查的类型
       const fileCheckTypes = ['game', 'audio', 'image', 'album', 'novel', 'video', 'file', 'folder']
@@ -420,15 +381,7 @@ export default {
       this.$emit('action', actionKey, this.item)
       console.log('📋 [DetailPanel] action 事件已发出:', actionKey)
     },
-    handleStarMouseEnter(star) {
-      // hover 时设置 hoverRating
-      this.hoverRating = star
-    },
-    handleStarMouseLeave() {
-      // 离开时清除 hoverRating
-      this.hoverRating = 0
-    },
-    async handleStarClick(star) {
+    async handleRatingChange(rating) {
       // 检查 item 是否存在，避免在面板关闭时触发更新
       if (!this.item || !this.item.id) {
         return
@@ -437,42 +390,22 @@ export default {
       // 如果提供了统一的更新函数，直接调用
       if (this.onUpdateResource && typeof this.onUpdateResource === 'function') {
         try {
-          await this.onUpdateResource(this.item.id, { rating: star })
+          await this.onUpdateResource(this.item.id, { rating })
           // 立即更新UI
-          this.item.rating = star
+          this.item.rating = rating
         } catch (error) {
           console.error('更新评分失败:', error)
         }
       } else {
         // 否则 emit 事件（向后兼容）
-        this.$emit('update-rating', star, this.item)
+        this.$emit('update-rating', rating, this.item)
       }
-      
-      // 点击后清除 hover 状态
-      this.hoverRating = 0
     },
-    getRatingText(rating) {
-      // 根据星级返回对应的文字
-      const ratingMap = {
-        1: '劣作',
-        2: '庸作',
-        3: '良作',
-        4: '佳作',
-        5: '神作'
-      }
-      return ratingMap[rating] || ''
-    },
-    handleCommentInput(event) {
-      // 实时更新评论内容（不立即保存，等待失焦时保存）
-      // 这里可以添加防抖逻辑，但为了简单起见，我们在失焦时保存
-    },
-    async handleCommentBlur(event) {
-      // 失焦时保存评论
+    async handleCommentChange(comment) {
       // 检查 item 是否存在，避免在面板关闭时触发更新
       if (!this.item || !this.item.id) {
         return
       }
-      const comment = event.target.value.trim()
       
       // 如果提供了统一的更新函数，直接调用
       if (this.onUpdateResource && typeof this.onUpdateResource === 'function') {
@@ -1117,74 +1050,6 @@ export default {
   gap: 12px;
 }
 
-.rating-stars {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.star {
-  font-size: 1.5rem;
-  color: var(--text-tertiary);
-  transition: color 0.3s ease;
-  line-height: 1;
-  cursor: pointer;
-  user-select: none;
-}
-
-.star:hover {
-  transform: scale(1.1);
-  transition: transform 0.2s ease;
-}
-
-.star-filled {
-  color: #fbbf24;
-}
-
-.rating-text {
-  color: var(--text-primary);
-  font-size: 1rem;
-  font-weight: 600;
-  margin-left: 4px;
-  transition: color 0.3s ease;
-}
-
-.rating-text.no-rating {
-  color: var(--text-tertiary);
-  font-style: italic;
-  margin-left: 0;
-}
-
-.rating-comment {
-  margin-top: 12px;
-}
-
-.comment-input {
-  width: 100%;
-  min-height: 80px;
-  padding: 10px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  line-height: 1.6;
-  font-family: inherit;
-  resize: vertical;
-  transition: all 0.3s ease;
-  box-sizing: border-box;
-}
-
-.comment-input:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb, 59, 130, 246), 0.1);
-}
-
-.comment-input::placeholder {
-  color: var(--text-tertiary);
-  font-style: italic;
-}
 
 .comment-content {
   color: var(--text-secondary);

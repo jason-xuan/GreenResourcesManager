@@ -6,6 +6,8 @@
 interface ConfirmOptions {
   title?: string
   message: string
+  /** 是否默认取消（true: 默认焦点在取消按钮，false: 默认焦点在确定按钮） */
+  defaultCancel?: boolean
 }
 
 class ConfirmService {
@@ -50,15 +52,20 @@ class ConfirmService {
 
       const title = confirmOptions.title || '确认'
       const message = confirmOptions.message || ''
+      const defaultCancel = confirmOptions.defaultCancel !== undefined ? confirmOptions.defaultCancel : true
 
       // 调用组件方法显示 Confirm
-      this.confirmComponent.showConfirm(title, message, resolve)
+      this.confirmComponent.showConfirm(title, message, resolve, defaultCancel)
     })
   }
 
   // 便捷方法：显示确认对话框
-  confirm(message: string, title: string = '确认'): Promise<boolean> {
-    return this.show({ title, message })
+  confirm(
+    message: string, 
+    title: string = '确认',
+    defaultCancel: boolean = true
+  ): Promise<boolean> {
+    return this.show({ title, message, defaultCancel })
   }
 }
 

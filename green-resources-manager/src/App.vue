@@ -152,10 +152,10 @@
     <ToastNotification ref="toastNotification" />
 
     <!-- 全局 Alert 组件 -->
-    <Alert ref="alert" />
+    <fun-alert ref="alert" />
 
     <!-- 全局 Confirm 组件 -->
-    <ConfirmDialog ref="confirm" />
+    <fun-confirm-dialog ref="confirm" default-cancel="true" />
 
   </div>
 </template>
@@ -163,8 +163,6 @@
 <script lang="ts">
 import GlobalAudioPlayer from './components/GlobalAudioPlayer.vue'
 import ToastNotification from './components/ToastNotification.vue'
-import Alert from './components/Alert.vue'
-import ConfirmDialog from './components/ConfirmDialog.vue'
 import FilterSidebar from './components/FilterSidebar.vue'
 import { updateDynamicRoutes } from './router/index'
 
@@ -185,8 +183,6 @@ export default {
   components: {
     GlobalAudioPlayer,
     ToastNotification,
-    Alert,
-    ConfirmDialog,
     FilterSidebar
   },
   data() {

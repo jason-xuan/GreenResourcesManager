@@ -2,61 +2,75 @@
 
 Fun UI 是 Green Resources Manager 的自定义 UI 组件库，所有组件都以 `fun-` 开头。
 
+## 📁 目录结构
+
+组件按功能分类组织：
+
+```
+fun-ui/
+├── components/
+│   ├── basic/              # 基本组件
+│   │   └── Button/
+│   │       └── FunButton.vue
+│   ├── data-input/         # 数据录入
+│   │   └── Rate/
+│   │       └── FunRate.vue
+│   ├── data-display/       # 数据展示
+│   │   └── BusinessCard/
+│   │       └── FunBusinessCard.vue
+│   ├── navigation/         # 导航组件
+│   └── feedback/           # 反馈组件
+└── index.ts                # 统一导出入口
+```
+
 ## 📦 使用方式
 
 组件已经全局注册，可以直接在模板中使用：
 
 ```vue
 <template>
-  <!-- 基础用法 -->
-  <fun-button>默认按钮</fun-button>
+  <!-- 基本组件 -->
+  <fun-button>点击我</fun-button>
   
-  <!-- 不同类型 -->
-  <fun-button type="primary">主要按钮</fun-button>
-  <fun-button type="success">成功按钮</fun-button>
-  <fun-button type="danger">危险按钮</fun-button>
+  <!-- 数据录入 -->
+  <fun-rate v-model="rating" />
   
-  <!-- 不同尺寸 -->
-  <fun-button size="small">小按钮</fun-button>
-  <fun-button size="medium">中等按钮</fun-button>
-  <fun-button size="large">大按钮</fun-button>
-  
-  <!-- 块级按钮 -->
-  <fun-button block>块级按钮</fun-button>
-  
-  <!-- 禁用状态 -->
-  <fun-button disabled>禁用按钮</fun-button>
-  
-  <!-- 事件处理 -->
-  <fun-button @click="handleClick">点击我</fun-button>
+  <!-- 数据展示 -->
+  <fun-business-card />
 </template>
 ```
 
-## 🎨 组件列表
+## 🎨 组件分类
 
-### Button 按钮
+### Basic 基本组件
 
-#### Props
+基础 UI 组件，如按钮、图标等。
 
-| 参数 | 说明 | 类型 | 默认值 |
-|------|------|------|--------|
-| type | 按钮类型 | `'primary' \| 'secondary' \| 'success' \| 'warning' \| 'danger' \| 'default'` | `'default'` |
-| size | 按钮尺寸 | `'small' \| 'medium' \| 'large'` | `'medium'` |
-| disabled | 是否禁用 | `boolean` | `false` |
-| block | 是否为块级按钮 | `boolean` | `false` |
-| nativeType | 原生 button 类型 | `'button' \| 'submit' \| 'reset'` | `'button'` |
+- **Button** (`fun-button`) - 按钮组件
 
-#### Events
+### Data Input 数据录入
 
-| 事件名 | 说明 | 参数 |
-|--------|------|------|
-| click | 点击事件 | `(event: MouseEvent) => void` |
+用于用户输入数据的组件。
 
-#### Slots
+- **Rate** (`fun-rate`) - 评分组件
 
-| 插槽名 | 说明 |
-|--------|------|
-| default | 按钮内容 |
+### Data Display 数据展示
+
+用于展示数据的组件。
+
+- **BusinessCard** (`fun-business-card`) - 名片卡片组件
+
+### Navigation 导航组件
+
+用于页面导航的组件。
+
+- (待添加)
+
+### Feedback 反馈组件
+
+用于用户反馈的组件，如对话框、提示等。
+
+- (待添加)
 
 ## 🎯 设计原则
 
@@ -87,3 +101,10 @@ Fun UI 是 Green Resources Manager 的自定义 UI 组件库，所有组件都�
 // 元素 + 修饰符
 .fun-button__icon--left { }
 ```
+
+## 📝 添加新组件
+
+1. 根据组件功能，选择对应的分类目录
+2. 在分类目录下创建组件文件夹和 Vue 文件
+3. 在 `fun-ui/index.ts` 中导入并注册组件
+4. 更新本文档的组件列表

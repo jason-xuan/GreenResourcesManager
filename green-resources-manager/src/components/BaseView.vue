@@ -23,16 +23,21 @@
                 @update:scale="$emit('update:scale', $event)" />
 
             <!-- 分页导航 -->
-            <PaginationNav :current-page="paginationConfig.currentPage" :total-pages="paginationConfig.totalPages"
-                :page-size="paginationConfig.pageSize" :total-items="paginationConfig.totalItems"
-                :item-type="paginationConfig.itemType" @page-change="handlePageChange" />
+            <fun-pagination 
+                :current-page="paginationConfig.currentPage" 
+                :total-pages="paginationConfig.totalPages"
+                :page-size="paginationConfig.pageSize" 
+                :total-items="paginationConfig.totalItems"
+                :item-type="paginationConfig.itemType" 
+                @page-change="handlePageChange" 
+            />
 
             <!-- 内容区域包装器，确保空状态始终在内容区域内 -->
             <div class="content-wrapper">
             <slot></slot>
 
             <!-- 空状态组件 -->
-                <EmptyState 
+                <fun-empty-state 
                     v-if="currentEmptyState" 
                     :icon="currentEmptyState.icon" 
                     :title="currentEmptyState.title"
@@ -51,18 +56,14 @@
 </template>
 
 <script>
-import EmptyState from './EmptyState.vue'
 import GameToolbar from './Toolbar.vue'
 import ContextMenu from './ContextMenu.vue'
-import PaginationNav from './PaginationNav.vue'
 
 export default {
     name: 'BaseView',
     components: {
-        EmptyState,
         GameToolbar,
-        ContextMenu,
-        PaginationNav
+        ContextMenu
     },
     props: {
         // 空状态相关属性
@@ -310,7 +311,7 @@ export default {
 }
 
 /* 空状态：使用绝对定位覆盖在内容区域上，始终居中显示 */
-.content-wrapper .empty-state {
+.content-wrapper .fun-empty-state {
     position: absolute;
     top: 0;
     left: 0;
@@ -324,7 +325,7 @@ export default {
 }
 
 /* 空状态内容可以接收点击事件 */
-.content-wrapper .empty-state > * {
+.content-wrapper .fun-empty-state > * {
     pointer-events: auto;
 }
 </style>

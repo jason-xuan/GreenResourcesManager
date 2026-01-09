@@ -97,7 +97,6 @@
 
 <script lang="ts">
 import BaseView from '../../components/BaseView.vue'
-import EmptyState from '../../components/EmptyState.vue'
 import MediaCard from '../../components/MediaCard.vue'
 import FormField from '../../components/FormField.vue'
 import PathUpdateDialog from '../../components/PathUpdateDialog.vue'
@@ -128,7 +127,6 @@ export default {
   name: 'SoftwareView',
   components: {
     BaseView,
-    EmptyState,
     MediaCard,
     FormField,
     PathUpdateDialog,

@@ -167,7 +167,6 @@
 <script lang="ts">
 import saveManager from '../../utils/SaveManager.ts'
 import BaseView from '../../components/BaseView.vue'
-import EmptyState from '../../components/EmptyState.vue'
 import FormField from '../../components/FormField.vue'
 import MediaCard from '../../components/MediaCard.vue'
 import DetailPanel from '../../components/DetailPanel.vue'
@@ -203,7 +202,6 @@ export default {
   name: 'SingleImageView',
   components: {
     BaseView,
-    EmptyState,
     FormField,
     MediaCard,
     DetailPanel,

@@ -21,6 +21,7 @@ import FunRate from './data-input/Rate/FunRate.vue'
 
 // Data Display 数据展示
 import FunBusinessCard from './data-display/BusinessCard/FunBusinessCard.vue'
+import FunCard from './data-display/Card/FunCard.vue'
 import FunEmptyState from './data-display/EmptyState/FunEmptyState.vue'
 
 // Navigation 导航组件
@@ -39,6 +40,7 @@ const components = {
   FunRate,
   // Data Display
   FunBusinessCard,
+  FunCard,
   FunEmptyState,
   // Navigation
   FunPagination,
@@ -56,6 +58,7 @@ export function install(app: App) {
   app.component('fun-tag', FunTag)
   app.component('fun-rate', FunRate)
   app.component('fun-business-card', FunBusinessCard)
+  app.component('fun-card', FunCard)
   app.component('fun-empty-state', FunEmptyState)
   app.component('fun-pagination', FunPagination)
   app.component('fun-alert', FunAlert)
@@ -71,6 +74,7 @@ export {
   FunRate,
   // Data Display
   FunBusinessCard,
+  FunCard,
   FunEmptyState,
   // Navigation
   FunPagination,

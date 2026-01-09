@@ -1,9 +1,12 @@
 <template>
-  <div 
+  <fun-card
     class="media-card"
     :class="ratingBorderClass"
     :data-type="type"
     :style="{ '--card-scale': scale / 100 }"
+    :bordered="false"
+    :shadow="false"
+    :clickable="true"
     @click="$emit('click', item)"
     @contextmenu="$emit('contextmenu', $event, item)"
   >
@@ -208,7 +211,7 @@
         </div>
       </template>
     </div>
-  </div>
+  </fun-card>
 </template>
 
 <script>
@@ -955,6 +958,7 @@ $running-color-dark: #10b981;
   transition: all 0.3s ease;
   border: 1px solid var(--border-color);
   position: relative;
+  padding: 0 !important; /* 覆盖 fun-card 的默认 padding */
 }
 
 [data-theme="dark"] .media-card {

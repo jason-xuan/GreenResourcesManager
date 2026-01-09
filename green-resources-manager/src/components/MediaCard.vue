@@ -61,11 +61,11 @@
         <p class="media-tertiary" v-if="item.publisher && item.publisher !== '未知发行商' && scale >= 50">{{ item.publisher }}</p>
         <p class="media-description" v-if="item.description && scale >= 50">{{ item.description }}</p>
         <div class="media-tags" v-if="displayTags.length > 0 && scale >= 40">
-          <span 
+          <fun-tag 
             v-for="tag in displayTags.slice(0, 9)" 
             :key="tag" 
-            class="media-tag"
-          >{{ tag }}</span>
+            :text="tag"
+          />
           <span v-if="displayTags.length > 9" class="media-tag-more">+{{ displayTags.length - 9 }}</span>
         </div>
         <div class="media-stats" v-if="scale >= 40">
@@ -1210,15 +1210,6 @@ $running-color-dark: #10b981;
   margin-bottom: 10px;
 }
 
-.media-tag {
-  background: var(--accent-color);
-  color: white;
-  padding: calc(2px * var(--card-scale, 1)) calc(6px * var(--card-scale, 1));
-  border-radius: calc(8px * var(--card-scale, 1));
-  font-size: calc(0.7rem * var(--card-scale, 1));
-  font-weight: 500;
-  transition: background 0.3s ease;
-}
 
 .media-tag-more {
   background: var(--bg-tertiary);

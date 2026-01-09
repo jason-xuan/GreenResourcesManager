@@ -81,18 +81,13 @@
     </div>
     <div v-else-if="type === 'tags'" class="tags-input-container">
       <div class="tags-display">
-        <span
+        <fun-tag
           v-for="(tag, index) in modelValue"
           :key="index"
-          class="tag-item"
-        >
-          {{ tag }}
-          <button
-            type="button"
-            class="tag-remove"
-            @click="$emit('removeTag', index)"
-          >×</button>
-        </span>
+          :text="tag"
+          closable
+          @close="$emit('removeTag', index)"
+        />
       </div>
       <input
         type="text"
@@ -287,36 +282,6 @@ select:disabled {
   margin-bottom: 0.5rem;
 }
 
-.tag-item {
-  display: inline-flex;
-  align-items: center;
-  background-color: var(--accent-color);
-  color: #ffffff;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  gap: 0.25rem;
-  transition: background-color 0.3s ease;
-}
-
-.tag-remove {
-  background: none;
-  border: none;
-  color: #ffffff;
-  cursor: pointer;
-  font-size: 0.875rem;
-  line-height: 1;
-  padding: 0;
-  width: 1rem;
-  height: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tag-remove:hover {
-  color: #ef4444;
-}
 
 .tag-input {
   border: none;

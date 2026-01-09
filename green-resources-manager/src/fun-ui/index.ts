@@ -14,6 +14,7 @@ import type { App } from 'vue'
 
 // Basic 基本组件
 import FunButton from './basic/Button/FunButton.vue'
+import FunTag from './basic/Tag/FunTag.vue'
 
 // Data Input 数据录入
 import FunRate from './data-input/Rate/FunRate.vue'
@@ -32,6 +33,7 @@ import FunConfirmDialog from './feedback/ConfirmDialog/FunConfirmDialog.vue'
 const components = {
   // Basic
   FunButton,
+  FunTag,
   // Data Input
   FunRate,
   // Data Display
@@ -47,6 +49,7 @@ const components = {
 export function install(app: App) {
   // 注册为 fun- 格式
   app.component('fun-button', FunButton)
+  app.component('fun-tag', FunTag)
   app.component('fun-rate', FunRate)
   app.component('fun-business-card', FunBusinessCard)
   app.component('fun-alert', FunAlert)
@@ -57,6 +60,7 @@ export function install(app: App) {
 export {
   // Basic
   FunButton,
+  FunTag,
   // Data Input
   FunRate,
   // Data Display

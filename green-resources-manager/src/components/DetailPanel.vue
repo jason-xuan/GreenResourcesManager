@@ -77,11 +77,11 @@
           <div class="detail-tags" v-if="item.tags && item.tags.length > 0">
             <h4 class="tags-title">{{ tagsTitle }}</h4>
             <div class="tags-container">
-              <span 
+              <fun-tag 
                 v-for="tag in item.tags" 
                 :key="tag" 
-                class="detail-tag"
-              >{{ tag }}</span>
+                :text="tag"
+              />
             </div>
           </div>
           
@@ -797,19 +797,6 @@ export default {
   gap: 8px;
 }
 
-.detail-tag {
-  background: var(--accent-color);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: background 0.3s ease;
-}
-
-.detail-tag:hover {
-  background: var(--accent-hover);
-}
 
 .detail-stats {
   display: grid;

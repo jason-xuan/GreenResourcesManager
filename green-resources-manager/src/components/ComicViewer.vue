@@ -9,13 +9,19 @@
           <span class="page-info">{{ currentPageIndex + 1 }} / {{ pages.length }}</span>
         </div>
         <div class="comic-controls">
-          <button class="btn-zoom-out" @click="zoomOut" :disabled="zoomLevel <= 0.5">
-            <span class="btn-icon">🔍-</span>
-          </button>
+          <fun-button
+            type="secondary"
+            icon="🔍-"
+            @click="zoomOut"
+            :disabled="zoomLevel <= 0.5"
+          />
           <span class="zoom-level">{{ Math.round(zoomLevel * 100) }}%</span>
-          <button class="btn-zoom-in" @click="zoomIn" :disabled="zoomLevel >= 3">
-            <span class="btn-icon">🔍+</span>
-          </button>
+          <fun-button
+            type="secondary"
+            icon="🔍+"
+            @click="zoomIn"
+            :disabled="zoomLevel >= 3"
+          />
           <div class="quality-controls">
             <select v-model="imageQuality" @change="setImageQuality(imageQuality)" class="quality-select">
               <option value="high">高质量</option>
@@ -23,13 +29,18 @@
               <option value="low">低质量</option>
             </select>
           </div>
-          <button class="btn-fullscreen" @click="toggleFullscreen">
-            <span class="btn-icon">⛶</span>
+          <fun-button
+            type="secondary"
+            icon="⛶"
+            @click="toggleFullscreen"
+          >
             全屏
-          </button>
-          <button class="btn-close-viewer" @click="closeViewer">
-            <span class="btn-icon">✕</span>
-          </button>
+          </fun-button>
+          <fun-button
+            type="danger"
+            icon="✕"
+            @click="closeViewer"
+          />
         </div>
       </div>
       
@@ -66,14 +77,14 @@
       <!-- 阅读器底部导航 -->
       <div class="comic-viewer-footer">
         <div class="navigation-controls">
-          <button 
-            class="btn-nav btn-prev" 
-            @click="previousPage" 
+          <fun-button
+            type="primary"
+            icon="◀"
+            @click="previousPage"
             :disabled="currentPageIndex <= 0"
           >
-            <span class="btn-icon">◀</span>
             上一页
-          </button>
+          </fun-button>
           <div class="page-jump">
             <input 
               type="number" 
@@ -83,16 +94,21 @@
               @keyup.enter="jumpToPageNumber"
               class="page-input"
             >
-            <button class="btn-jump" @click="jumpToPageNumber">跳转</button>
+            <fun-button
+              type="secondary"
+              @click="jumpToPageNumber"
+            >
+              跳转
+            </fun-button>
           </div>
-          <button 
-            class="btn-nav btn-next" 
-            @click="nextPage" 
+          <fun-button
+            type="primary"
+            icon="▶"
+            @click="nextPage"
             :disabled="currentPageIndex >= pages.length - 1"
           >
             下一页
-            <span class="btn-icon">▶</span>
-          </button>
+          </fun-button>
         </div>
       </div>
     </div>
@@ -759,30 +775,6 @@ export default {
   gap: 10px;
 }
 
-.comic-controls button {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.3s ease;
-}
-
-.comic-controls button:hover:not(:disabled) {
-  background: var(--accent-color);
-  color: white;
-  border-color: var(--accent-color);
-}
-
-.comic-controls button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 .zoom-level {
   color: var(--text-secondary);
@@ -944,29 +936,6 @@ export default {
   gap: 15px;
 }
 
-.btn-nav {
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.3s ease;
-}
-
-.btn-nav:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.btn-nav:disabled {
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  cursor: not-allowed;
-}
 
 .page-jump {
   display: flex;
@@ -985,22 +954,6 @@ export default {
   font-size: 0.9rem;
 }
 
-.btn-jump {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-}
-
-.btn-jump:hover {
-  background: var(--accent-color);
-  color: white;
-  border-color: var(--accent-color);
-}
 
 /* 全屏模式 */
 .comic-viewer-content:fullscreen {
@@ -1052,10 +1005,6 @@ export default {
     justify-content: center;
   }
   
-  .comic-controls button {
-    padding: 6px 10px;
-    font-size: 0.8rem;
-  }
   
   .comic-viewer-footer {
     flex-direction: column;

@@ -1,18 +1,30 @@
 <template>
   <div class="game-toolbar">
     <div class="toolbar-left">
-      <button v-if="addButtonText" class="btn-add-game" @click="$emit('add-item')">
-        <span class="btn-icon">➕</span>
+      <fun-button
+        v-if="addButtonText"
+        type="primary"
+        icon="➕"
+        @click="$emit('add-item')"
+      >
         {{ addButtonText }}
-      </button>
-      <button v-if="addFolderButtonText" class="btn-add-folder" @click="handleAddFolderClick">
-        <span class="btn-icon">📁</span>
+      </fun-button>
+      <fun-button
+        v-if="addFolderButtonText"
+        type="secondary"
+        icon="📁"
+        @click="handleAddFolderClick"
+      >
         {{ addFolderButtonText }}
-      </button>
-      <button v-if="importBookmarkButtonText" class="btn-import-bookmark" @click="handleImportBookmarkClick">
-        <span class="btn-icon">📑</span>
+      </fun-button>
+      <fun-button
+        v-if="importBookmarkButtonText"
+        type="secondary"
+        icon="📑"
+        @click="handleImportBookmarkClick"
+      >
         {{ importBookmarkButtonText }}
-      </button>
+      </fun-button>
       <div class="search-box">
         <input 
           type="text" 
@@ -209,65 +221,6 @@ export default {
   gap: 15px;
 }
 
-.btn-add-game {
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.3s ease;
-}
-
-.btn-add-game:hover {
-  background: var(--accent-hover);
-}
-
-.btn-add-folder {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-}
-
-.btn-add-folder:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--accent-color);
-}
-
-.btn-import-bookmark {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-}
-
-.btn-import-bookmark:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--accent-color);
-}
-
-.btn-icon {
-  font-size: 1.2rem;
-}
 
 .search-box {
   position: relative;

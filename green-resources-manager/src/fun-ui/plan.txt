@@ -1,25 +1,19 @@
 优秀组件库应该抽离的内容
 一、应该抽离的组件类型
 1. Basic（基础组件）
-Button（按钮）
 Tag（标签）
 Icon（图标）
 Divider（分割线）
 Badge（徽章）
 Avatar（头像）
 2. Data Input（数据录入）
-Input（输入框）
 Textarea（多行输入）
 Select（选择器）
-Rate（评分）
-Switch（开关）
 Checkbox（复选框）
 Radio（单选框）
 DatePicker（日期选择）
 Upload（上传）
 3. Data Display（数据展示）
-Card（卡片）
-EmptyState（空状态）
 Table（表格）
 List（列表）
 Timeline（时间线）
@@ -32,9 +26,7 @@ Breadcrumb（面包屑）
 Pagination（分页）
 Steps（步骤条）
 5. Feedback（反馈）
-Alert（提示）
 Message（消息）
-Notification（通知）
 Dialog（对话框）
 Drawer（抽屉）
 Loading（加载）
@@ -61,10 +53,7 @@ Layout（布局）
 基于你的代码库，建议抽离：
 高优先级
 FormField → fun-input、fun-textarea、fun-select
-通用表单组件，多处使用
-PaginationNav → fun-pagination
-通用分页组件
-ToastNotification → fun-message 或 fun-notification
+
 通用提示组件
 ContextMenu → fun-context-menu
 通用右键菜单
@@ -107,14 +96,4 @@ ToastNotification → fun-message
 后续考虑
 ContextMenu → fun-context-menu
 LayoutControl → fun-layout-control
-保持现状（不抽离）
-GameDetailPanel、AddGameDialog 等业务组件
-BaseView 等页面级组件
-MediaCard 等高度定制组件
-七、抽离步骤
-评估通用性：统计使用次数和场景
-抽象 API：设计 props、events、slots
-提取样式：使用 CSS 变量，移除业务相关样式
-编写文档：README + 使用示例
-迁移替换：逐步替换旧组件
-测试验证：确保功能正常
+

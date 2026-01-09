@@ -3,19 +3,19 @@
           ref="baseView"
           :items="audios"
           :filtered-items="filteredAudios"
-          :empty-state-config="audioEmptyStateConfig"
-          :toolbar-config="audioToolbarConfig"
-          :context-menu-items="audioContextMenuItems"
-          :pagination-config="audioPaginationConfig"
+          :empty-state-config="emptyStateConfig"
+          :toolbar-config="toolbarConfig"
+          :context-menu-items="contextMenuItems"
+          :pagination-config="paginationConfig"
           :sort-by="sortBy"
           :search-query="searchQuery"
           @empty-state-action="handleEmptyStateAction"
-          @add-item="showAddDialog = true"
+          @add-item="showAddDialogHandler"
           @sort-changed="handleSortChanged"
           @search-query-changed="handleSearchQueryChanged"
           @sort-by-changed="handleSortByChanged"
           @context-menu-click="handleContextMenuClick"
-          @page-change="handleAudioPageChange"
+          @page-change="handlePageChange"
           :scale="scale"
           :show-layout-control="true"
           @update:scale="updateScale"
@@ -61,11 +61,11 @@
 
     <!-- 音频详情对话框 -->
     <DetailPanel
-      :visible="!!selectedAudio"
-      :item="selectedAudio"
+          :visible="showDetailDialog && !!selectedItem"
+          :item="selectedItem"
       type="audio"
-      :stats="audioStats"
-      :actions="audioActions"
+      :stats="itemStats"
+      :actions="itemActions"
       :on-update-resource="updateAudioResource"
       @close="closeAudioDetail"
       @action="handleDetailAction"
@@ -74,7 +74,7 @@
     <!-- 编辑音频对话框 -->
     <EditAudioDialog
       :visible="showEditDialog"
-      :audio="editAudioForm"
+      :audio="editForm"
       :is-electron-environment="true"
       :get-thumbnail-url="getThumbnailUrl"
       :available-tags="allTags"
@@ -91,8 +91,8 @@
       title="更新音频路径"
       description="发现同名但路径不同的音频文件："
       item-name-label="音频名称"
-      :item-name="pathUpdateInfo.existingAudio?.name || ''"
-      :old-path="pathUpdateInfo.existingAudio?.filePath || ''"
+      :item-name="pathUpdateInfo.existingItem?.name || ''"
+      :old-path="pathUpdateInfo.existingItem?.filePath || ''"
       :new-path="pathUpdateInfo.newPath || ''"
       missing-label="文件丢失"
       found-label="文件存在"
@@ -123,8 +123,9 @@ import { useAudioManagement } from '../../composables/audio/useAudioManagement'
 import { useAudioFilter } from '../../composables/audio/useAudioFilter'
 import { useAudioPlayback } from '../../composables/audio/useAudioPlayback'
 import { useDisplayLayout } from '../../composables/useDisplayLayout'
+import { createResourcePage } from '../../composables/createResourcePage'
 import { formatDuration as formatDurationUtil } from '../../utils/formatters.ts'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 export default {
   name: 'AudioView',
@@ -174,19 +175,148 @@ export default {
       onIncrementPlayCount: audioManagement.incrementPlayCount
     })
 
+    // ========== 工具函数 ==========
+    const formatDate = (dateString: string) => {
+      if (!dateString) return '未知'
+      try {
+        return new Date(dateString).toLocaleDateString('zh-CN')
+      } catch {
+        return '未知'
+      }
+    }
+
+    const extractNameFromPath = (filePath: string) => {
+      if (!filePath) return ''
+      const normalized = filePath.replace(/\\/g, '/')
+      const filename = normalized.substring(normalized.lastIndexOf('/') + 1)
+      const dotIndex = filename.lastIndexOf('.')
+      return dotIndex > 0 ? filename.substring(0, dotIndex) : filename
+    }
+
+    const getThumbnailUrl = (thumbnailPath: string) => {
+      if (!thumbnailPath) return ''
+      if (window.electronAPI?.getFileUrl) {
+        return window.electronAPI.getFileUrl(thumbnailPath)
+      }
+      return thumbnailPath.startsWith('file://') ? thumbnailPath : `file://${thumbnailPath}`
+    }
+
+    // ========== 使用工厂函数创建资源页面 ==========
+    const resourcePage = createResourcePage({
+      pageConfig: {
+        pageType: 'audio',
+        itemType: '音频',
+        defaultPageSize: 20,
+        defaultSortBy: 'name'
+      },
+      items: audioManagement.audios,
+      filteredItems: audioFilter.filteredAudios,
+      searchQuery: audioFilter.searchQuery,
+      sortBy: audioFilter.sortBy,
+      crudConfig: {
+        items: audioManagement.audios,
+        onAdd: audioManagement.addAudio,
+        onUpdate: audioManagement.updateAudio,
+        onDelete: audioManagement.deleteAudio,
+        onLoad: audioManagement.loadAudios,
+        onSave: audioManagement.saveAudios,
+        getItemName: (audio: any) => audio.name,
+        itemType: '音频'
+      },
+      contextMenuItems: [
+        { key: 'detail', icon: '👁️', label: '查看详情' },
+        { key: 'play', icon: '▶️', label: '播放' },
+        { key: 'addToPlaylist', icon: '➕', label: '添加到播放列表' },
+        { key: 'folder', icon: '📁', label: '打开文件夹' },
+        { key: 'edit', icon: '✏️', label: '编辑信息' },
+        { key: 'delete', icon: '🗑️', label: '删除音频' }
+      ],
+      contextMenuHandlers: {
+        detail: (audio: any) => resourcePage.showDetail(audio),
+        play: (audio: any) => audioPlayback.playAudio(audio),
+        addToPlaylist: (audio: any) => audioPlayback.addToPlaylist(audio),
+        folder: (audio: any) => audioPlayback.openAudioFolder(audio),
+        edit: (audio: any) => resourcePage.showEdit(audio),
+        delete: (audio: any) => resourcePage.deleteItem(audio)
+      },
+      emptyState: {
+        icon: '🎵',
+        title: '你的音频库是空的',
+        description: '点击"添加音频"按钮来添加你的第一个音频',
+        buttonText: '添加第一个音频',
+        buttonAction: 'showAddDialog'
+      },
+      toolbar: {
+        addButtonText: '添加音频',
+        searchPlaceholder: '搜索音频...',
+        sortOptions: [
+          { value: 'name', label: '按名称' },
+          { value: 'artist', label: '按艺术家' },
+          { value: 'playCount', label: '按播放次数' },
+          { value: 'addedDate', label: '按添加时间' }
+        ]
+      },
+      displayLayout: {
+        minWidth: 80,
+        maxWidth: 280
+      },
+      getStats: (audio: any) => [
+        { label: '艺术家', value: audio.artist || '未知' },
+        { label: '时长', value: formatDurationUtil(audio.duration) },
+        { label: '播放次数', value: `${audio.playCount || 0} 次` },
+        { label: '添加时间', value: formatDate(audio.addedDate) }
+      ],
+      getActions: (audio: any) => {
+        const actions = [
+          { key: 'play', icon: '▶️', label: '播放', class: 'btn-play' },
+          { key: 'addToPlaylist', icon: '➕', label: '添加到播放列表', class: 'btn-add-to-playlist' },
+          { key: 'folder', icon: '📁', label: '打开文件夹', class: 'btn-open-folder' },
+          { key: 'edit', icon: '✏️', label: '编辑信息', class: 'btn-edit' },
+          { key: 'remove', icon: '🗑️', label: '删除音频', class: 'btn-remove' }
+        ]
+        
+        // 如果没有时长，添加更新时长按钮
+        if (!audio.duration || audio.duration === 0) {
+          actions.splice(2, 0, { key: 'updateDuration', icon: '⏱️', label: '更新时长', class: 'btn-update-duration' })
+        }
+        
+        return actions
+      }
+    })
+
+    // ========== 拖拽处理 ==========
+    const audioDragDrop = useAudioDragDrop({
+      audios: audioManagement.audios,
+      onAddAudio: audioManagement.addAudio,
+      onShowPathUpdateDialog: ((info: any) => {
+        // 适配器：将 audio 类型的 PathUpdateInfo 转换为通用类型
+        resourcePage.showPathUpdateDialogHandler({
+          existingItem: info.existingAudio || info.existingItem,
+          newPath: info.newPath,
+          newFileName: info.newFileName || info.newPath?.split(/[/\\]/).pop() || ''
+        })
+      }) as any,
+      onReloadData: audioManagement.loadAudios,
+      extractAudioNameFromPath: extractNameFromPath
+    })
+
     // 创建统一的资源更新函数（用于 DetailPanel）
     const updateAudioResource = async (id: string, updates: { rating?: number; comment?: string; isFavorite?: boolean }) => {
       await audioManagement.updateAudio(id, updates)
     }
 
+    // ========== 监听筛选结果变化，更新分页 ==========
+    // 注意：分页的 watch 已在 usePagination 内部处理，这里不需要额外监听
+    // 如果需要手动触发，可以使用 resourcePage.updatePagination()
+    
+    // ========== 监听搜索和排序变化，重置到第一页 ==========
+    watch([audioFilter.searchQuery, audioFilter.sortBy], () => {
+      resourcePage.resetToFirstPage()
+    })
+
     return {
       getAudioDuration,
-      showPathUpdateDialog,
-      pathUpdateInfo,
-      audioDragDropComposable,
-      // 显示布局相关
-      ...displayLayoutComposable,
-      // 音频管理相关（重命名避免冲突）
+      // 音频管理相关
       audios: audioManagement.audios,
       isLoading: audioManagement.isLoading,
       loadAudiosFromComposable: audioManagement.loadAudios,
@@ -220,150 +350,33 @@ export default {
       playAudio: audioPlayback.playAudio,
       addToPlaylist: audioPlayback.addToPlaylist,
       openAudioFolder: audioPlayback.openAudioFolder,
+      // 资源页面（使用工厂函数创建，包含分页、CRUD、右键菜单、配置等）
+      ...resourcePage,
       // 统一的资源更新函数
-      updateAudioResource
+      updateAudioResource,
+      // 工具函数
+      formatDate,
+      extractNameFromPath,
+      getThumbnailUrl,
+      // 拖拽相关
+      ...audioDragDrop
     }
   },
   data() {
     return {
-      // audios, searchQuery, sortBy, selectedTags, excludedTags, selectedArtists, excludedArtists, allTags, allArtists 已移至 composables
-      showAddDialog: false,
-      // isDragOver 已移至 useAudioDragDrop composable
-      // showPathUpdateDialog 和 pathUpdateInfo 已移至 setup()
-      // 音频列表分页相关
-      currentAudioPage: 1,
-      audioPageSize: 20, // 默认每页显示20个音频
-      totalAudioPages: 0,
-      selectedAudio: null,
-      // 添加对话框相关状态
+      // 添加对话框相关状态（AddAudioDialog 需要这些临时状态）
       newAudioFilePath: '',
       newAudioName: '',
-      newAudioDuration: 0,
-      // 编辑相关状态
-      showEditDialog: false,
-      editAudioForm: null,
-      // 排序选项
-      audioSortOptions: [
-        { value: 'name', label: '按名称' },
-        { value: 'artist', label: '按艺术家' },
-        { value: 'playCount', label: '按播放次数' },
-        { value: 'addedDate', label: '按添加时间' }
-      ],
-      // 空状态配置
-      audioEmptyStateConfig: {
-        emptyIcon: '🎵',
-        emptyTitle: '你的音频库是空的',
-        emptyDescription: '点击"添加音频"按钮来添加你的第一个音频',
-        emptyButtonText: '添加第一个音频',
-        emptyButtonAction: 'showAddDialog',
-        noResultsIcon: '🔍',
-        noResultsTitle: '没有找到匹配的音频',
-        noResultsDescription: '尝试使用不同的搜索词',
-        noPageDataIcon: '📄',
-        noPageDataTitle: '当前页没有音频',
-        noPageDataDescription: '请切换到其他页面查看音频'
-      },
-      // 工具栏配置
-      audioToolbarConfig: {
-        addButtonText: '添加音频',
-        searchPlaceholder: '搜索音频...',
-        sortOptions: [
-          { value: 'name', label: '按名称' },
-          { value: 'artist', label: '按艺术家' },
-          { value: 'playCount', label: '按播放次数' },
-          { value: 'addedDate', label: '按添加时间' }
-        ],
-        pageType: 'audio'
-      },
-      // 右键菜单配置
-      audioContextMenuItems: [
-        { key: 'detail', icon: '👁️', label: '查看详情' },
-        { key: 'play', icon: '▶️', label: '播放' },
-        { key: 'addToPlaylist', icon: '➕', label: '添加到播放列表' },
-        { key: 'folder', icon: '📁', label: '打开文件夹' },
-        { key: 'edit', icon: '✏️', label: '编辑信息' },
-        { key: 'delete', icon: '🗑️', label: '删除音频' }
-      ]
+      newAudioDuration: 0
     }
   },
   computed: {
-    // filteredAudios 已移至 useAudioFilter composable
-    // 分页显示的音频列表
+    // 分页显示的音频列表（使用 composable 的 paginatedItems）
     paginatedAudios() {
-      if (!this.filteredAudios || this.filteredAudios.length === 0) return []
-      const start = (this.currentAudioPage - 1) * this.audioPageSize
-      const end = start + this.audioPageSize
-      return this.filteredAudios.slice(start, end)
-    },
-    // 当前音频页的起始索引
-    currentAudioPageStartIndex() {
-      return (this.currentAudioPage - 1) * this.audioPageSize
-    },
-    audioStats() {
-      if (!this.selectedAudio) return []
-      
-      return [
-        { label: '艺术家', value: this.selectedAudio.artist || '未知' },
-        { label: '时长', value: this.formatDuration(this.selectedAudio.duration) },
-        { label: '播放次数', value: `${this.selectedAudio.playCount || 0} 次` },
-        { label: '添加时间', value: this.formatDate(this.selectedAudio.addedDate) }
-      ]
-    },
-    audioActions() {
-      const actions = [
-        { key: 'play', icon: '▶️', label: '播放', class: 'btn-play' },
-        { key: 'addToPlaylist', icon: '➕', label: '添加到播放列表', class: 'btn-add-to-playlist' },
-        { key: 'folder', icon: '📁', label: '打开文件夹', class: 'btn-open-folder' },
-        { key: 'edit', icon: '✏️', label: '编辑信息', class: 'btn-edit' },
-        { key: 'remove', icon: '🗑️', label: '删除音频', class: 'btn-remove' }
-      ]
-      
-      // 如果没有时长，添加更新时长按钮
-      if (!this.selectedAudio?.duration || this.selectedAudio.duration === 0) {
-        actions.splice(2, 0, { key: 'updateDuration', icon: '⏱️', label: '更新时长', class: 'btn-update-duration' })
-      }
-      
-      return actions
-    },
-    // 动态更新分页配置
-    audioPaginationConfig() {
-      return {
-        currentPage: this.currentAudioPage,
-        totalPages: this.totalAudioPages,
-        pageSize: this.audioPageSize,
-        totalItems: this.filteredAudios.length,
-        itemType: '音频'
-      }
-    },
-    // 拖拽状态（从 composable 获取）
-    isDragOver() {
-      return this.audioDragDropComposable?.isDragOver?.value || false
+      return this.paginatedItems
     }
   },
   methods: {
-    // 初始化音频拖拽 composable（延迟初始化，因为需要访问 this）
-    initAudioDragDrop() {
-      if (this.audioDragDropComposable) return this.audioDragDropComposable
-      
-      this.audioDragDropComposable = useAudioDragDrop({
-        audios: computed(() => this.audios),
-        onAddAudio: async (audioData) => {
-          return await this.addAudioToManager(audioData)
-        },
-        onShowPathUpdateDialog: (info) => {
-          this.pathUpdateInfo = info
-          this.showPathUpdateDialog = true
-        },
-        onReloadData: async () => {
-          await this.loadAudios()
-        },
-        extractAudioNameFromPath: (filePath) => {
-          return this.extractNameFromPath(filePath)
-        }
-      })
-      return this.audioDragDropComposable
-    },
-    
     async loadAudios() {
       try {
         // 调用 composable 的 loadAudios 方法
@@ -385,8 +398,8 @@ export default {
             })
         }
         
-        // 计算音频列表总页数
-        this.updateAudioPagination()
+        // 更新分页（使用 composable 的方法）
+        this.updatePagination()
       } catch (error: any) {
         console.error('加载音频数据失败:', error)
         notify.toast('error', '加载失败', '加载音频数据失败: ' + error.message)
@@ -415,55 +428,32 @@ export default {
       }
     },
     
-    async handleAddAudioConfirm(audioData) {
-      try {
-        if (!audioData.filePath) {
-          notify.toast('error', '添加失败', '请选择音频文件')
-          return
-        }
-        
-        const audio = await this.addAudioToManager(audioData)
-        // 重新加载音频列表，确保数据同步
-        await this.loadAudios()
-        this.closeAddDialog()
-        notify.native('音频添加成功', `已添加音频: ${audio.name}`)
-      } catch (error) {
-        console.error('添加音频失败:', error)
-        notify.toast('error', '添加失败', '添加音频失败: ' + error.message)
+    // handleAddAudioConfirm 使用 crud.handleAddConfirm，但需要保留验证逻辑
+    async handleAddAudioConfirm(audioData: any) {
+      if (!audioData.filePath) {
+        notify.toast('error', '添加失败', '请选择音频文件')
+        return
       }
+      await this.handleAddConfirm(audioData)
     },
     
-    // playAudio, addToPlaylist, openAudioFolder 已移至 useAudioPlayback composable
-    
-    async deleteAudio(audio) {
-      const confirmed = await confirmService.confirm(`确定要删除音频 "${audio.name}" 吗？`, '确认删除')
-      if (!confirmed) return
-      
-      try {
-        await this.deleteAudioFromManager(audio.id)
-        
-        // 显示删除成功通知
-        notify.toast('success', '删除成功', `已成功删除音频 "${audio.name}"`)
-        console.log('音频删除成功:', audio.name)
-        
-        this.closeAudioDetail()
-      } catch (error) {
-        console.error('删除音频失败:', error)
-        // 显示删除失败通知
-        notify.toast('error', '删除失败', `无法删除音频 "${audio.name}": ${error.message}`)
-      }
+    // deleteAudio 使用 crud.deleteItem（已包含确认对话框和通知）
+    async deleteAudio(audio: any) {
+      await this.deleteItem(audio)
     },
     
-    showAudioDetail(audio) {
-      this.selectedAudio = audio
+    // showAudioDetail 使用 crud.showDetail，但需要保留关闭菜单逻辑
+    showAudioDetail(audio: any) {
+      this.showDetail(audio)
       // 关闭上下文菜单（如果存在）
       if (this.$refs.baseView) {
         (this.$refs.baseView as any).showContextMenu = false
       }
     },
     
+    // closeAudioDetail 使用 crud.closeDetail
     closeAudioDetail() {
-      this.selectedAudio = null
+      this.closeDetail()
     },
     handleDetailAction(actionKey, audio) {
       switch (actionKey) {
@@ -495,80 +485,31 @@ export default {
       this.newAudioDuration = 0
     },
     
-    /**
-     * 右键菜单点击事件处理
-     * @param {*} data - 包含 item 和 selectedItem
-     */
-    handleContextMenuClick(data) {
-      const { item, selectedItem } = data
-      if (!selectedItem) return
-      
-      switch (item.key) {
-        case 'detail':
-          this.showAudioDetail(selectedItem)
-          break
-        case 'play':
-          this.playAudio(selectedItem)
-          break
-        case 'addToPlaylist':
-          this.addToPlaylist(selectedItem)
-          break
-        case 'folder':
-          this.openAudioFolder(selectedItem)
-          break
-        case 'edit':
-          this.editAudio(selectedItem)
-          break
-        case 'delete':
-          this.deleteAudio(selectedItem)
-          break
-      }
+    // handleContextMenuClick 使用 contextMenu.handleContextMenuClick
+    handleContextMenuClick(data: any) {
+      this.handleContextMenuClick(data)
     },
     
-    // 处理空状态按钮点击事件
-    handleEmptyStateAction(actionName) {
+    // handleEmptyStateAction 使用 resourcePage.handleEmptyStateAction
+    // 但需要包装以处理特定的 actionName
+    handleEmptyStateAction(actionName: string) {
       if (actionName === 'showAddDialog') {
-        this.showAddDialog = true
+        this.showAddDialogHandler()
       }
     },
     
-    // 处理搜索查询变化
-    handleSearchQueryChanged(newValue) {
-      this.searchQuery = newValue
-    },
-    
-    // 处理排序变化
-    handleSortByChanged(newValue) {
-      this.sortBy = newValue
-      console.log('✅ AudioView 排序方式已更新:', newValue)
-    },
-    
-    editAudio(audio) {
-      this.editAudioForm = {
-        id: audio.id,
-        name: audio.name || '',
-        artist: audio.artist || '',
-        filePath: audio.filePath || '',
-        thumbnailPath: audio.thumbnailPath || '',
-        actors: audio.actors || [],
-        tags: audio.tags || [],
-        notes: audio.notes || ''
-      }
-      this.editActorInput = ''
-      this.editTagInput = ''
-      this.showEditDialog = true
+    // editAudio 使用 crud.showEdit，但需要保留业务特定逻辑
+    editAudio(audio: any) {
+      this.showEdit(audio)
       // 关闭上下文菜单（如果存在）
       if (this.$refs.baseView) {
         (this.$refs.baseView as any).showContextMenu = false
       }
-      
-      // 关闭详情页面
-      this.closeAudioDetail()
     },
     
+    // closeEditDialog 使用 crud.closeEdit
     closeEditDialog() {
-      this.showEditDialog = false
-      this.editAudioForm = null
+      this.closeEdit()
     },
     
     // 文件选择
@@ -610,41 +551,16 @@ export default {
       }
     },
     
-    // 获取缩略图URL
-    getThumbnailUrl(thumbnailPath) {
-      if (!thumbnailPath) return ''
-      if (window.electronAPI && window.electronAPI.getFileUrl) {
-        return window.electronAPI.getFileUrl(thumbnailPath)
-      }
-      return thumbnailPath.startsWith('file://') ? thumbnailPath : `file://${thumbnailPath}`
-    },
+    // getThumbnailUrl 已在 setup() 中定义
     
     // 保存编辑
-    async handleEditAudioConfirm(updatedAudio) {
-      try {
-        if (!updatedAudio.name.trim()) {
-          await alertService.warning('请输入音频名称', '提示')
-          return
-        }
-        
-        await this.updateAudioInManager(updatedAudio.id, {
-          name: updatedAudio.name.trim(),
-          artist: updatedAudio.artist.trim(),
-          filePath: updatedAudio.filePath.trim(),
-          thumbnailPath: updatedAudio.thumbnailPath.trim(),
-          actors: updatedAudio.actors,
-          tags: updatedAudio.tags,
-          notes: updatedAudio.notes.trim()
-        })
-        
-        // 重新加载音频列表，确保数据同步
-        await this.loadAudios()
-        this.closeEditDialog()
-        notify.native('保存成功', '音频信息已更新')
-      } catch (error) {
-        console.error('保存编辑失败:', error)
-        notify.toast('error', '保存失败', '保存编辑失败: ' + error.message)
+    // handleEditAudioConfirm 使用 crud.handleEditConfirm，但需要保留验证逻辑
+    async handleEditAudioConfirm(updatedAudio: any) {
+      if (!updatedAudio.name.trim()) {
+        await alertService.warning('请输入音频名称', '提示')
+        return
       }
+      await this.handleEditConfirm(updatedAudio)
     },
     
     async handleToggleFavorite(audio) {
@@ -656,8 +572,8 @@ export default {
         const newFavoriteStatus = !audio.isFavorite
         await this.updateAudioInManager(audio.id, { isFavorite: newFavoriteStatus })
         // 更新当前音频对象，以便详情面板立即显示新状态
-        if (this.selectedAudio && this.selectedAudio.id === audio.id) {
-          this.selectedAudio.isFavorite = newFavoriteStatus
+        if (this.selectedItem && this.selectedItem.id === audio.id) {
+          this.selectedItem.isFavorite = newFavoriteStatus
         }
       } catch (error: any) {
         console.error('切换收藏状态失败:', error)
@@ -665,17 +581,7 @@ export default {
       }
     },
     
-    formatDuration(seconds) {
-      return formatDurationUtil(seconds, '未知时长')
-    },
-    formatDate(dateString) {
-      if (!dateString) return '未知'
-      try {
-        return new Date(dateString).toLocaleDateString('zh-CN')
-      } catch {
-        return '未知'
-      }
-    },
+    // formatDuration 和 formatDate 已在 setup() 中定义
 
     // 更新音频时长
     async updateAudioDuration(audio) {
@@ -699,8 +605,8 @@ export default {
           }
           
           // 更新选中的音频数据
-          if (this.selectedAudio && this.selectedAudio.id === audio.id) {
-            this.selectedAudio.duration = duration
+          if (this.selectedItem && this.selectedItem.id === audio.id) {
+            this.selectedItem.duration = duration
           }
           
           console.log('✅ 音频时长更新成功:', duration, '秒')
@@ -723,26 +629,7 @@ export default {
       return dotIndex > 0 ? filename.substring(0, dotIndex) : filename
     },
     
-    // 拖拽处理方法（使用 composable）
-    handleDragOver(event) {
-      const composable = this.initAudioDragDrop()
-      return composable.handleDragOver(event)
-    },
-    
-    handleDragEnter(event) {
-      const composable = this.initAudioDragDrop()
-      return composable.handleDragEnter(event)
-    },
-    
-    handleDragLeave(event) {
-      const composable = this.initAudioDragDrop()
-      return composable.handleDragLeave(event)
-    },
-    
-    async handleDrop(event) {
-      const composable = this.initAudioDragDrop()
-      return await composable.handleDrop(event)
-    },
+    // 拖拽方法已在 setup() 中通过 audioDragDrop 暴露（handleDragOver, handleDragEnter, handleDragLeave, handleDrop）
 
     // 路径更新相关方法
     closePathUpdateDialog() {
@@ -813,103 +700,27 @@ export default {
         notify.toast('error', '更新失败', `更新音频路径失败: ${error.message}`)
       }
     },
-    async handleSortChanged({ pageType, sortBy }) {
-      try {
-        await saveManager.saveSortSetting(pageType, sortBy)
-        console.log(`✅ 已保存${pageType}页面排序方式:`, sortBy)
-      } catch (error) {
-        console.warn('保存排序方式失败:', error)
-      }
-    },
-    async loadSortSetting() {
-      try {
-        const savedSortBy = await saveManager.getSortSetting('audio')
-        if (savedSortBy && savedSortBy !== this.sortBy) {
-          this.sortBy = savedSortBy
-          console.log('✅ 已加载音频页面排序方式:', savedSortBy)
-        }
-      } catch (error) {
-        console.warn('加载排序方式失败:', error)
-      }
-    },
+    // handleSortChanged 使用 resourcePage.handleSortChanged（已在 setup() 中暴露）
+    // loadSortSetting 使用 resourcePage.loadSortSetting（已在 setup() 中暴露）
     
-    // 处理分页组件的事件
-    handleAudioPageChange(pageNum) {
-      this.currentAudioPage = pageNum
-    },
-    
-    // 更新音频列表分页信息
-    updateAudioPagination() {
-      this.totalAudioPages = Math.ceil(this.filteredAudios.length / this.audioPageSize)
-      // 确保当前页不超过总页数
-      if (this.currentAudioPage > this.totalAudioPages && this.totalAudioPages > 0) {
-        this.currentAudioPage = this.totalAudioPages
-      }
-      // 如果当前页为0且没有数据，重置为1
-      if (this.currentAudioPage === 0 && this.filteredAudios.length > 0) {
-        this.currentAudioPage = 1
-      }
-    },
-    
-    // 从设置中加载音频分页配置
-    async loadAudioPaginationSettings() {
-      try {
-        const settings = await saveManager.loadSettings()
-        
-        if (settings && settings.audio) {
-          const newAudioPageSize = parseInt(settings.audio.listPageSize) || 20
-          
-          // 更新音频列表分页大小
-          if (this.audioPageSize !== newAudioPageSize) {
-            this.audioPageSize = newAudioPageSize
-            
-            // 重新计算音频列表分页
-            this.updateAudioPagination()
-            
-            console.log('音频列表分页设置已更新:', {
-              listPageSize: this.audioPageSize,
-              totalAudioPages: this.totalAudioPages,
-              currentAudioPage: this.currentAudioPage
-            })
-          }
-        }
-      } catch (error) {
-        console.error('加载音频分页设置失败:', error)
-        // 使用默认值
-        this.audioPageSize = 20
-      }
-    },
+    // handleAudioPageChange 使用 pagination.handlePageChange（已在 setup() 中暴露）
+    // updateAudioPagination 使用 pagination.updatePagination（已在 setup() 中暴露）
+    // loadAudioPaginationSettings 使用 pagination.loadPaginationSettings（已在 setup() 中暴露）
   },
-  watch: {
-    // 监听筛选结果变化，更新分页信息
-    filteredAudios: {
-      handler() {
-        this.updateAudioPagination()
-      },
-      immediate: false
-    },
-    // 监听搜索查询变化，重置到第一页
-    searchQuery() {
-      this.currentAudioPage = 1
-    },
-    // 监听排序变化，重置到第一页
-    sortBy() {
-      this.currentAudioPage = 1
-    }
-  },
+  // watch 已移至 setup() 中，使用 composables 的 watch
   async mounted() {
-    await this.loadAudios()
-    
-    // 加载音频分页设置
-    await this.loadAudioPaginationSettings()
-    
-    // 加载排序设置
-    await this.loadSortSetting()
-    
     // 设置筛选器数据更新回调
     this.setFilterDataUpdatedCallback((data) => {
       this.$emit('filter-data-updated', data)
     })
+    
+    await this.loadAudios()
+    
+    // 加载分页设置（使用 composable 的方法）
+    await this.loadPaginationSettings('audio')
+    
+    // 加载排序设置（使用 composable 的方法）
+    await this.loadSortSetting()
     
     // 初始化筛选器数据
     this.updateFilterData()

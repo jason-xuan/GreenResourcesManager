@@ -1,11 +1,11 @@
 <template>
-  <BaseView ref="baseView" :items="games" :filtered-items="filteredGames" :empty-state-config="gameEmptyStateConfig"
-    :toolbar-config="gameToolbarConfig" :context-menu-items="gameContextMenuItems"
-    :pagination-config="gamePaginationConfig" :sort-by="sortBy" :search-query="searchQuery"
+  <BaseView ref="baseView" :items="games" :filtered-items="filteredGames" :empty-state-config="emptyStateConfig"
+    :toolbar-config="toolbarConfig" :context-menu-items="contextMenuItems"
+    :pagination-config="paginationConfig" :sort-by="sortBy" :search-query="searchQuery"
     :scale="scale" :show-layout-control="true" @update:scale="updateScale"
-    @empty-state-action="handleEmptyStateAction" @add-item="showAddGameDialog" @sort-changed="handleSortChanged"
+    @empty-state-action="handleEmptyStateAction" @add-item="showAddDialogHandler" @sort-changed="handleSortChanged"
     @search-query-changed="handleSearchQueryChanged" @sort-by-changed="handleSortByChanged"
-    @context-menu-click="handleContextMenuClick" @page-change="handleGamePageChange">
+    @context-menu-click="handleContextMenuClick" @page-change="handlePageChange">
     <!-- 主内容区域 -->
     <div class="game-content" @drop="handleDrop" @dragover="handleDragOver" @dragenter="handleDragEnter"
       @dragleave="handleDragLeave" :class="{ 'drag-over': dragDropComposable?.isDragOver || false }">
@@ -13,7 +13,7 @@
 
       <!-- 游戏网格 -->
       <GameGrid 
-        :games="paginatedGames"
+        :games="paginatedItems"
         :is-game-running="isGameRunning"
         :is-electron-environment="isElectronEnvironment"
         :scale="scale"
@@ -29,26 +29,26 @@
         :visible="showAddDialog" 
         :is-electron-environment="isElectronEnvironment"
         :available-tags="allTags"
-        @close="closeAddGameDialog"
+        @close="closeAddDialog"
         @confirm="handleAddGameConfirm"
       />
 
       <!-- 编辑游戏对话框 -->
       <EditGameDialog 
         :visible="showEditDialog" 
-        :game="currentGame"
+        :game="editForm"
         :is-electron-environment="isElectronEnvironment"
         :available-tags="allTags"
-        @close="closeEditGameDialog"
+        @close="closeEdit"
         @confirm="handleEditGameConfirm"
       />
 
       <!-- 游戏详情页面 -->
       <GameDetailPanel 
-        :visible="showDetailModal" 
-        :game="currentGame"
-        :is-running="currentGame ? isGameRunning(currentGame) : false"
-        @close="closeGameDetail"
+        :visible="showDetailDialog && !!selectedItem" 
+        :game="selectedItem"
+        :is-running="selectedItem ? isGameRunning(selectedItem) : false"
+        @close="closeDetail"
         @action="handleDetailAction"
         @update-rating="handleUpdateRating"
         @update-comment="handleUpdateComment"
@@ -58,8 +58,8 @@
 
       <!-- 路径更新确认对话框 -->
       <PathUpdateDialog :visible="showPathUpdateDialog" title="更新游戏路径" description="发现同名但路径不同的游戏文件："
-        item-name-label="游戏名称" :item-name="pathUpdateInfo.existingGame?.name || ''"
-        :old-path="pathUpdateInfo.existingGame?.executablePath || ''" :new-path="pathUpdateInfo.newPath || ''"
+        item-name-label="游戏名称" :item-name="pathUpdateInfo.existingItem?.name || ''"
+        :old-path="pathUpdateInfo.existingItem?.executablePath || ''" :new-path="pathUpdateInfo.newPath || ''"
         missing-label="文件丢失" found-label="文件存在" question="是否要更新游戏路径？" @confirm="confirmPathUpdate"
         @cancel="closePathUpdateDialog" />
 
@@ -105,7 +105,6 @@ import AddGameDialog from '../../components/game/AddGameDialog.vue'
 import EditGameDialog from '../../components/game/EditGameDialog.vue'
 import GameDetailPanel from '../../components/game/GameDetailPanel.vue'
 import GameGrid from '../../components/game/GameGrid.vue'
-import { formatPlayTime, formatLastPlayed, formatDateTime, formatDate, formatFirstPlayed } from '../../utils/formatters'
 
 import saveManager from '../../utils/SaveManager.ts'
 import notify from '../../utils/NotificationService.ts'
@@ -119,10 +118,11 @@ import { useGameManagement } from '../../composables/game/useGameManagement'
 import { useGameScreenshot } from '../../composables/game/useGameScreenshot'
 import { useGameRunning } from '../../composables/game/useGameRunning'
 import { useGamePlayTime } from '../../composables/game/useGamePlayTime'
-import { usePagination } from '../../composables/usePagination'
-import { useGameDragAndDrop, isArchiveFile } from '../../composables/game/useGameDragAndDrop'
+import { useGameDragAndDrop } from '../../composables/game/useGameDragAndDrop'
+import { useArchive, type ArchiveItem, isArchiveFile } from '../../composables/useArchive'
 import { useGameRunningStore } from '../../stores/game-running'
-import { useDisplayLayout } from '../../composables/useDisplayLayout'
+import { createResourcePage } from '../../composables/createResourcePage'
+import { formatPlayTime, formatLastPlayed, formatFirstPlayed } from '../../utils/formatters'
 
 export default {
   name: 'GameView',
@@ -149,9 +149,6 @@ export default {
     const isElectronEnvironment = ref(false)
     const searchQuery = ref('')
     const sortBy = ref<GameSortBy>('name-asc')
-
-    // 使用显示布局 composable
-    const displayLayoutComposable = useDisplayLayout(80, 400)
 
     // 获取父组件方法的辅助函数（在 Options API 中通过 this.$parent 访问）
     // 注意：这些函数会在组件实例化后通过 methods 中的包装方法设置
@@ -233,117 +230,49 @@ export default {
       (gameId) => removeRunningGameFn(gameId)
     )
 
-    // 使用分页 composable
-    const paginationComposable = usePagination(
-      filterComposable.filteredGames,
-      20,
-      '游戏'
-    )
-
-    // 拖拽相关函数（需要在组件实例化后设置）
-    let showPathUpdateDialogFn: (info: { existingGame: any; newPath: string; newFileName: string }) => void = () => {}
-    let addGameFn: (game: any) => Promise<void> = async () => {}
-
-    // 使用拖拽 composable（延迟初始化，因为需要访问组件方法）
-    const dragDropComposable = ref<ReturnType<typeof useGameDragAndDrop> | null>(null)
-
-    return {
-      // 数据
-      games,
-      isElectronEnvironment,
-      searchQuery,
-      sortBy,
-      // 筛选相关
-      ...toRefs(filterComposable),
-      ...filterComposable,
-      // 管理相关
-      ...toRefs(managementComposable),
-      ...managementComposable,
-      // 显示布局相关
-      ...displayLayoutComposable,
-      // 截图相关
-      ...toRefs(screenshotComposable),
-      ...screenshotComposable,
-      // 运行状态相关
-      ...runningComposable,
-      // 游戏时长相关
-      ...playTimeComposable,
-      // 暴露 gameRunningStore 供组件使用
-      gameRunningStore,
-      // 分页相关
-      ...toRefs(paginationComposable),
-      ...paginationComposable,
-      // 拖拽相关（延迟初始化）
-      dragDropComposable,
-      // 内部函数设置器（供 mounted 使用）
-      _setDragDropFunctions: (functions: {
-        showPathUpdateDialog: (info: { existingGame: any; newPath: string; newFileName: string }) => void
-        addGame: (game: any) => Promise<void>
-      }) => {
-        showPathUpdateDialogFn = functions.showPathUpdateDialog
-        addGameFn = functions.addGame
-        
-        // 初始化拖拽 composable（传入响应式的 games）
-        dragDropComposable.value = useGameDragAndDrop({
-          games: games, // 传入 ref，composable 内部会处理
-          onAddGame: addGameFn,
-          onShowPathUpdateDialog: showPathUpdateDialogFn,
-          isElectronEnvironment: isElectronEnvironment.value
-        })
-      },
-      _setParentFunctions: (functions: {
-        getRunningGames: () => Map<string, any>
-        addRunningGame: (gameInfo: any) => void
-        removeRunningGame: (gameId: string) => void
-        isGameRunning: (gameId: string) => boolean
-      }) => {
-      
-        const store = gameRunningStore
-        getRunningGamesFn = () => store.getRunningGamesMap()
-        addRunningGameFn = (gameInfo: any) => store.addRunningGame(gameInfo)
-        removeRunningGameFn = (gameId: string) => store.removeRunningGame(gameId)
-        isGameRunningFn = (gameId: string) => store.isGameRunning(gameId)
-        
-        // 更新筛选器中的 isGameRunning 函数
-        // 注意：由于 filterComposable 已经创建，我们需要通过其他方式更新
-        // 这里我们重新创建 filterComposable（但实际上 Vue 的响应式系统会自动处理）
+    // ========== 工具函数 ==========
+    const formatDateUtil = (dateString: string) => {
+      if (!dateString) return '未知'
+      try {
+        return new Date(dateString).toLocaleDateString('zh-CN')
+      } catch {
+        return '未知'
       }
     }
-  },
-  data() {
-    return {
-      showAddDialog: false,
-      selectedGame: null,
-      showDetailModal: false,
-      currentGame: null,
-      // runningGames 现在由 App.vue 全局管理
-      // isScreenshotInProgress 和 lastScreenshotTime 已移至 useGameScreenshot composable
-      // 编辑相关状态
-      showEditDialog: false,
-      // 事件处理器（用于清理）
-      handleGamePlaytimeUpdate: null as ((event: CustomEvent) => void) | null,
-      handleGamePlaytimeSave: null as ((event: CustomEvent) => void) | null,
-      handleRequestUpdatePlaytime: null as ((event: CustomEvent) => void) | null,
-      handleRequestFinalPlaytime: null as ((event: CustomEvent) => void) | null,
-      // 存储游戏启动时的初始 playTime（Map<gameId, initialPlayTime>）
-      gameInitialPlayTimes: null as Map<string, number> | null,
-      // 密码输入对话框
-      showPasswordDialog: false,
-      passwordDialogTitle: '输入密码',
-      passwordDialogMessage: '该压缩包需要密码，请输入密码：',
-      passwordDialogCallback: null, // 存储密码确认后的回调函数
-      passwordDialogGame: null, // 存储需要解压的游戏
-      passwordDialogOutputDir: null, // 存储输出目录
-      passwordDialogTriedPasswords: [], // 存储已尝试的密码
-      // 排序选项
-      gameSortOptions: [
-        { value: 'name', label: '按名称排序' },
-        { value: 'lastPlayed', label: '按最后游玩时间' },
-        { value: 'playTime', label: '按游戏时长' },
-        { value: 'added', label: '按添加时间' }
-      ],
-      // 右键菜单基础配置
-      baseGameContextMenuItems: [
+
+    // ========== 使用工厂函数创建资源页面 ==========
+    // 注意：contextMenuHandlers 需要在 setup 中定义，但某些处理器需要访问组件方法
+    // 所以先创建占位函数，在 methods 中会重新设置
+    const resourcePage = createResourcePage({
+      pageConfig: {
+        pageType: 'games',
+        itemType: '游戏',
+        defaultPageSize: 20,
+        defaultSortBy: 'name-asc'
+      },
+      items: games,
+      filteredItems: filterComposable.filteredGames,
+      searchQuery: searchQuery,
+      sortBy: sortBy,
+      crudConfig: {
+        items: games,
+        onAdd: async (gameData: any) => {
+          return await managementComposable.addGame(gameData as any)
+        },
+        onUpdate: async (id: string, updates: any) => {
+          await managementComposable.updateGame(id, updates)
+        },
+        onDelete: async (id: string) => {
+          await managementComposable.removeGame(id)
+        },
+        onLoad: managementComposable.loadGames,
+        onSave: async () => {
+          await managementComposable.saveGames()
+        },
+        getItemName: (game: any) => game.name,
+        itemType: '游戏'
+      },
+      contextMenuItems: [
         { key: 'detail', icon: '👁️', label: '查看详情' },
         { key: 'launch', icon: '▶️', label: '启动游戏' },
         { key: 'folder', icon: '📁', label: '打开文件夹' },
@@ -370,35 +299,46 @@ export default {
         { key: 'edit', icon: '✏️', label: '编辑信息' },
         { key: 'remove', icon: '🗑️', label: '删除游戏' }
       ],
-      // 标签和开发商筛选相关已移至 composables
-      // 拖拽相关已移至 useGameDragAndDrop composable
-      // 路径更新确认对话框
-      showPathUpdateDialog: false,
-      pathUpdateInfo: {
-        existingGame: null,
-        newPath: '',
-        newFileName: ''
+      contextMenuHandlers: {
+        detail: (game: any) => {
+          // 这个会在 methods 中被覆盖
+          resourcePage.showDetail(game)
+        },
+        launch: (game: any) => {
+          // 这个会在 methods 中被覆盖
+        },
+        folder: (game: any) => {
+          // 这个会在 methods 中被覆盖
+        },
+        'screenshot-folder': (game: any) => {
+          // 这个会在 methods 中被覆盖
+        },
+        'update-folder-size': (game: any) => {
+          // 这个会在 methods 中被覆盖
+        },
+        'compress-to': (game: any) => {
+          // 这个会在 methods 中被覆盖
+        },
+        'compress-here': (game: any) => {
+          // 这个会在 methods 中被覆盖
+        },
+        extract: (game: any) => {
+          // 这个会在 methods 中被覆盖
+        },
+        'extract-here': (game: any) => {
+          // 这个会在 methods 中被覆盖
+        },
+        edit: (game: any) => resourcePage.showEdit(game),
+        remove: (game: any) => resourcePage.deleteItem(game)
       },
-      // 强制结束游戏确认对话框
-      showTerminateConfirmDialog: false,
-      gameToTerminate: null,
-      // 分页相关已移至 useGamePagination composable
-      // 空状态配置
-      gameEmptyStateConfig: {
-        emptyIcon: '🎮',
-        emptyTitle: '你的游戏库是空的',
-        emptyDescription: '点击"添加游戏"按钮来添加你的第一个游戏，或直接拖拽游戏文件（.exe、.swf、.bat）或压缩包（.zip、.rar、.7z 等）到此处',
-        emptyButtonText: '添加第一个游戏',
-        emptyButtonAction: 'showAddGameDialog',
-        noResultsIcon: '🔍',
-        noResultsTitle: '没有找到匹配的游戏',
-        noResultsDescription: '尝试使用不同的搜索词',
-        noPageDataIcon: '📄',
-        noPageDataTitle: '当前页没有游戏',
-        noPageDataDescription: '请切换到其他页面查看游戏'
+      emptyState: {
+        icon: '🎮',
+        title: '你的游戏库是空的',
+        description: '点击"添加游戏"按钮来添加你的第一个游戏，或直接拖拽游戏文件（.exe、.swf、.bat）或压缩包（.zip、.rar、.7z 等）到此处',
+        buttonText: '添加第一个游戏',
+        buttonAction: 'showAddGameDialog'
       },
-      // 工具栏配置
-      gameToolbarConfig: {
+      toolbar: {
         addButtonText: '添加游戏',
         searchPlaceholder: '搜索游戏...',
         sortOptions: [
@@ -410,52 +350,171 @@ export default {
           { value: 'playTime-desc', label: '按游戏时长（降序）' },
           { value: 'added-asc', label: '按添加时间（升序）' },
           { value: 'added-desc', label: '按添加时间（降序）' }
-        ],
-        pageType: 'games'
+        ]
+      },
+      displayLayout: {
+        minWidth: 80,
+        maxWidth: 400
+      },
+      getStats: (game: any) => [
+        { label: '开发商', value: game.developer || '未知' },
+        { label: '发行商', value: game.publisher || '未知' },
+        { label: '引擎', value: game.engine || '未知' },
+        { label: '游戏时长', value: formatPlayTime(game.playTime || 0) },
+        { label: '游玩次数', value: `${game.playCount || 0} 次` },
+        { label: '最后游玩', value: formatLastPlayed(game.lastPlayed) },
+        { label: '首次游玩', value: formatFirstPlayed(game.firstPlayed) },
+        { label: '添加时间', value: formatDateUtil(game.added) }
+      ],
+      getActions: (game: any) => {
+        // 注意：isGameRunning 函数会在组件实例化后设置，这里先使用 store
+        const isRunning = gameRunningStore.isGameRunning(game.id)
+        const actions = [
+          { key: 'launch', icon: '▶️', label: isRunning ? '游戏运行中' : '启动游戏', class: 'btn-launch' },
+          { key: 'folder', icon: '📁', label: '打开文件夹', class: 'btn-open-folder' },
+          { key: 'edit', icon: '✏️', label: '编辑信息', class: 'btn-edit' },
+          { key: 'remove', icon: '🗑️', label: '删除游戏', class: 'btn-remove' }
+        ]
+        
+        // 如果游戏正在运行，添加终止按钮
+        if (isRunning) {
+          actions.splice(1, 0, { key: 'terminate', icon: '⏹️', label: '结束游戏', class: 'btn-terminate' })
+        }
+        
+        return actions
       }
+    })
+
+    // 拖拽相关函数（需要在组件实例化后设置）
+    let showPathUpdateDialogFn: (info: { existingGame: any; newPath: string; newFileName: string }) => void = () => {}
+    let addGameFn: (game: any) => Promise<void> = async () => {}
+
+    // 使用拖拽 composable（延迟初始化，因为需要访问组件方法）
+    const dragDropComposable = ref<ReturnType<typeof useGameDragAndDrop> | null>(null)
+
+    // 使用压缩/解压 composable（通用功能）
+    // 注意：密码对话框的状态在组件中管理，通过回调函数传递给 composable
+    const archiveComposable = useArchive({
+      isElectronEnvironment,
+      onShowPasswordDialog: (config) => {
+        // 这个回调会在 methods 中设置，用于显示密码对话框
+        // 暂时留空，在 mounted 中会设置
+      }
+    })
+
+    return {
+      // 工具函数
+      formatDateUtil,
+      // 数据
+      games,
+      isElectronEnvironment,
+      searchQuery,
+      sortBy,
+      // 筛选相关
+      ...toRefs(filterComposable),
+      ...filterComposable,
+      // 管理相关
+      ...toRefs(managementComposable),
+      ...managementComposable,
+      // 截图相关
+      ...toRefs(screenshotComposable),
+      ...screenshotComposable,
+      // 运行状态相关
+      ...runningComposable,
+      // 游戏时长相关
+      ...playTimeComposable,
+      // 暴露 gameRunningStore 供组件使用
+      gameRunningStore,
+      // 资源页面（使用工厂函数创建，包含分页、CRUD、右键菜单、配置等）
+      ...resourcePage,
+      // 压缩/解压相关
+      ...archiveComposable,
+      // 拖拽相关（延迟初始化）
+      dragDropComposable,
+      // 内部函数设置器（供 mounted 使用）
+      _setDragDropFunctions: (functions: {
+        showPathUpdateDialog: (info: { existingGame: any; newPath: string; newFileName: string }) => void
+        addGame: (game: any) => Promise<void>
+      }) => {
+        showPathUpdateDialogFn = functions.showPathUpdateDialog
+        addGameFn = functions.addGame
+        
+        // 初始化拖拽 composable（传入响应式的 games）
+        dragDropComposable.value = useGameDragAndDrop({
+          games: games, // 传入 ref，composable 内部会处理
+          onAddGame: addGameFn,
+          onShowPathUpdateDialog: (info: any) => {
+            // 适配器：将 game 类型的 PathUpdateInfo 转换为通用类型
+            resourcePage.showPathUpdateDialogHandler({
+              existingItem: info.existingGame || info.existingItem,
+              newPath: info.newPath,
+              newFileName: info.newFileName || info.newPath?.split(/[/\\]/).pop() || ''
+            })
+          },
+          isElectronEnvironment: isElectronEnvironment.value
+        })
+      },
+      _setParentFunctions: (functions: {
+        getRunningGames: () => Map<string, any>
+        addRunningGame: (gameInfo: any) => void
+        removeRunningGame: (gameId: string) => void
+        isGameRunning: (gameId: string) => boolean
+      }) => {
+        const store = gameRunningStore
+        getRunningGamesFn = () => store.getRunningGamesMap()
+        addRunningGameFn = (gameInfo: any) => store.addRunningGame(gameInfo)
+        removeRunningGameFn = (gameId: string) => store.removeRunningGame(gameId)
+        isGameRunningFn = (gameId: string) => store.isGameRunning(gameId)
+      },
+      // 暴露资源页面引用，供 methods 中更新 contextMenuHandlers
+      _resourcePage: resourcePage,
+      // 暴露压缩/解压 composable 引用，供 mounted 中设置密码对话框回调
+      _archiveComposable: archiveComposable
+    }
+  },
+  data() {
+    return {
+      // 对话框状态已移至工厂函数（showAddDialog, showEditDialog, showDetailDialog, selectedItem, editForm）
+      // 事件处理器（用于清理）
+      handleGamePlaytimeUpdate: null as ((event: CustomEvent) => void) | null,
+      handleGamePlaytimeSave: null as ((event: CustomEvent) => void) | null,
+      handleRequestUpdatePlaytime: null as ((event: CustomEvent) => void) | null,
+      handleRequestFinalPlaytime: null as ((event: CustomEvent) => void) | null,
+      // 存储游戏启动时的初始 playTime（Map<gameId, initialPlayTime>）
+      gameInitialPlayTimes: null as Map<string, number> | null,
+      // 密码输入对话框
+      showPasswordDialog: false,
+      passwordDialogTitle: '输入密码',
+      passwordDialogMessage: '该压缩包需要密码，请输入密码：',
+      passwordDialogCallback: null, // 存储密码确认后的回调函数
+      passwordDialogGame: null, // 存储需要解压的游戏
+      passwordDialogOutputDir: null, // 存储输出目录
+      passwordDialogTriedPasswords: [], // 存储已尝试的密码
+      // 强制结束游戏确认对话框
+      showTerminateConfirmDialog: false,
+      gameToTerminate: null
+      // 路径更新对话框已移至工厂函数（showPathUpdateDialog, pathUpdateInfo）
+      // 空状态配置已移至工厂函数（emptyStateConfig）
+      // 工具栏配置已移至工厂函数（toolbarConfig）
+      // 右键菜单配置已移至工厂函数（contextMenuItems）
     }
   },
   computed: {
-    // filteredGames 已移至 useGameFilter composable
-    // 分页相关已移至 useGamePagination composable
-    // paginatedGames 现在通过 paginationComposable.paginatedItems 访问
+    // paginatedGames 现在通过工厂函数的 paginatedItems 访问
     paginatedGames() {
       return this.paginatedItems || []
-    },
-    // gamePaginationConfig 现在通过 paginationComposable.paginationConfig 访问
-    gamePaginationConfig() {
-      return this.paginationConfig || {
-        currentPage: 1,
-        totalPages: 0,
-        pageSize: 20,
-        totalItems: 0,
-        itemType: '游戏'
-      }
-    },
-    // 动态生成右键菜单项（根据选中的游戏是否为压缩包）
-    gameContextMenuItems() {
-      // 基础菜单项
-      const menuItems = [...this.baseGameContextMenuItems]
-      
-      // 如果当前选中的游戏是压缩包，确保"解压文件"选项存在
-      // 如果不是压缩包，移除"解压文件"选项
-      // 注意：这里无法直接获取当前选中的游戏，所以我们在 handleContextMenuClick 中处理
-      // 但为了简化，我们始终显示"解压文件"选项，在点击时判断是否为压缩包
-      
-      return menuItems
     }
+    // filteredGames 已移至 useGameFilter composable
+    // paginationConfig 已移至工厂函数
+    // contextMenuItems 已移至工厂函数
+    // emptyStateConfig 已移至工厂函数
+    // toolbarConfig 已移至工厂函数
   },
   methods: {
     // checkGameCollectionAchievements 和 checkGameTimeAchievements 已移至 useGameManagement composable
-    showAddGameDialog() {
-      this.showAddDialog = true
-    },
-    closeAddGameDialog() {
-      this.showAddDialog = false
-    },
+    // showAddGameDialog 和 closeAddGameDialog 已移至工厂函数（showAddDialogHandler, closeAddDialog）
     async handleAddGameConfirm(game) {
-      await this.addGame(game)
-      this.closeAddGameDialog()
+      await this.handleAddConfirm(game)
     },
     async launchGame(game) {
       try {
@@ -554,14 +613,13 @@ export default {
     },
     
     showGameDetail(game) {
-      this.currentGame = game
-      this.showDetailModal = true
-      this.showContextMenu = false
+      this.showDetail(game)
+      // 关闭上下文菜单（如果存在）
+      if (this.$refs.baseView) {
+        (this.$refs.baseView as any).showContextMenu = false
+      }
     },
-    closeGameDetail() {
-      this.showDetailModal = false
-      this.currentGame = null
-    },
+    // closeGameDetail 已移至工厂函数（closeDetail）
     handleGameContextMenu(event, game) {
       (this.$refs.baseView as any).showContextMenuHandler(event, game)
     },
@@ -582,54 +640,15 @@ export default {
           this.editGame(game)
           break
         case 'remove':
-          this.handleRemoveGame(game)
+          this.deleteItem(game)
           break
       }
     },
     /**
      * 右键菜单点击事件处理
-     * @param {*} data - 包含 item 和 selectedItem
+     * 注意：工厂函数已经提供了 handleContextMenuClick，但我们需要在 mounted 中更新 contextMenuHandlers
+     * 以支持游戏特有的菜单项（screenshot-folder, update-folder-size, compress, extract 等）
      */
-    handleContextMenuClick(data) {
-      const { item, selectedItem } = data
-      if (!selectedItem) return
-
-      switch (item.key) {
-        case 'detail':
-          this.showGameDetail(selectedItem)
-          break
-        case 'launch':
-          this.launchGame(selectedItem)
-          break
-        case 'folder':
-          this.openGameFolder(selectedItem)
-          break
-        case 'screenshot-folder':
-          this.openGameScreenshotFolder(selectedItem)
-          break
-        case 'update-folder-size':
-          this.updateGameFolderSize(selectedItem)
-          break
-        case 'edit':
-          this.editGame(selectedItem)
-          break
-        case 'remove':
-          this.handleRemoveGame(selectedItem)
-          break
-        case 'compress-to':
-          this.compressFile(selectedItem)
-          break
-        case 'compress-here':
-          this.compressFileToCurrentDir(selectedItem)
-          break
-        case 'extract':
-          this.extractArchive(selectedItem)
-          break
-        case 'extract-here':
-          this.extractArchiveToCurrentDir(selectedItem)
-          break
-      }
-    },
     async handleUpdateRating(rating, game) {
       // 检查 game 是否存在，避免在面板关闭时触发更新
       if (!game || !game.id) {
@@ -638,8 +657,8 @@ export default {
       try {
         await this.updateGame(game.id, { rating })
         // 更新当前游戏对象，以便详情面板立即显示新星级
-        if (this.currentGame && this.currentGame.id === game.id) {
-          this.currentGame.rating = rating
+        if (this.selectedItem && this.selectedItem.id === game.id) {
+          this.selectedItem.rating = rating
         }
       } catch (error: any) {
         console.error('更新星级失败:', error)
@@ -654,8 +673,8 @@ export default {
       try {
         await this.updateGame(game.id, { comment })
         // 更新当前游戏对象，以便详情面板立即显示新评论
-        if (this.currentGame && this.currentGame.id === game.id) {
-          this.currentGame.comment = comment
+        if (this.selectedItem && this.selectedItem.id === game.id) {
+          this.selectedItem.comment = comment
         }
       } catch (error: any) {
         console.error('更新评论失败:', error)
@@ -671,8 +690,8 @@ export default {
         const newFavoriteStatus = !game.isFavorite
         await this.updateGame(game.id, { isFavorite: newFavoriteStatus })
         // 更新当前游戏对象，以便详情面板立即显示新状态
-        if (this.currentGame && this.currentGame.id === game.id) {
-          this.currentGame.isFavorite = newFavoriteStatus
+        if (this.selectedItem && this.selectedItem.id === game.id) {
+          this.selectedItem.isFavorite = newFavoriteStatus
         }
       } catch (error: any) {
         console.error('切换收藏状态失败:', error)
@@ -680,58 +699,29 @@ export default {
       }
     },
     editGame(game) {
-      this.showContextMenu = false
-      this.showDetailModal = false
-      if (!game) return
-      this.currentGame = game
-      this.showEditDialog = true
+      this.showEdit(game)
+      // 关闭上下文菜单（如果存在）
+      if (this.$refs.baseView) {
+        (this.$refs.baseView as any).showContextMenu = false
+      }
     },
-    closeEditGameDialog() {
-      this.showEditDialog = false
-      this.currentGame = null
-    },
+    // closeEditGameDialog 已移至工厂函数（closeEdit）
     async handleEditGameConfirm(updatedGame) {
-      try {
-        await this.updateGame(updatedGame.id, {
-          name: updatedGame.name,
-          developer: updatedGame.developer,
-          publisher: updatedGame.publisher,
-          engine: updatedGame.engine,
-          description: updatedGame.description,
-          tags: updatedGame.tags,
-          executablePath: updatedGame.executablePath,
-          image: updatedGame.image
-        })
-        notify.native('保存成功', '游戏信息已更新')
-        this.closeEditGameDialog()
-      } catch (error: any) {
-        console.error('保存编辑失败:', error)
-        await alertService.error('保存编辑失败: ' + error.message, '错误')
+      // 使用工厂函数提供的 handleEditConfirm，但需要保留业务特定逻辑
+      const updates = {
+        name: updatedGame.name,
+        developer: updatedGame.developer,
+        publisher: updatedGame.publisher,
+        engine: updatedGame.engine,
+        description: updatedGame.description,
+        tags: updatedGame.tags,
+        executablePath: updatedGame.executablePath,
+        image: updatedGame.image
       }
+      await this.handleEditConfirm({ ...updatedGame, ...updates })
     },
-    async handleRemoveGame(game) {
-      const confirmed = await confirmService.confirm(`确定要删除游戏 "${game.name}" 吗？`, '确认删除')
-      if (!confirmed) return
-
-      try {
-        // 调用 composable 的 removeGame 方法（接收 gameId）
-        // composable 的方法已经在 setup 中暴露，可以直接访问
-        if (typeof (this as any).removeGame === 'function') {
-          await (this as any).removeGame(game.id)
-        } else {
-          throw new Error('删除方法不可用')
-        }
-        this.showContextMenu = false
-      } catch (error: any) {
-        notify.toast('error', '删除失败', `无法删除游戏 "${game.name}": ${error.message}`)
-        console.error('删除游戏失败:', error)
-      }
-    },
-    formatDate,
-    formatFirstPlayed,
-    formatDateTime,
-    formatPlayTime,
-    formatLastPlayed,
+    // handleRemoveGame 已移至工厂函数（deleteItem）
+    // 格式化函数已在 setup 中通过工厂函数使用，这里不再需要暴露
     // loadGames 已移至 useGameManagement composable
     async loadGamesWithChecks() {
       // 调用 composable 的 loadGames（从 setup 返回，方法名是 loadGames）
@@ -1144,504 +1134,8 @@ export default {
     async openGameScreenshotFolder(game) {
       await this.openGameScreenshotFolder(game)
     },
-    // 解压压缩包文件（选择目录）
-    async extractArchive(game) {
-      try {
-        // 检查是否为压缩包
-        const isArchive = game.isArchive || (game.executablePath && isArchiveFile(game.executablePath))
-        if (!isArchive) {
-          notify.toast('warning', '无法解压', '选中的游戏不是压缩包文件')
-          return
-        }
-
-        // 检查文件是否存在
-        if (!game.executablePath) {
-          notify.toast('error', '解压失败', '游戏文件路径不存在')
-          return
-        }
-
-        if (this.isElectronEnvironment && window.electronAPI && window.electronAPI.checkFileExists) {
-          const existsResult = await window.electronAPI.checkFileExists(game.executablePath)
-          if (!existsResult.success || !existsResult.exists) {
-            notify.toast('error', '解压失败', '压缩包文件不存在或无法访问')
-            return
-          }
-        }
-
-        // 让用户选择解压目录
-        if (!this.isElectronEnvironment || !window.electronAPI || !window.electronAPI.selectFolder) {
-          notify.toast('error', '解压失败', '当前环境不支持选择文件夹')
-          return
-        }
-
-        const folderResult = await window.electronAPI.selectFolder()
-        if (!folderResult.success || !folderResult.path) {
-          // 用户取消了选择
-          return
-        }
-
-        const outputDir = folderResult.path
-
-        // 执行解压
-        await this.performExtraction(game, outputDir)
-      } catch (error) {
-        console.error('解压文件异常:', error)
-        notify.toast('error', '解压失败', `解压过程中发生错误: ${error.message}`)
-      }
-    },
-    // 解压到压缩包所在目录（创建同名子文件夹）
-    async extractArchiveToCurrentDir(game) {
-      try {
-        // 检查是否为压缩包
-        const isArchive = game.isArchive || (game.executablePath && isArchiveFile(game.executablePath))
-        if (!isArchive) {
-          notify.toast('warning', '无法解压', '选中的游戏不是压缩包文件')
-          return
-        }
-
-        // 检查文件是否存在
-        if (!game.executablePath) {
-          notify.toast('error', '解压失败', '游戏文件路径不存在')
-          return
-        }
-
-        if (this.isElectronEnvironment && window.electronAPI && window.electronAPI.checkFileExists) {
-          const existsResult = await window.electronAPI.checkFileExists(game.executablePath)
-          if (!existsResult.success || !existsResult.exists) {
-            notify.toast('error', '解压失败', '压缩包文件不存在或无法访问')
-            return
-          }
-        }
-
-        // 获取压缩包所在目录和文件名
-        const archivePath = game.executablePath
-        // 使用字符串操作获取目录路径（兼容 Windows 和 Unix 路径）
-        const lastBackslash = archivePath.lastIndexOf('\\')
-        const lastSlash = archivePath.lastIndexOf('/')
-        const lastSeparator = Math.max(lastBackslash, lastSlash)
-        const archiveDir = lastSeparator >= 0 ? archivePath.substring(0, lastSeparator) : archivePath
-        
-        // 获取压缩包文件名（不含扩展名）
-        const fileName = lastSeparator >= 0 ? archivePath.substring(lastSeparator + 1) : archivePath
-        // 移除扩展名（支持多种压缩格式，按长度从长到短排序，优先匹配长扩展名如 .tar.gz）
-        const archiveExtensions = ['.tar.gz', '.tar.bz2', '.tar.xz', '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz']
-        let fileNameWithoutExt = fileName
-        for (const ext of archiveExtensions) {
-          if (fileNameWithoutExt.toLowerCase().endsWith(ext.toLowerCase())) {
-            fileNameWithoutExt = fileNameWithoutExt.substring(0, fileNameWithoutExt.length - ext.length)
-            break
-          }
-        }
-        
-        // 创建子文件夹路径（Windows 使用反斜杠）
-        const pathSeparator = archivePath.includes('\\') ? '\\' : '/'
-        const outputDir = archiveDir + (archiveDir.endsWith('\\') || archiveDir.endsWith('/') ? '' : pathSeparator) + fileNameWithoutExt
-        
-        // 确认是否解压到当前目录的子文件夹
-        const confirmMessage = `确定要将 ${game.name} 解压到当前目录吗？\n\n解压位置: ${outputDir}\n\n注意：将在压缩包所在目录创建同名子文件夹。`
-        const confirmed = await confirmService.confirm(confirmMessage, '确认解压')
-        if (!confirmed) {
-          return
-        }
-
-        // 执行解压（会自动创建目录）
-        await this.performExtraction(game, outputDir)
-      } catch (error) {
-        console.error('解压文件异常:', error)
-        notify.toast('error', '解压失败', `解压过程中发生错误: ${error.message}`)
-      }
-    },
-    // 压缩文件（选择目录）
-    async compressFile(game) {
-      try {
-        // 检查文件是否存在
-        if (!game.executablePath) {
-          notify.toast('error', '压缩失败', '游戏文件路径不存在')
-          return
-        }
-
-        if (this.isElectronEnvironment && window.electronAPI && window.electronAPI.checkFileExists) {
-          const existsResult = await window.electronAPI.checkFileExists(game.executablePath)
-          if (!existsResult.success || !existsResult.exists) {
-            notify.toast('error', '压缩失败', '文件不存在或无法访问')
-            return
-          }
-        }
-
-        // 让用户选择压缩包保存位置和名称
-        if (!this.isElectronEnvironment || !window.electronAPI || !window.electronAPI.selectFolder) {
-          notify.toast('error', '压缩失败', '当前环境不支持选择文件夹')
-          return
-        }
-
-        // 获取要压缩的文件夹路径
-        let folderToCompress = game.executablePath
-        let isFile = false
-
-        // 检查路径是文件还是文件夹
-        if (window.electronAPI && window.electronAPI.getFileStats) {
-          const statsResult = await window.electronAPI.getFileStats(game.executablePath)
-          if (statsResult.success) {
-            isFile = statsResult.isFile === true
-            if (statsResult.isFile) {
-              // 如果是文件，获取其所在文件夹
-              const filePath = game.executablePath
-              const lastBackslash = filePath.lastIndexOf('\\')
-              const lastSlash = filePath.lastIndexOf('/')
-              const lastSeparator = Math.max(lastBackslash, lastSlash)
-              
-              if (lastSeparator >= 0) {
-                folderToCompress = filePath.substring(0, lastSeparator)
-              }
-            }
-            // 如果是文件夹，folderToCompress 已经是正确的路径，不需要修改
-          }
-        }
-
-        // 如果 getFileStats 失败，通过文件扩展名判断（后备方案）
-        if (!isFile) {
-          const filePath = game.executablePath
-          const commonExtensions = ['.exe', '.swf', '.bat', '.cmd', '.com', '.scr', '.msi', '.zip', '.rar', '.7z']
-          const lowerPath = filePath.toLowerCase()
-          const hasExtension = commonExtensions.some(ext => lowerPath.endsWith(ext))
-          
-          if (hasExtension) {
-            // 看起来是文件，获取其所在文件夹
-            const lastBackslash = filePath.lastIndexOf('\\')
-            const lastSlash = filePath.lastIndexOf('/')
-            const lastSeparator = Math.max(lastBackslash, lastSlash)
-            
-            if (lastSeparator >= 0) {
-              folderToCompress = filePath.substring(0, lastSeparator)
-            }
-          }
-        }
-
-        // 让用户选择保存位置
-        const folderResult = await window.electronAPI.selectFolder()
-        if (!folderResult.success || !folderResult.path) {
-          // 用户取消了选择
-          return
-        }
-
-        const outputDir = folderResult.path
-        const pathSeparator = outputDir.includes('\\') ? '\\' : '/'
-        const archivePath = outputDir + (outputDir.endsWith('\\') || outputDir.endsWith('/') ? '' : pathSeparator) + game.name + '.zip'
-
-        // 确认压缩
-        const confirmMessage = `确定要压缩 ${game.name} 的文件夹吗？\n\n压缩包保存位置: ${archivePath}`
-        const confirmed = await confirmService.confirm(confirmMessage, '确认压缩')
-        if (!confirmed) {
-          return
-        }
-
-        // 执行压缩
-        await this.performCompression(game, folderToCompress, archivePath)
-      } catch (error) {
-        console.error('压缩文件异常:', error)
-        notify.toast('error', '压缩失败', `压缩过程中发生错误: ${error.message}`)
-      }
-    },
-    // 压缩到当前目录
-    async compressFileToCurrentDir(game) {
-      try {
-        // 检查文件是否存在
-        if (!game.executablePath) {
-          notify.toast('error', '压缩失败', '游戏文件路径不存在')
-          return
-        }
-
-        if (this.isElectronEnvironment && window.electronAPI && window.electronAPI.checkFileExists) {
-          const existsResult = await window.electronAPI.checkFileExists(game.executablePath)
-          if (!existsResult.success || !existsResult.exists) {
-            notify.toast('error', '压缩失败', '文件不存在或无法访问')
-            return
-          }
-        }
-
-        // 获取要压缩的文件夹路径和压缩包保存目录
-        let folderToCompress = game.executablePath
-        let currentDir = game.executablePath
-
-        // 检查路径是文件还是文件夹
-        let isFile = false
-        if (window.electronAPI && window.electronAPI.getFileStats) {
-          const statsResult = await window.electronAPI.getFileStats(game.executablePath)
-          if (statsResult.success) {
-            isFile = statsResult.isFile === true
-            if (statsResult.isFile) {
-              // 如果是文件，获取其所在文件夹
-              const filePath = game.executablePath
-              const lastBackslash = filePath.lastIndexOf('\\')
-              const lastSlash = filePath.lastIndexOf('/')
-              const lastSeparator = Math.max(lastBackslash, lastSlash)
-              
-              if (lastSeparator >= 0) {
-                folderToCompress = filePath.substring(0, lastSeparator)
-                currentDir = folderToCompress
-              }
-            }
-            // 如果是文件夹，folderToCompress 和 currentDir 已经是正确的路径，不需要修改
-          }
-        }
-
-        // 如果 getFileStats 失败，通过文件扩展名判断（后备方案）
-        if (!isFile) {
-          const filePath = game.executablePath
-          const commonExtensions = ['.exe', '.swf', '.bat', '.cmd', '.com', '.scr', '.msi', '.zip', '.rar', '.7z']
-          const lowerPath = filePath.toLowerCase()
-          const hasExtension = commonExtensions.some(ext => lowerPath.endsWith(ext))
-          
-          if (hasExtension) {
-            // 看起来是文件，获取其所在文件夹
-            const lastBackslash = filePath.lastIndexOf('\\')
-            const lastSlash = filePath.lastIndexOf('/')
-            const lastSeparator = Math.max(lastBackslash, lastSlash)
-            
-            if (lastSeparator >= 0) {
-              folderToCompress = filePath.substring(0, lastSeparator)
-              currentDir = folderToCompress
-            }
-          }
-        }
-
-        // 创建压缩包路径（在当前目录）
-        const pathSeparator = currentDir.includes('\\') ? '\\' : '/'
-        const archivePath = currentDir + (currentDir.endsWith('\\') || currentDir.endsWith('/') ? '' : pathSeparator) + game.name + '.zip'
-
-        // 确认压缩
-        const confirmMessage = `确定要将 ${game.name} 的文件夹压缩到当前目录吗？\n\n压缩包保存位置: ${archivePath}`
-        const confirmed = await confirmService.confirm(confirmMessage, '确认压缩')
-        if (!confirmed) {
-          return
-        }
-
-        // 执行压缩
-        await this.performCompression(game, folderToCompress, archivePath)
-      } catch (error) {
-        console.error('压缩文件异常:', error)
-        notify.toast('error', '压缩失败', `压缩过程中发生错误: ${error.message}`)
-      }
-    },
-    // 执行压缩操作（通用方法）
-    async performCompression(game, sourcePath, archivePath) {
-      try {
-        // 显示压缩中提示
-        notify.toast('info', '正在压缩', `正在压缩 ${game.name}...`)
-
-        // 调用压缩 API（sourcePath 是要压缩的文件夹路径）
-        if (window.electronAPI && window.electronAPI.compressFile) {
-          const result = await window.electronAPI.compressFile(sourcePath, archivePath)
-
-          if (result.success) {
-            notify.toast('success', '压缩成功', `文件夹已压缩到: ${archivePath}`)
-            console.log('✅ 压缩成功:', result.archivePath)
-          } else {
-            notify.toast('error', '压缩失败', result.error || '压缩过程中发生错误')
-            console.error('❌ 压缩失败:', result.error)
-          }
-        } else {
-          notify.toast('error', '压缩失败', '压缩功能不可用')
-        }
-      } catch (error) {
-        console.error('执行压缩操作异常:', error)
-        notify.toast('error', '压缩失败', `压缩过程中发生错误: ${error.message}`)
-      }
-    },
-    // 执行解压操作（通用方法）
-    async performExtraction(game, outputDir, password = null, triedPasswords = []) {
-      try {
-        console.log('=== 开始解压操作 ===')
-        console.log('游戏名称:', game.name)
-        console.log('压缩包路径:', game.executablePath)
-        console.log('输出目录:', outputDir)
-        console.log('是否提供密码:', password ? '是' : '否')
-        console.log('已尝试的密码数量:', triedPasswords.length)
-        
-        // 如果还没有尝试过密码，先尝试常用密码（避免 WinRAR.exe 弹出密码输入框）
-        if (!password && triedPasswords.length === 0) {
-          console.log('📋 首次解压，先尝试常用密码...')
-          let commonPasswords = []
-          let passwordFileCreated = false
-          if (window.electronAPI && window.electronAPI.readArchivePasswords) {
-            const passwordsResult = await window.electronAPI.readArchivePasswords()
-            if (passwordsResult.success && passwordsResult.passwords) {
-              commonPasswords = passwordsResult.passwords
-              passwordFileCreated = passwordsResult.fileCreated || false
-              console.log('📋 读取到常用密码列表，共', commonPasswords.length, '个密码')
-              
-              // 如果密码文件是新创建的，告知用户并直接弹出密码输入框
-              if (passwordFileCreated) {
-                notify.toast('info', '密码文件已创建', '已创建 SaveData/passwords.txt 文件，请编辑添加常用密码。现在请手动输入密码。')
-                // 显示密码输入对话框
-                this.passwordDialogTitle = '输入密码'
-                this.passwordDialogMessage = '该压缩包需要密码，请输入密码：'
-                this.passwordDialogGame = game
-                this.passwordDialogOutputDir = outputDir
-                this.passwordDialogTriedPasswords = triedPasswords
-                this.passwordDialogCallback = async (userPassword) => {
-                  if (userPassword) {
-                    await this.performExtraction(game, outputDir, userPassword, triedPasswords)
-                  } else {
-                    notify.toast('error', '解压取消', '未输入密码，解压已取消')
-                  }
-                }
-                this.showPasswordDialog = true
-                return
-              }
-            }
-          }
-          
-          // 如果有常用密码，先尝试常用密码（使用测试命令，避免弹出 GUI）
-          if (commonPasswords.length > 0) {
-            console.log('🔑 开始测试常用密码，共', commonPasswords.length, '个密码')
-            // 提示用户检测到密码，正在使用密码本
-            notify.toast('info', '检测到密码', `该压缩包需要密码，正在使用默认密码本尝试解密（共 ${commonPasswords.length} 个密码）...`)
-            let triedCount = 0
-            let correctPassword = null
-            
-            // 先测试所有密码，找到正确的密码
-            for (let i = 0; i < commonPasswords.length; i++) {
-              const commonPassword = commonPasswords[i]
-              triedCount++
-              console.log(`🔑 [${triedCount}/${commonPasswords.length}] 测试密码:`, commonPassword.replace(/./g, '*'))
-              
-              // 跳过已经尝试过的密码
-              if (triedPasswords.includes(commonPassword)) {
-                console.log('⏭️ 密码已尝试过，跳过')
-                continue
-              }
-              
-              triedPasswords.push(commonPassword)
-              
-              // 使用测试命令验证密码（不实际解压，避免弹出 GUI）
-              if (window.electronAPI && window.electronAPI.testArchivePassword) {
-                const testResult = await window.electronAPI.testArchivePassword(game.executablePath, commonPassword)
-                console.log(`🔑 [${triedCount}/${commonPasswords.length}] 密码测试结果:`, testResult.passwordCorrect ? '✅ 正确' : '❌ 错误')
-                
-                if (testResult.success && testResult.passwordCorrect) {
-                  // 找到正确密码
-                  correctPassword = commonPassword
-                  console.log('✅ 找到正确密码，已尝试', triedCount, '个密码')
-                  break // 找到正确密码，退出循环
-                }
-                // 密码错误，继续尝试下一个
-                console.log(`❌ [${triedCount}/${commonPasswords.length}] 密码错误，继续测试下一个...`)
-              } else {
-                // 如果测试 API 不可用，降级到直接解压的方式
-                console.log('⚠️ 测试 API 不可用，降级到直接解压方式')
-                const tryResult = await window.electronAPI.extractArchive(game.executablePath, outputDir, commonPassword)
-                
-                if (tryResult.success) {
-                  notify.toast('success', '解压成功', `使用常用密码成功解压到: ${outputDir}`)
-                  console.log('✅ 使用常用密码解压成功，已尝试', triedCount, '个密码')
-                  return
-                } else {
-                  const errorMsg = tryResult.error || ''
-                  const errorMsgLower = errorMsg.toLowerCase()
-                  const exitCodeMatch = errorMsg.match(/退出码:\s*(\d+)/)
-                  const exitCode = exitCodeMatch ? parseInt(exitCodeMatch[1]) : null
-                  const isWinRARExitCode11 = exitCode === 11
-                  const isPasswordError = tryResult.requiresPassword || 
-                                         errorMsgLower.includes('password') || 
-                                         errorMsgLower.includes('密码') ||
-                                         isWinRARExitCode11
-                  
-                  if (!isPasswordError) {
-                    console.log('❌ 不是密码错误，解压失败:', errorMsg.substring(0, 200))
-                    notify.toast('error', '解压失败', errorMsg || '解压过程中发生错误')
-                    return
-                  }
-                  console.log(`❌ [${triedCount}/${commonPasswords.length}] 密码错误，继续尝试下一个...`)
-                }
-              }
-            }
-            
-            // 如果找到了正确密码，使用它进行解压
-            if (correctPassword) {
-              console.log('🔑 使用找到的正确密码进行解压:', correctPassword.replace(/./g, '*'))
-              notify.toast('success', '密码验证成功', `已在密码本中找到正确密码（第 ${triedCount}/${commonPasswords.length} 个），开始解压...`)
-              
-              // 使用正确密码解压
-              const extractResult = await window.electronAPI.extractArchive(game.executablePath, outputDir, correctPassword)
-              if (extractResult.success) {
-                notify.toast('success', '解压成功', `使用密码本中的密码成功解压到: ${outputDir}`)
-                console.log('✅ 解压成功')
-                return
-              } else {
-                notify.toast('error', '解压失败', extractResult.error || '解压过程中发生错误')
-                console.error('❌ 解压失败:', extractResult.error)
-                return
-              }
-            } else {
-              console.log('❌ 所有常用密码都失败了，共测试了', triedCount, '个密码')
-              notify.toast('warning', '密码本解密失败', `已尝试密码本中的 ${triedCount} 个密码，均不正确。请手动输入密码。`)
-            }
-          }
-        }
-        
-        // 显示解压中提示
-        if (password) {
-          notify.toast('info', '正在解压', `正在尝试密码解压 ${game.name}...`)
-        } else {
-          notify.toast('info', '正在解压', `正在解压 ${game.name}...`)
-        }
-
-        // 调用解压 API
-        if (window.electronAPI && window.electronAPI.extractArchive) {
-          const result = await window.electronAPI.extractArchive(game.executablePath, outputDir, password)
-          console.log('解压 API 返回结果:', result.success ? '成功' : '失败', result.error || '', result.requiresPassword ? '(需要密码)' : '')
-
-          if (result.success) {
-            if (password) {
-              notify.toast('success', '解压成功', `使用密码成功解压到: ${outputDir}`)
-            } else {
-              notify.toast('success', '解压成功', `文件已解压到: ${outputDir}`)
-            }
-            console.log('✅ 解压成功:', result.outputDir)
-          } else {
-            // 检查是否需要密码
-            const errorMsg = result.error || ''
-            const needsPassword = result.requiresPassword || 
-                                 errorMsg.toLowerCase().includes('password') || 
-                                 errorMsg.toLowerCase().includes('密码') ||
-                                 errorMsg.toLowerCase().includes('wrong password') ||
-                                 errorMsg.toLowerCase().includes('incorrect password')
-            
-            console.log('检查是否需要密码:', needsPassword, '错误信息:', errorMsg.substring(0, 200))
-            
-            if (needsPassword && !password) {
-              // 常用密码已经在前面尝试过了，如果到这里说明都失败了
-              console.log('❌ 常用密码都失败了，提示用户输入密码')
-              
-              // 如果常用密码都失败了，提示用户输入密码
-              this.passwordDialogTitle = '输入密码'
-              this.passwordDialogMessage = '该压缩包需要密码，常用密码已尝试失败。请输入密码：'
-              this.passwordDialogGame = game
-              this.passwordDialogOutputDir = outputDir
-              this.passwordDialogTriedPasswords = triedPasswords
-              this.passwordDialogCallback = async (userPassword) => {
-                if (userPassword) {
-                  await this.performExtraction(game, outputDir, userPassword, triedPasswords)
-                } else {
-                  notify.toast('error', '解压取消', '未输入密码，解压已取消')
-                }
-              }
-              this.showPasswordDialog = true
-            } else {
-              notify.toast('error', '解压失败', result.error || '解压过程中发生错误')
-              console.error('❌ 解压失败:', result.error)
-            }
-          }
-        } else {
-          notify.toast('error', '解压失败', '解压功能不可用')
-        }
-      } catch (error) {
-        console.error('执行解压操作异常:', error)
-        notify.toast('error', '解压失败', `解压过程中发生错误: ${error.message}`)
-      }
-      return false
-    },
+    // 压缩/解压相关方法已移至 useArchive composable（通用功能）
+    // compressFile, compressFileToCurrentDir, extractArchive, extractArchiveToCurrentDir, performCompression, performExtraction
     // 拖拽处理方法
     // 拖拽相关方法已移至 useGameDragAndDrop composable
     handleDragOver(event) {
@@ -1697,28 +1191,28 @@ export default {
 
     async confirmPathUpdate() {
       try {
-        const { existingGame, newPath } = this.pathUpdateInfo
+        const { existingItem, newPath } = this.pathUpdateInfo
 
-        if (!existingGame || !newPath) {
+        if (!existingItem || !newPath) {
           console.error('路径更新信息不完整')
           return
         }
 
-        console.log(`更新游戏 "${existingGame.name}" 的路径:`)
-        console.log(`旧路径: ${existingGame.executablePath}`)
+        console.log(`更新游戏 "${existingItem.name}" 的路径:`)
+        console.log(`旧路径: ${existingItem.executablePath}`)
         console.log(`新路径: ${newPath}`)
 
         // 更新游戏路径
-        existingGame.executablePath = newPath
-        existingGame.fileExists = true
+        existingItem.executablePath = newPath
+        existingItem.fileExists = true
 
         // 重新计算文件夹大小
         if (this.isElectronEnvironment && window.electronAPI && window.electronAPI.getFolderSize) {
           try {
             const result = await window.electronAPI.getFolderSize(newPath)
             if (result.success) {
-              existingGame.folderSize = result.size
-              console.log(`游戏 ${existingGame.name} 文件夹大小: ${result.size} 字节`)
+              existingItem.folderSize = result.size
+              console.log(`游戏 ${existingItem.name} 文件夹大小: ${result.size} 字节`)
             }
           } catch (error) {
             console.error('获取文件夹大小失败:', error)
@@ -1735,82 +1229,28 @@ export default {
         notify.toast(
           'success',
           '路径更新成功',
-          `游戏 "${existingGame.name}" 的路径已更新`
+          `游戏 "${existingItem.name}" 的路径已更新`
         )
 
-        console.log(`游戏 "${existingGame.name}" 路径更新完成`)
+        console.log(`游戏 "${existingItem.name}" 路径更新完成`)
 
       } catch (error) {
         console.error('更新游戏路径失败:', error)
         notify.toast('error', '更新失败', `更新游戏路径失败: ${error.message}`)
       }
     },
-    async handleSortChanged({ pageType, sortBy }) {
-      try {
-
-        await saveManager.saveSortSetting(pageType, sortBy)
-        console.log(`✅ 已保存${pageType}页面排序方式:`, sortBy)
-      } catch (error) {
-        console.warn('保存排序方式失败:', error)
-      }
-    },
-    async loadSortSetting() {
-      try {
-
-        const savedSortBy = await saveManager.getSortSetting('games')
-        if (savedSortBy) {
-          // 兼容旧的排序值，转换为新格式
-          let normalizedSortBy = savedSortBy
-          if (!savedSortBy.includes('-')) {
-            // 旧的排序值（如 'name'），默认转换为升序
-            normalizedSortBy = `${savedSortBy}-asc`
-          }
-          
-          if (normalizedSortBy !== this.sortBy) {
-            this.sortBy = normalizedSortBy as GameSortBy
-            console.log('✅ 已加载游戏页面排序方式:', normalizedSortBy)
-          }
-        }
-      } catch (error) {
-        console.warn('加载排序方式失败:', error)
-      }
-    },
-
-    // 分页相关方法已移至 useGamePagination composable
-    // handleGamePageChange 现在通过 handlePageChange 访问
-    handleGamePageChange(pageNum) {
-      if (this.handlePageChange) {
-        this.handlePageChange(pageNum)
-      }
-    },
-
-    // 处理空状态按钮点击事件
-    handleEmptyStateAction(actionName) {
-      if (actionName === 'showAddGameDialog') {
-        this.showAddGameDialog()
-      }
-    },
-
-    // 处理搜索查询变化
-    handleSearchQueryChanged(newValue) {
-      this.searchQuery = newValue
-    },
-
-    // 处理排序变化
-    handleSortByChanged(newValue) {
-      this.sortBy = newValue
-      console.log('✅ GameView 排序方式已更新:', newValue)
-    }
+    // handleSortChanged, loadSortSetting 已移至工厂函数
+    // handlePageChange 已移至工厂函数
+    // handleEmptyStateAction 已移至工厂函数
+    // handleSearchQueryChanged, handleSortByChanged 已移至工厂函数
   },
   watch: {
-    // 分页相关监听已移至 useGamePagination composable
-    // 监听搜索查询变化，重置到第一页
+    // 监听搜索和排序变化，重置到第一页（已在工厂函数中处理，但这里保留以兼容旧代码）
     searchQuery() {
       if (this.resetToFirstPage) {
         this.resetToFirstPage()
       }
     },
-    // 监听排序变化，重置到第一页
     sortBy() {
       if (this.resetToFirstPage) {
         this.resetToFirstPage()
@@ -1828,12 +1268,93 @@ export default {
       })
     }
 
+    // 更新工厂函数的 contextMenuHandlers，添加游戏特有的处理
+    if ((this as any)._resourcePage) {
+      const resourcePage = (this as any)._resourcePage
+      // 更新右键菜单处理器
+      resourcePage.contextMenuHandlers = {
+        ...resourcePage.contextMenuHandlers,
+        detail: (game: any) => this.showGameDetail(game),
+        launch: (game: any) => this.launchGame(game),
+        folder: (game: any) => this.openGameFolder(game),
+        'screenshot-folder': (game: any) => this.openGameScreenshotFolder(game),
+        'update-folder-size': (game: any) => this.updateGameFolderSize(game),
+        'compress-to': (game: any) => {
+          this.compressFile({ name: game.name, path: game.executablePath })
+        },
+        'compress-here': (game: any) => {
+          this.compressFileToCurrentDir({ name: game.name, path: game.executablePath })
+        },
+        extract: (game: any) => {
+          this.extractArchive({ name: game.name, path: game.executablePath, isArchive: game.isArchive })
+        },
+        'extract-here': (game: any) => {
+          this.extractArchiveToCurrentDir({ name: game.name, path: game.executablePath, isArchive: game.isArchive })
+        }
+      }
+    }
+
+    // 设置压缩/解压 composable 的密码对话框回调
+    if ((this as any)._archiveComposable) {
+      const archiveComposable = (this as any)._archiveComposable
+      // 设置密码对话框回调
+      if (archiveComposable.setPasswordDialogCallback) {
+        archiveComposable.setPasswordDialogCallback((config: any) => {
+          this.passwordDialogTitle = config.title
+          this.passwordDialogMessage = config.message
+          this.passwordDialogCallback = async (password: string | null) => {
+            await config.onConfirm(password)
+          }
+          this.showPasswordDialog = true
+        })
+      }
+    }
+
+    // 设置拖拽函数
+    if ((this as any)._setDragDropFunctions) {
+      (this as any)._setDragDropFunctions({
+        showPathUpdateDialog: (info: any) => {
+          this.showPathUpdateDialogHandler({
+            existingItem: info.existingGame || info.existingItem,
+            newPath: info.newPath,
+            newFileName: info.newFileName || info.newPath?.split(/[/\\]/).pop() || ''
+          })
+        },
+        addGame: async (game: any) => {
+          await this.addGame(game)
+        }
+      })
+    }
+
     this.checkElectronEnvironment()
     
     // 移除等待逻辑，因为 ResourceView 仅在 App.vue 初始化完成后才渲染
     console.log('✅ 存档系统已初始化，开始加载游戏数据')
     
     await this.loadGamesWithChecks()
+    
+    // 加载分页设置（使用工厂函数的方法）
+    await this.loadPaginationSettings('games')
+    
+    // 加载排序设置（使用工厂函数的方法，但需要兼容旧格式）
+    try {
+      const savedSortBy = await saveManager.getSortSetting('games')
+      if (savedSortBy) {
+        // 兼容旧的排序值，转换为新格式
+        let normalizedSortBy = savedSortBy
+        if (!savedSortBy.includes('-')) {
+          // 旧的排序值（如 'name'），默认转换为升序
+          normalizedSortBy = `${savedSortBy}-asc`
+        }
+        
+        if (normalizedSortBy !== this.sortBy) {
+          this.sortBy = normalizedSortBy as GameSortBy
+          console.log('✅ 已加载游戏页面排序方式:', normalizedSortBy)
+        }
+      }
+    } catch (error) {
+      console.warn('加载排序方式失败:', error)
+    }
 
     // 游戏运行状态现在由 App.vue 全局管理，无需在此处处理
 

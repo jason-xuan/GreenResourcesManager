@@ -2,21 +2,7 @@ import { ref, type Ref } from 'vue'
 import { useDragAndDrop } from '../useDragAndDrop'
 import notify from '../../utils/NotificationService'
 import type { Game, GameDragDropOptions } from '../../types/game'
-
-/**
- * 压缩包文件扩展名列表
- */
-const ARCHIVE_EXTENSIONS = ['.zip', '.rar', '.7z', '.tar', '.gz', '.tar.gz', '.bz2', '.tar.bz2', '.xz', '.tar.xz']
-
-/**
- * 检查文件是否为压缩包
- * @param filePath - 文件路径或文件名
- * @returns 是否为压缩包
- */
-export function isArchiveFile(filePath: string): boolean {
-  const fileName = filePath.toLowerCase()
-  return ARCHIVE_EXTENSIONS.some(ext => fileName.endsWith(ext))
-}
+import { isArchiveFile } from '../useArchive'
 
 /**
  * 从文件路径提取游戏名称

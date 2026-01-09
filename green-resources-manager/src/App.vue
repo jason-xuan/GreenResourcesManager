@@ -149,7 +149,7 @@
     </main>
 
     <!-- 全局通知组件 -->
-    <ToastNotification ref="toastNotification" />
+    <fun-notification ref="toastNotification" />
 
     <!-- 全局 Alert 组件 -->
     <fun-alert ref="alert" />
@@ -162,7 +162,6 @@
 
 <script lang="ts">
 import GlobalAudioPlayer from './components/GlobalAudioPlayer.vue'
-import ToastNotification from './components/ToastNotification.vue'
 import FilterSidebar from './components/FilterSidebar.vue'
 import { updateDynamicRoutes } from './router/index'
 
@@ -182,7 +181,6 @@ export default {
   name: 'App',
   components: {
     GlobalAudioPlayer,
-    ToastNotification,
     FilterSidebar
   },
   data() {

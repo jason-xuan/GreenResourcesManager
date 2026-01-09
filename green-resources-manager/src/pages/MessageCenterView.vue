@@ -160,7 +160,7 @@ export default {
     }
   },
   computed: {
-    // 从 ToastNotification 组件获取消息
+    // 从 FunNotification 组件获取消息
     messages() {
       return this.$parent.$refs.toastNotification?.messages || []
     },

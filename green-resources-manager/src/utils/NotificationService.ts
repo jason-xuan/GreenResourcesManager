@@ -22,7 +22,7 @@ class NotificationService {
   // 检查是否已初始化
   checkInitialized() {
     if (!this.isInitialized || !this.toastComponent) {
-      console.warn('通知服务未初始化，请确保 ToastNotification 组件已挂载')
+      console.warn('通知服务未初始化，请确保 FunNotification 组件已挂载')
       return false
     }
     return true

@@ -17,6 +17,7 @@ import FunButton from './basic/Button/FunButton.vue'
 import FunTag from './basic/Tag/FunTag.vue'
 import FunSwitch from './basic/Switch/FunSwitch.vue'
 import FunSlider from './basic/Slider/FunSlider.vue'
+import FunInput from './basic/Input/FunInput.vue'
 
 // Data Input 数据录入
 import FunRate from './data-input/Rate/FunRate.vue'
@@ -25,6 +26,7 @@ import FunRate from './data-input/Rate/FunRate.vue'
 import FunBusinessCard from './data-display/BusinessCard/FunBusinessCard.vue'
 import FunCard from './data-display/Card/FunCard.vue'
 import FunEmptyState from './data-display/EmptyState/FunEmptyState.vue'
+import FunStatistic from './data-display/Statistic/FunStatistic.vue'
 
 // Navigation 导航组件
 import FunPagination from './navigation/Pagination/FunPagination.vue'
@@ -32,6 +34,7 @@ import FunPagination from './navigation/Pagination/FunPagination.vue'
 // Feedback 反馈组件
 import FunAlert from './feedback/Alert/FunAlert.vue'
 import FunConfirmDialog from './feedback/ConfirmDialog/FunConfirmDialog.vue'
+import FunNotification from './feedback/Notification/FunNotification.vue'
 
 // 组件列表
 const components = {
@@ -40,17 +43,20 @@ const components = {
   FunTag,
   FunSwitch,
   FunSlider,
+  FunInput,
   // Data Input
   FunRate,
   // Data Display
   FunBusinessCard,
   FunCard,
   FunEmptyState,
+  FunStatistic,
   // Navigation
   FunPagination,
   // Feedback
   FunAlert,
-  FunConfirmDialog
+  FunConfirmDialog,
+  FunNotification
 }
 
 /**
@@ -62,13 +68,16 @@ export function install(app: App) {
   app.component('fun-tag', FunTag)
   app.component('fun-switch', FunSwitch)
   app.component('fun-slider', FunSlider)
+  app.component('fun-input', FunInput)
   app.component('fun-rate', FunRate)
   app.component('fun-business-card', FunBusinessCard)
   app.component('fun-card', FunCard)
   app.component('fun-empty-state', FunEmptyState)
+  app.component('fun-statistic', FunStatistic)
   app.component('fun-pagination', FunPagination)
   app.component('fun-alert', FunAlert)
   app.component('fun-confirm-dialog', FunConfirmDialog)
+  app.component('fun-notification', FunNotification)
 }
 
 // 导出所有组件
@@ -78,17 +87,20 @@ export {
   FunTag,
   FunSwitch,
   FunSlider,
+  FunInput,
   // Data Input
   FunRate,
   // Data Display
   FunBusinessCard,
   FunCard,
   FunEmptyState,
+  FunStatistic,
   // Navigation
   FunPagination,
   // Feedback
   FunAlert,
-  FunConfirmDialog
+  FunConfirmDialog,
+  FunNotification
 }
 
 // 默认导出（支持 app.use(FunUI)）

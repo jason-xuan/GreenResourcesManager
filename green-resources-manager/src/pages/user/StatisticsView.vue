@@ -93,11 +93,12 @@
           <h5>📈 媒体数量总览</h5>
           <div class="stats-grid">
             <div class="stat-card" :class="{ loading: isLoading }" v-for="stat in mediaStats" :key="stat.type">
-              <div class="stat-icon">{{ stat.icon }}</div>
-              <div class="stat-info">
-                <div class="stat-number">{{ isLoading ? '...' : stat.count }}</div>
-                <div class="stat-label">{{ stat.label }}</div>
-              </div>
+              <fun-statistic
+                :value="stat.count"
+                :label="stat.label"
+                :icon="stat.icon"
+                :loading="isLoading"
+              />
             </div>
           </div>
         </div>
@@ -107,32 +108,36 @@
           <h5>🎮 游戏数据总览</h5>
           <div class="media-overview-grid">
             <div class="media-overview-card">
-              <div class="media-overview-icon">📊</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : gameStats.count }}</div>
-                <div class="media-overview-label">游戏总数</div>
-              </div>
+              <fun-statistic
+                :value="gameStats.count"
+                label="游戏总数"
+                icon="📊"
+                :loading="isLoading"
+              />
             </div>
             <div class="media-overview-card">
-              <div class="media-overview-icon">💾</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : gameStats.storage }}</div>
-                <div class="media-overview-label">空间占用</div>
-              </div>
+              <fun-statistic
+                :value="gameStats.storage"
+                label="空间占用"
+                icon="💾"
+                :loading="isLoading"
+              />
             </div>
             <div class="media-overview-card">
-              <div class="media-overview-icon">⏱️</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : gameStats.totalTime }}</div>
-                <div class="media-overview-label">总游戏时长</div>
-              </div>
+              <fun-statistic
+                :value="gameStats.totalTime"
+                label="总游戏时长"
+                icon="⏱️"
+                :loading="isLoading"
+              />
             </div>
             <div class="media-overview-card">
-              <div class="media-overview-icon">🎯</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : gameStats.playedCount }}</div>
-                <div class="media-overview-label">已启动游戏</div>
-              </div>
+              <fun-statistic
+                :value="gameStats.playedCount"
+                label="已启动游戏"
+                icon="🎯"
+                :loading="isLoading"
+              />
             </div>
           </div>
         </div>
@@ -142,18 +147,20 @@
           <h5>🖼️ 图片数据总览</h5>
           <div class="media-overview-grid">
             <div class="media-overview-card">
-              <div class="media-overview-icon">📊</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : imageStats.count }}</div>
-                <div class="media-overview-label">图片总数</div>
-              </div>
+              <fun-statistic
+                :value="imageStats.count"
+                label="图片总数"
+                icon="📊"
+                :loading="isLoading"
+              />
             </div>
             <div class="media-overview-card">
-              <div class="media-overview-icon">💾</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : imageStats.storage }}</div>
-                <div class="media-overview-label">空间占用</div>
-              </div>
+              <fun-statistic
+                :value="imageStats.storage"
+                label="空间占用"
+                icon="💾"
+                :loading="isLoading"
+              />
             </div>
           </div>
         </div>
@@ -163,18 +170,20 @@
           <h5>🎬 视频数据总览</h5>
           <div class="media-overview-grid">
             <div class="media-overview-card">
-              <div class="media-overview-icon">📊</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : videoStats.count }}</div>
-                <div class="media-overview-label">视频总数</div>
-              </div>
+              <fun-statistic
+                :value="videoStats.count"
+                label="视频总数"
+                icon="📊"
+                :loading="isLoading"
+              />
             </div>
             <div class="media-overview-card">
-              <div class="media-overview-icon">💾</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : videoStats.storage }}</div>
-                <div class="media-overview-label">空间占用</div>
-              </div>
+              <fun-statistic
+                :value="videoStats.storage"
+                label="空间占用"
+                icon="💾"
+                :loading="isLoading"
+              />
             </div>
           </div>
         </div>
@@ -184,18 +193,20 @@
           <h5>📚 小说数据总览</h5>
           <div class="media-overview-grid">
             <div class="media-overview-card">
-              <div class="media-overview-icon">📊</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : novelStats.count }}</div>
-                <div class="media-overview-label">小说总数</div>
-              </div>
+              <fun-statistic
+                :value="novelStats.count"
+                label="小说总数"
+                icon="📊"
+                :loading="isLoading"
+              />
             </div>
             <div class="media-overview-card">
-              <div class="media-overview-icon">💾</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : novelStats.storage }}</div>
-                <div class="media-overview-label">空间占用</div>
-              </div>
+              <fun-statistic
+                :value="novelStats.storage"
+                label="空间占用"
+                icon="💾"
+                :loading="isLoading"
+              />
             </div>
           </div>
         </div>
@@ -205,18 +216,20 @@
           <h5>🌐 网站数据总览</h5>
           <div class="media-overview-grid">
             <div class="media-overview-card">
-              <div class="media-overview-icon">📊</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : websiteStats.count }}</div>
-                <div class="media-overview-label">网站总数</div>
-              </div>
+              <fun-statistic
+                :value="websiteStats.count"
+                label="网站总数"
+                icon="📊"
+                :loading="isLoading"
+              />
             </div>
             <div class="media-overview-card">
-              <div class="media-overview-icon">💾</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : websiteStats.storage }}</div>
-                <div class="media-overview-label">空间占用</div>
-              </div>
+              <fun-statistic
+                :value="websiteStats.storage"
+                label="空间占用"
+                icon="💾"
+                :loading="isLoading"
+              />
             </div>
           </div>
         </div>
@@ -226,18 +239,20 @@
           <h5>🎵 音频数据总览</h5>
           <div class="media-overview-grid">
             <div class="media-overview-card">
-              <div class="media-overview-icon">📊</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : audioStats.count }}</div>
-                <div class="media-overview-label">音频总数</div>
-              </div>
+              <fun-statistic
+                :value="audioStats.count"
+                label="音频总数"
+                icon="📊"
+                :loading="isLoading"
+              />
             </div>
             <div class="media-overview-card">
-              <div class="media-overview-icon">💾</div>
-              <div class="media-overview-info">
-                <div class="media-overview-number">{{ isLoading ? '...' : audioStats.storage }}</div>
-                <div class="media-overview-label">空间占用</div>
-              </div>
+              <fun-statistic
+                :value="audioStats.storage"
+                label="空间占用"
+                icon="💾"
+                :loading="isLoading"
+              />
             </div>
           </div>
         </div>

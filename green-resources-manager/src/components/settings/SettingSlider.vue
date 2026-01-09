@@ -5,16 +5,15 @@
       <span class="setting-desc" v-if="description">{{ description }}</span>
     </label>
     <div class="setting-control">
-      <input 
-        type="range" 
-        :value="modelValue"
-        @input="handleInput"
+      <fun-slider
+        :model-value="modelValue"
         :min="min"
         :max="max"
         :step="step"
-        class="setting-slider"
-      >
-      <span class="setting-value">{{ formatValue(modelValue) }}</span>
+        :unit="unit"
+        :format="format"
+        @update:model-value="$emit('update:modelValue', $event)"
+      />
     </div>
   </div>
 </template>
@@ -56,24 +55,7 @@ export default {
       default: null
     }
   },
-  emits: ['update:modelValue'],
-  methods: {
-    handleInput(event: Event) {
-      const value = parseFloat((event.target as HTMLInputElement).value)
-      this.$emit('update:modelValue', value)
-    },
-    formatValue(value: number): string {
-      // 处理 undefined 或 null 值
-      if (value === undefined || value === null || isNaN(value)) {
-        const defaultValue = this.min || 0
-        return this.unit ? `${defaultValue} ${this.unit}` : String(defaultValue)
-      }
-      if (this.format) {
-        return this.format(value)
-      }
-      return this.unit ? `${value} ${this.unit}` : String(value)
-    }
-  }
+  emits: ['update:modelValue']
 }
 </script>
 
@@ -117,15 +99,5 @@ export default {
   gap: 10px;
 }
 
-.setting-slider {
-  width: 150px;
-  margin-right: 10px;
-}
-
-.setting-value {
-  color: #718096;
-  font-size: 0.9rem;
-  min-width: 50px;
-}
 </style>
 
